@@ -138,12 +138,23 @@ def kb_cart_empty(back_target: str | None = None) -> InlineKeyboardMarkup:
 def kb_checkout_choose_shop(shop_ids: list[int]) -> InlineKeyboardMarkup:
     """
     Если в корзине товары из разных точек, даём выбрать, для какого shop_id оформить заказ.
-    callback: c:checkout_shop:{shop_id}
+    callback: c:checkout_preview:{shop_id}
     """
     kb = []
     for sid in shop_ids:
-        kb.append([InlineKeyboardButton(text=f"Оформить для точки ID {sid}", callback_data=f"c:checkout_shop:{sid}")])
+        kb.append([InlineKeyboardButton(text=f"Оформить для точки ID {sid}", callback_data=f"c:checkout_preview:{sid}")])
     kb.append([InlineKeyboardButton(text="🔙 Назад", callback_data="c:cart")])
+    return InlineKeyboardMarkup(inline_keyboard=kb)
+
+
+def kb_checkout_confirm(shop_id: int, has_comment: bool = False) -> InlineKeyboardMarkup:
+    kb = [
+        [InlineKeyboardButton(text="✅ Подтвердить", callback_data=f"c:checkout_confirm:{shop_id}")],
+        [InlineKeyboardButton(text="✍️ Комментарий", callback_data=f"c:checkout_comment:{shop_id}")],
+    ]
+    if has_comment:
+        kb.append([InlineKeyboardButton(text="🗑 Удалить комментарий", callback_data=f"c:checkout_comment_clear:{shop_id}")])
+    kb.append([InlineKeyboardButton(text="❌ Отмена", callback_data=f"c:checkout_cancel:{shop_id}")])
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
 

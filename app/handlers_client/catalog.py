@@ -1,5 +1,4 @@
 from aiogram import Router, F
-from app.repositories.admins_repo import AdminsRepo
 from aiogram.types import CallbackQuery, Message
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
@@ -22,6 +21,7 @@ from app.handlers_client.kb import (
     kb_cart,
     kb_cart_empty,
     kb_checkout_choose_shop,
+    kb_checkout_confirm,
     kb_after_order,
 )
 
@@ -30,6 +30,11 @@ router = Router()
 
 class ClientCatalogStates(StatesGroup):
     search = State()
+
+
+class ClientCheckoutStates(StatesGroup):
+    confirm = State()
+    comment = State()
 
 
 def _parse_cart_back_target(parts: list[str]) -> dict | None:
@@ -499,8 +504,7 @@ async def checkout(cq: CallbackQuery, db: Database, state: FSMContext):
 
     shop_ids = sorted({int(i["shop_id"]) for i in items})
     if len(shop_ids) == 1:
-        # оформляем сразу
-        await _create_order_for_shop(cq, db, shop_ids[0])
+        await _show_checkout_preview(cq, db, state, shop_ids[0])
         return
 
     # если в корзине товары из разных точек — выбрать
@@ -511,8 +515,122 @@ async def checkout(cq: CallbackQuery, db: Database, state: FSMContext):
     await cq.answer()
 
 
-@router.callback_query(F.data.startswith("c:checkout_shop:"))
-async def _create_order_for_shop(cq: CallbackQuery, db: Database, shop_id: int):
+@router.callback_query(F.data.startswith("c:checkout_preview:"))
+async def checkout_preview(cq: CallbackQuery, db: Database, state: FSMContext):
+    shop_id = int(cq.data.split(":")[2])
+    await _show_checkout_preview(cq, db, state, shop_id)
+
+
+@router.callback_query(F.data.startswith("c:checkout_comment_clear:"))
+async def checkout_comment_clear(cq: CallbackQuery, db: Database, state: FSMContext):
+    shop_id = int(cq.data.split(":")[2])
+    await state.update_data(checkout_comment=None)
+    await _show_checkout_preview(cq, db, state, shop_id)
+
+
+@router.callback_query(F.data.startswith("c:checkout_comment:"))
+async def checkout_comment_prompt(cq: CallbackQuery, state: FSMContext):
+    shop_id = int(cq.data.split(":")[2])
+    await state.set_state(ClientCheckoutStates.comment)
+    await state.update_data(checkout_shop_id=shop_id)
+    await cq.message.edit_text("Введите комментарий к заказу (или '-' чтобы удалить):")
+    await cq.answer()
+
+
+@router.message(ClientCheckoutStates.comment)
+async def checkout_comment_input(message: Message, state: FSMContext, db: Database):
+    data = await state.get_data()
+    shop_id = data.get("checkout_shop_id")
+    if not shop_id:
+        await message.answer("Не удалось найти заказ для комментария.")
+        await state.clear()
+        return
+
+    text = (message.text or "").strip()
+    if not text:
+        await message.answer("Введите текст комментария.")
+        return
+
+    if text in {"-", "—"}:
+        await state.update_data(checkout_comment=None)
+    else:
+        await state.update_data(checkout_comment=text)
+
+    await state.set_state(ClientCheckoutStates.confirm)
+    await _render_checkout_preview(message, db, state, int(shop_id), message.from_user.id)
+
+
+@router.callback_query(F.data.startswith("c:checkout_cancel:"))
+async def checkout_cancel(cq: CallbackQuery, db: Database, state: FSMContext):
+    data = await state.get_data()
+    await state.set_state(None)
+    await state.update_data(checkout_shop_id=None, checkout_comment=None)
+    await render_cart(
+        cq.message,
+        cq.from_user.id,
+        db,
+        business_type=data.get("cart_kind"),
+        back_target=data.get("cart_back_target"),
+    )
+    await cq.answer()
+
+
+@router.callback_query(F.data.startswith("c:checkout_confirm:"))
+async def checkout_confirm(cq: CallbackQuery, db: Database, state: FSMContext):
+    shop_id = int(cq.data.split(":")[2])
+    data = await state.get_data()
+    comment = data.get("checkout_comment")
+    await _create_order_for_shop(cq, db, shop_id, comment=comment)
+    await state.clear()
+
+
+async def _show_checkout_preview(cq: CallbackQuery, db: Database, state: FSMContext, shop_id: int):
+    await state.set_state(ClientCheckoutStates.confirm)
+    await state.update_data(checkout_shop_id=shop_id)
+    await _render_checkout_preview(cq.message, db, state, shop_id, cq.from_user.id)
+    await cq.answer()
+
+
+async def _render_checkout_preview(
+    message: Message,
+    db: Database,
+    state: FSMContext,
+    shop_id: int,
+    user_id: int,
+):
+    cart = CartRepo(db)
+    data = await state.get_data()
+    items = await cart.list_items(user_id, business_type=data.get("cart_kind"))
+    items_for_shop = [item for item in items if int(item["shop_id"]) == shop_id]
+    if not items_for_shop:
+        await message.edit_text("Корзина пуста для этой точки.", reply_markup=kb_back("cart_menu"))
+        return
+
+    total = sum(float(i["price"]) * int(i["quantity"]) for i in items_for_shop)
+    text_lines = [
+        "🧾 Подтверждение заказа",
+        f"Точка (shop_id): {shop_id}",
+        "Состав:",
+    ]
+    for i in items_for_shop:
+        line_total = float(i["price"]) * int(i["quantity"])
+        text_lines.append(f"- {i['name']} x{i['quantity']} = {line_total}")
+    text_lines.append(f"\nИтого: {total}")
+    comment = data.get("checkout_comment")
+    text_lines.append(f"Комментарий: {comment if comment else '—'}")
+
+    await message.edit_text(
+        "\n".join(text_lines),
+        reply_markup=kb_checkout_confirm(shop_id, has_comment=bool(comment)),
+    )
+
+
+async def _create_order_for_shop(
+    cq: CallbackQuery,
+    db: Database,
+    shop_id: int,
+    comment: str | None = None,
+):
     orders = OrdersRepo(db)
 
     # 1) создаём заказ
@@ -526,25 +644,12 @@ async def _create_order_for_shop(cq: CallbackQuery, db: Database, shop_id: int):
         await cq.answer()
         return
 
-    # 2) уведомляем админов точки (MVP: уведомление из клиентского бота)
-    admins = AdminsRepo(db)
-    admin_ids = await admins.list_admin_user_ids(shop_id)
-
-    note = (
-        f"🔔 Новый заказ #{order_id}\n"
-        f"Точка (shop_id): {shop_id}\n"
-        f"Статус: new"
-    )
-
-    for uid in admin_ids:
-        try:
-            await cq.bot.send_message(uid, note)
-        except Exception:
-            pass
-
-    # 3) ответ клиенту
+    # 2) ответ клиенту
+    note = ""
+    if comment:
+        note = f"\nКомментарий: {comment}"
     await cq.message.edit_text(
-        f"✅ Заказ успешно создан!\nНомер заказа: {order_id}\nСтатус: new",
+        f"✅ Заказ успешно создан!\nНомер заказа: {order_id}\nСтатус: new{note}",
         reply_markup=kb_after_order(),
     )
     await cq.answer()
