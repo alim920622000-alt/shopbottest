@@ -1,5 +1,6 @@
+import logging
+
 from aiogram import Router, F
-from app.repositories.admins_repo import AdminsRepo
 from aiogram.types import CallbackQuery, Message
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
@@ -10,6 +11,7 @@ from app.repositories.products_repo import ProductsRepo
 from app.repositories.orders_repo import OrdersRepo
 from app.repositories.cart_repo import CartRepo
 from app.services.search_service import SearchService
+from app.services.notify_service import notify_admins_new_order
 from app.handlers_client.kb import (
     kb_client_main,
     kb_order_menu,
@@ -26,6 +28,7 @@ from app.handlers_client.kb import (
 )
 
 router = Router()
+logger = logging.getLogger(__name__)
 
 
 class ClientCatalogStates(StatesGroup):
@@ -526,21 +529,22 @@ async def _create_order_for_shop(cq: CallbackQuery, db: Database, shop_id: int):
         await cq.answer()
         return
 
-    # 2) уведомляем админов точки (MVP: уведомление из клиентского бота)
-    admins = AdminsRepo(db)
-    admin_ids = await admins.list_admin_user_ids(shop_id)
-
-    note = (
-        f"🔔 Новый заказ #{order_id}\n"
-        f"Точка (shop_id): {shop_id}\n"
-        f"Статус: new"
-    )
-
-    for uid in admin_ids:
-        try:
-            await cq.bot.send_message(uid, note)
-        except Exception:
-            pass
+    # 2) уведомляем админов точки, не ломая создание заказа
+    try:
+        shops = ShopsRepo(db)
+        shop = await shops.get(shop_id)
+        business_type = shop["business_type"] if shop else None
+        if business_type:
+            await notify_admins_new_order(
+                bot=cq.bot,
+                db=db,
+                order_id=order_id,
+                shop_id=shop_id,
+                business_type=business_type,
+            )
+    except Exception:
+        # Ошибка уведомления не должна влиять на создание заказа
+        logger.exception("Не удалось отправить уведомление о заказе %s", order_id)
 
     # 3) ответ клиенту
     await cq.message.edit_text(
