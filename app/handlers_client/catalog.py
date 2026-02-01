@@ -1,6 +1,6 @@
 import logging
 from aiogram import Router, F
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery, Message, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
 from app.db.database import Database
@@ -23,6 +23,7 @@ from app.handlers_client.kb import (
     kb_cart,
     kb_cart_empty,
     kb_checkout_choose_shop,
+    kb_order_confirm,
     kb_after_order,
 )
 
@@ -367,6 +368,39 @@ async def render_cart(
     await message.edit_text("\n".join(text_lines), reply_markup=kb_cart(items, back_target))
 
 
+def _build_order_confirm_text(items: list[dict]) -> str:
+    total = sum(float(i["price"]) * int(i["quantity"]) for i in items)
+    lines = ["Подтвердите оформление заказа:", "", "Состав:"]
+    for i in items:
+        line_total = float(i["price"]) * int(i["quantity"])
+        lines.append(f"- {i['name']} x{i['quantity']} = {line_total}")
+    lines.append(f"\nИтого: {total}")
+    return "\n".join(lines)
+
+
+async def _render_order_confirm(
+    cq: CallbackQuery,
+    items: list[dict],
+    shop_id: int,
+    back_cb: str,
+):
+    filtered_items = [i for i in items if int(i["shop_id"]) == shop_id]
+    if not filtered_items:
+        await cq.message.edit_text(
+            "Корзина пуста для выбранной точки.",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="🔙 Назад", callback_data=back_cb)],
+            ]),
+        )
+        return
+
+    text = _build_order_confirm_text(filtered_items)
+    await cq.message.edit_text(
+        text,
+        reply_markup=kb_order_confirm(f"c:checkout_confirm:{shop_id}", back_cb),
+    )
+
+
 @router.callback_query(F.data.startswith("c:cart"))
 async def open_cart(cq: CallbackQuery, db: Database, state: FSMContext):
     data = await state.get_data()
@@ -501,8 +535,8 @@ async def checkout(cq: CallbackQuery, db: Database, state: FSMContext):
 
     shop_ids = sorted({int(i["shop_id"]) for i in items})
     if len(shop_ids) == 1:
-        # оформляем сразу
-        await _create_order_for_shop(cq, db, shop_ids[0])
+        await _render_order_confirm(cq, items, shop_ids[0], "c:back:cart")
+        await cq.answer()
         return
 
     # если в корзине товары из разных точек — выбрать
@@ -514,6 +548,21 @@ async def checkout(cq: CallbackQuery, db: Database, state: FSMContext):
 
 
 @router.callback_query(F.data.startswith("c:checkout_shop:"))
+async def checkout_shop(cq: CallbackQuery, db: Database, state: FSMContext):
+    shop_id = int(cq.data.split(":")[2])
+    cart = CartRepo(db)
+    data = await state.get_data()
+    items = await cart.list_items(cq.from_user.id, business_type=data.get("cart_kind"))
+    await _render_order_confirm(cq, items, shop_id, "c:checkout")
+    await cq.answer()
+
+
+@router.callback_query(F.data.startswith("c:checkout_confirm:"))
+async def checkout_confirm(cq: CallbackQuery, db: Database):
+    shop_id = int(cq.data.split(":")[2])
+    await _create_order_for_shop(cq, db, shop_id)
+
+
 async def _create_order_for_shop(cq: CallbackQuery, db: Database, shop_id: int):
     orders = OrdersRepo(db)
 

@@ -129,6 +129,18 @@ def kb_cart(items: list[dict], back_target: str | None = None) -> InlineKeyboard
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
 
+def kb_order_confirm(confirm_cb: str, back_cb: str) -> InlineKeyboardMarkup:
+    """
+    Клавиатура подтверждения оформления заказа.
+    """
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="✅ Подтвердить", callback_data=confirm_cb),
+            InlineKeyboardButton(text="🔙 Назад", callback_data=back_cb),
+        ]
+    ])
+
+
 def kb_cart_empty(back_target: str | None = None) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🔙 Назад", callback_data=_cart_back_callback(back_target))]

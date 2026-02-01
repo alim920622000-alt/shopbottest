@@ -63,8 +63,8 @@ def kb_products(cat_id: int, items: list[dict]) -> InlineKeyboardMarkup:
     kb.append([InlineKeyboardButton(text="➕ Добавить товар", callback_data=f"a:paddprod:{cat_id}")])
     kb.append([InlineKeyboardButton(text="📥 Массовое добавление", callback_data=f"a:bulk:{cat_id}")])
     kb.append([
-        InlineKeyboardButton(text="🔙 Категории", callback_data="a:products"),
         InlineKeyboardButton(text="🏠 Главная", callback_data="a:home"),
+        InlineKeyboardButton(text="🔙 Категории", callback_data="a:products"),
     ])
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
@@ -74,8 +74,8 @@ def kb_product_card(cat_id: int, product_id: int, is_active: int) -> InlineKeybo
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text=toggle_text, callback_data=f"a:ptoggle:{cat_id}:{product_id}")],
         [
-            InlineKeyboardButton(text="🔙 Назад", callback_data=f"a:pcat:{cat_id}"),
             InlineKeyboardButton(text="🏠 Главная", callback_data="a:home"),
+            InlineKeyboardButton(text="🔙 Назад", callback_data=f"a:pcat:{cat_id}"),
         ],
     ])
 
@@ -238,8 +238,10 @@ async def add_product_prompt(cq: CallbackQuery, state: FSMContext, db: Database)
         "Пример:\n"
         "Молоко 2.5%; 12.5",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🔙 Назад", callback_data=f"a:pcat:{cat_id}")],
-            [InlineKeyboardButton(text="🏠 Главная", callback_data="a:home")],
+            [
+                InlineKeyboardButton(text="🏠 Главная", callback_data="a:home"),
+                InlineKeyboardButton(text="🔙 Назад", callback_data=f"a:pcat:{cat_id}"),
+            ],
         ])
     )
     await cq.answer()
@@ -465,8 +467,10 @@ async def bulk_import_prompt(cq: CallbackQuery, state: FSMContext, db: Database)
             "Загрузите CSV файл с товарами.\n"
             "Формат строк: Название; Цена; Описание (опционально).",
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="🔙 Назад", callback_data=f"a:pcat:{cat_id}")],
-                [InlineKeyboardButton(text="🏠 Главная", callback_data="a:home")],
+                [
+                    InlineKeyboardButton(text="🏠 Главная", callback_data="a:home"),
+                    InlineKeyboardButton(text="🔙 Назад", callback_data=f"a:pcat:{cat_id}"),
+                ],
             ]),
         )
         await cq.answer()

@@ -177,8 +177,10 @@ async def promo_card(cq: CallbackQuery, db: Database):
             lines.append(f"- {it['name']} — {it['price']}")
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="📌 Выбрать позиции", callback_data=f"r:promo_pick:{promo_id}")],
-        [InlineKeyboardButton(text="🔙 Назад", callback_data="r:promos")],
-        [InlineKeyboardButton(text="🏠 Главная", callback_data="r:home")],
+        [
+            InlineKeyboardButton(text="🏠 Главная", callback_data="r:home"),
+            InlineKeyboardButton(text="🔙 Назад", callback_data="r:promos"),
+        ],
     ])
     await cq.message.edit_text("\n".join(lines), reply_markup=kb)
     await cq.answer()
@@ -243,8 +245,10 @@ async def promo_add_item(cq: CallbackQuery, db: Database):
     await repo.attach_product(promo_id, product_id)
     await cq.answer("Добавлено")
     await cq.message.edit_text("Позиция добавлена в акцию.", reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🔙 Назад к акции", callback_data=f"r:promo:{promo_id}")],
-        [InlineKeyboardButton(text="🏠 Главная", callback_data="r:home")],
+        [
+            InlineKeyboardButton(text="🏠 Главная", callback_data="r:home"),
+            InlineKeyboardButton(text="🔙 Назад к акции", callback_data=f"r:promo:{promo_id}"),
+        ],
     ]))
 
 
@@ -258,8 +262,10 @@ def kb_chat_list(order_ids: list[int]) -> InlineKeyboardMarkup:
 
 def kb_chat_nav(order_id: int) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🔙 Назад", callback_data="r:chat")],
-        [InlineKeyboardButton(text="🏠 Главная", callback_data="r:home")],
+        [
+            InlineKeyboardButton(text="🏠 Главная", callback_data="r:home"),
+            InlineKeyboardButton(text="🔙 Назад", callback_data="r:chat"),
+        ],
     ])
 
 
@@ -340,4 +346,4 @@ async def send_chat_message(message: Message, state: FSMContext, db: Database):
         await message.bot.send_message(int(order["client_user_id"]), f"💬 Сообщение по заказу #{order_id}\n{text}")
     except Exception:
         pass
-    await message.answer("Сообщение отправлено.")
+    await message.answer("Сообщение отправлено.", reply_markup=kb_chat_nav(order_id))

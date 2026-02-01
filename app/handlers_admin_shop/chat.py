@@ -28,8 +28,10 @@ def kb_chat_list(order_ids: list[int]) -> InlineKeyboardMarkup:
 
 def kb_chat_nav(order_id: int) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🔙 Назад", callback_data="a:chat")],
-        [InlineKeyboardButton(text="🏠 Главная", callback_data="a:home")],
+        [
+            InlineKeyboardButton(text="🏠 Главная", callback_data="a:home"),
+            InlineKeyboardButton(text="🔙 Назад", callback_data="a:chat"),
+        ],
     ])
 
 
@@ -119,4 +121,4 @@ async def send_chat_message(message: Message, state: FSMContext, db: Database):
     except Exception:
         pass
 
-    await message.answer("Сообщение отправлено.")
+    await message.answer("Сообщение отправлено.", reply_markup=kb_chat_nav(order_id))

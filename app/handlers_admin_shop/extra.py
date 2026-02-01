@@ -184,8 +184,10 @@ async def promo_card(cq: CallbackQuery, db: Database):
 
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="📌 Выбрать позиции", callback_data=f"a:promo_pick:{promo_id}")],
-        [InlineKeyboardButton(text="🔙 Назад", callback_data="a:promos")],
-        [InlineKeyboardButton(text="🏠 Главная", callback_data="a:home")],
+        [
+            InlineKeyboardButton(text="🏠 Главная", callback_data="a:home"),
+            InlineKeyboardButton(text="🔙 Назад", callback_data="a:promos"),
+        ],
     ])
     await cq.message.edit_text("\n".join(lines), reply_markup=kb)
     await cq.answer()
@@ -250,6 +252,8 @@ async def promo_add_item(cq: CallbackQuery, db: Database):
     await repo.attach_product(promo_id, product_id)
     await cq.answer("Добавлено")
     await cq.message.edit_text("Позиция добавлена в акцию.", reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🔙 Назад к акции", callback_data=f"a:promo:{promo_id}")],
-        [InlineKeyboardButton(text="🏠 Главная", callback_data="a:home")],
+        [
+            InlineKeyboardButton(text="🏠 Главная", callback_data="a:home"),
+            InlineKeyboardButton(text="🔙 Назад к акции", callback_data=f"a:promo:{promo_id}"),
+        ],
     ]))
