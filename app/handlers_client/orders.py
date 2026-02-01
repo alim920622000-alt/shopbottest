@@ -229,6 +229,16 @@ async def send_chat_message(message: Message, state: FSMContext, db: Database):
                 reply_markup=kb,
             )
         except Exception:
-            await message.answer(text, reply_markup=kb)
+            try:
+                await message.bot.edit_message_reply_markup(
+                    chat_id=message.chat.id,
+                    message_id=int(chat_message_id),
+                    reply_markup=None,
+                )
+            except Exception:
+                pass
+            sent_message = await message.answer(text, reply_markup=kb)
+            await state.update_data(chat_message_id=sent_message.message_id)
     else:
-        await message.answer(text, reply_markup=kb)
+        sent_message = await message.answer(text, reply_markup=kb)
+        await state.update_data(chat_message_id=sent_message.message_id)
