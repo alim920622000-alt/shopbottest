@@ -1,5 +1,5 @@
 import logging
-from aiogram import Router, F
+from aiogram import Bot, Router, F
 from aiogram.types import CallbackQuery, Message
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
@@ -169,14 +169,27 @@ async def show_category_products(
 
 
 @router.callback_query(F.data.startswith("c:prod:"))
-async def open_product(cq: CallbackQuery, db: Database):
+async def open_product(cq: CallbackQuery, db: Database, bot: Bot):
     # c:prod:{product_id}
     product_id = int(cq.data.split(":")[2])
 
     prod = ProductsRepo(db)
     p = await prod.get(product_id)
     if not p:
-        await cq.message.edit_text("Товар не найден.", reply_markup=kb_back("order_menu"))
+        text = "Товар не найден."
+        markup = kb_back("order_menu")
+        # Сообщение может отсутствовать в inline-режиме.
+        if cq.message:
+            await cq.message.edit_text(text, reply_markup=markup)
+        elif cq.inline_message_id:
+            await bot.edit_message_text(
+                inline_message_id=cq.inline_message_id,
+                text=text,
+                reply_markup=markup,
+            )
+        else:
+            await cq.answer("Не удалось обновить сообщение", show_alert=True)
+            return
         await cq.answer()
         return
 
@@ -184,10 +197,19 @@ async def open_product(cq: CallbackQuery, db: Database):
     if p.get("description"):
         text += f"\nОписание: {p['description']}\n"
 
-    await cq.message.edit_text(
-        text,
-        reply_markup=kb_product_card(product_id=product_id, shop_id=p["shop_id"], category_id=p["category_id"])
-    )
+    markup = kb_product_card(product_id=product_id, shop_id=p["shop_id"], category_id=p["category_id"])
+    # Сообщение может отсутствовать в inline-режиме.
+    if cq.message:
+        await cq.message.edit_text(text, reply_markup=markup)
+    elif cq.inline_message_id:
+        await bot.edit_message_text(
+            inline_message_id=cq.inline_message_id,
+            text=text,
+            reply_markup=markup,
+        )
+    else:
+        await cq.answer("Не удалось обновить сообщение", show_alert=True)
+        return
     await cq.answer()
 
 
