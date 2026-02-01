@@ -36,6 +36,30 @@ class ChatRepo:
             rows = await cur.fetchall()
             return [dict(r) for r in rows][::-1]
 
+    async def count_messages(self, order_id: int) -> int:
+        async with self.db.conn() as conn:
+            cur = await conn.execute(
+                "SELECT COUNT(*) AS cnt FROM order_chat_messages WHERE order_id=?",
+                (order_id,),
+            )
+            row = await cur.fetchone()
+            return int(row["cnt"]) if row else 0
+
+    async def list_messages_page(self, order_id: int, limit: int, offset: int) -> Sequence[dict]:
+        async with self.db.conn() as conn:
+            cur = await conn.execute(
+                """
+                SELECT sender_user_id, sender_role, message_text, created_at
+                FROM order_chat_messages
+                WHERE order_id=?
+                ORDER BY created_at ASC
+                LIMIT ? OFFSET ?
+                """,
+                (order_id, limit, offset),
+            )
+            rows = await cur.fetchall()
+            return [dict(r) for r in rows]
+
     async def list_order_ids_with_chat(self, user_id: int | None = None, shop_id: int | None = None) -> list[int]:
         if not user_id and not shop_id:
             return []
