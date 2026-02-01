@@ -11,6 +11,7 @@ from app.repositories.orders_repo import OrdersRepo
 from app.repositories.shops_repo import ShopsRepo
 from app.repositories.chat_repo import ChatRepo
 from app.repositories.admins_repo import AdminsRepo
+from app.ui.chat import build_chat_screen_text, build_chat_screen_kb, CHAT_PAGE_SIZE
 
 router = Router()
 
@@ -38,6 +39,22 @@ def kb_chat_nav(order_id: int) -> InlineKeyboardMarkup:
             InlineKeyboardButton(text="🔙 Назад", callback_data=f"c:order:{order_id}"),
         ],
     ])
+
+
+def _calc_total_pages(total_messages: int, page_size: int) -> int:
+    if total_messages <= 0:
+        return 1
+    return (total_messages + page_size - 1) // page_size
+
+
+async def _get_business_type(db: Database, order_id: int) -> str:
+    orders = OrdersRepo(db)
+    order = await orders.get_order(order_id)
+    if not order:
+        return "shop"
+    shops = ShopsRepo(db)
+    shop = await shops.get(int(order["shop_id"]))
+    return shop.get("business_type") if shop else "shop"
 
 
 @router.callback_query(F.data == "c:orders")
@@ -117,17 +134,61 @@ async def chat_list(cq: CallbackQuery, db: Database, state: FSMContext):
 
 
 async def render_chat(cq: CallbackQuery, db: Database, order_id: int):
+    await render_chat_page(
+        cq.message.bot,
+        cq.message.chat.id,
+        cq.message.message_id,
+        db,
+        order_id,
+        page=None,
+        show_hint=False,
+    )
+
+
+async def render_chat_page(
+    bot,
+    chat_id: int,
+    message_id: int | None,
+    db: Database,
+    order_id: int,
+    page: int | None,
+    show_hint: bool,
+):
     chat = ChatRepo(db)
-    messages = await chat.list_messages(order_id, limit=20)
-    if not messages:
-        text = "Чат пуст. Напишите сообщение, и администратор ответит."
-    else:
-        lines = ["💬 Чат по заказу:"]
-        for msg in messages:
-            role = "Вы" if msg["sender_role"] == "client" else "Админ"
-            lines.append(f"{role}: {msg['message_text']}")
-        text = "\n".join(lines)
-    await cq.message.edit_text(text, reply_markup=kb_chat_nav(order_id))
+    total_messages = await chat.count_messages(order_id)
+    total_pages = _calc_total_pages(total_messages, CHAT_PAGE_SIZE)
+    current_page = page or total_pages
+    if current_page < 1:
+        current_page = 1
+    if current_page > total_pages:
+        current_page = total_pages
+    offset = (current_page - 1) * CHAT_PAGE_SIZE
+    messages = await chat.list_messages_page(order_id, limit=CHAT_PAGE_SIZE, offset=offset)
+    business_type = await _get_business_type(db, order_id)
+    text = build_chat_screen_text(
+        order_id=order_id,
+        messages=list(messages),
+        show_hint=show_hint,
+        business_type=business_type,
+        page=current_page,
+        page_size=CHAT_PAGE_SIZE,
+    )
+    kb = build_chat_screen_kb(
+        order_id=order_id,
+        page=current_page,
+        total_pages=total_pages,
+        prefix="c",
+        home_cb="c:home",
+        back_cb=f"c:order:{order_id}",
+    )
+    if message_id is not None:
+        await bot.edit_message_text(
+            chat_id=chat_id,
+            message_id=message_id,
+            text=text,
+            reply_markup=kb,
+        )
+    return text, kb
 
 
 @router.callback_query(F.data.startswith("c:chat:"))
@@ -141,8 +202,51 @@ async def open_chat(cq: CallbackQuery, state: FSMContext, db: Database):
         return
 
     await state.set_state(ClientChatStates.active)
-    await state.update_data(chat_order_id=order_id)
-    await render_chat(cq, db, order_id)
+    data = await state.get_data()
+    shown_orders = set(data.get("chat_hint_orders") or [])
+    show_hint = order_id not in shown_orders
+    if show_hint:
+        shown_orders.add(order_id)
+    await state.update_data(
+        chat_order_id=order_id,
+        chat_message_id=cq.message.message_id,
+        chat_message_chat_id=cq.message.chat.id,
+        chat_page=None,
+        chat_hint_orders=list(shown_orders),
+    )
+    await render_chat_page(
+        cq.message.bot,
+        cq.message.chat.id,
+        cq.message.message_id,
+        db,
+        order_id,
+        page=None,
+        show_hint=show_hint,
+    )
+    await cq.answer()
+
+
+@router.callback_query(F.data.startswith("c:chatp:"))
+async def paginate_chat(cq: CallbackQuery, state: FSMContext, db: Database):
+    _, _, order_id_str, page_str = cq.data.split(":")
+    order_id = int(order_id_str)
+    page = int(page_str)
+    orders = OrdersRepo(db)
+    order = await orders.get_order(order_id)
+    if not order or int(order["client_user_id"]) != cq.from_user.id:
+        await cq.message.edit_text("Чат недоступен.", reply_markup=kb_client_main())
+        await cq.answer()
+        return
+    await state.update_data(chat_order_id=order_id, chat_page=page)
+    await render_chat_page(
+        cq.message.bot,
+        cq.message.chat.id,
+        cq.message.message_id,
+        db,
+        order_id,
+        page=page,
+        show_hint=False,
+    )
     await cq.answer()
 
 
@@ -172,4 +276,31 @@ async def send_chat_message(message: Message, state: FSMContext, db: Database):
         except Exception:
             pass
 
-    await message.answer("Сообщение отправлено.", reply_markup=kb_chat_nav(order_id))
+    data = await state.get_data()
+    chat_message_id = data.get("chat_message_id")
+    chat_message_chat_id = data.get("chat_message_chat_id")
+    if chat_message_id and chat_message_chat_id:
+        await render_chat_page(
+            message.bot,
+            int(chat_message_chat_id),
+            int(chat_message_id),
+            db,
+            order_id,
+            page=None,
+            show_hint=False,
+        )
+    else:
+        text, kb = await render_chat_page(
+            message.bot,
+            message.chat.id,
+            None,
+            db,
+            order_id,
+            page=None,
+            show_hint=False,
+        )
+        sent = await message.answer(text, reply_markup=kb)
+        await state.update_data(
+            chat_message_id=sent.message_id,
+            chat_message_chat_id=sent.chat.id,
+        )

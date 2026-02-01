@@ -15,6 +15,7 @@ from app.repositories.categories_repo import CategoriesRepo
 from app.repositories.products_repo import ProductsRepo
 from app.repositories.chat_repo import ChatRepo
 from app.ui.nav import kb_nav
+from app.ui.chat import build_chat_screen_text, build_chat_screen_kb, CHAT_PAGE_SIZE
 
 router = Router()
 
@@ -265,6 +266,22 @@ def kb_chat_nav(order_id: int) -> InlineKeyboardMarkup:
     return kb_nav(home_cb="r:home", back_cb="r:chat")
 
 
+def _calc_total_pages(total_messages: int, page_size: int) -> int:
+    if total_messages <= 0:
+        return 1
+    return (total_messages + page_size - 1) // page_size
+
+
+async def _get_business_type(db: Database, order_id: int) -> str:
+    orders = OrdersRepo(db)
+    order = await orders.get_order(order_id)
+    if not order:
+        return "restaurant"
+    shops = ShopsRepo(db)
+    shop = await shops.get(int(order["shop_id"]))
+    return shop.get("business_type") if shop else "restaurant"
+
+
 @router.callback_query(F.data == "r:chat")
 async def chat_list(cq: CallbackQuery, db: Database, state: FSMContext):
     if not await is_restaurant_admin(db, cq.from_user.id):
@@ -287,17 +304,59 @@ async def chat_list(cq: CallbackQuery, db: Database, state: FSMContext):
 
 
 async def render_chat(cq: CallbackQuery, db: Database, order_id: int):
+    await render_chat_page(
+        cq.message.bot,
+        cq.message.chat.id,
+        cq.message.message_id,
+        db,
+        order_id,
+        page=None,
+    )
+
+
+async def render_chat_page(
+    bot,
+    chat_id: int,
+    message_id: int | None,
+    db: Database,
+    order_id: int,
+    page: int | None,
+):
     chat = ChatRepo(db)
-    messages = await chat.list_messages(order_id, limit=20)
-    if not messages:
-        text = "Чат пуст. Напишите сообщение клиенту."
-    else:
-        lines = ["💬 Чат по заказу:"]
-        for msg in messages:
-            role = "Клиент" if msg["sender_role"] == "client" else "Вы"
-            lines.append(f"{role}: {msg['message_text']}")
-        text = "\n".join(lines)
-    await cq.message.edit_text(text, reply_markup=kb_chat_nav(order_id))
+    total_messages = await chat.count_messages(order_id)
+    total_pages = _calc_total_pages(total_messages, CHAT_PAGE_SIZE)
+    current_page = page or total_pages
+    if current_page < 1:
+        current_page = 1
+    if current_page > total_pages:
+        current_page = total_pages
+    offset = (current_page - 1) * CHAT_PAGE_SIZE
+    messages = await chat.list_messages_page(order_id, limit=CHAT_PAGE_SIZE, offset=offset)
+    business_type = await _get_business_type(db, order_id)
+    text = build_chat_screen_text(
+        order_id=order_id,
+        messages=list(messages),
+        show_hint=False,
+        business_type=business_type,
+        page=current_page,
+        page_size=CHAT_PAGE_SIZE,
+    )
+    kb = build_chat_screen_kb(
+        order_id=order_id,
+        page=current_page,
+        total_pages=total_pages,
+        prefix="r",
+        home_cb="r:home",
+        back_cb="r:chat",
+    )
+    if message_id is not None:
+        await bot.edit_message_text(
+            chat_id=chat_id,
+            message_id=message_id,
+            text=text,
+            reply_markup=kb,
+        )
+    return text, kb
 
 
 @router.callback_query(F.data.startswith("r:chat:"))
@@ -314,8 +373,47 @@ async def open_chat(cq: CallbackQuery, state: FSMContext, db: Database):
         await cq.answer()
         return
     await state.set_state(RestaurantChatStates.active)
-    await state.update_data(chat_order_id=order_id)
-    await render_chat(cq, db, order_id)
+    await state.update_data(
+        chat_order_id=order_id,
+        chat_message_id=cq.message.message_id,
+        chat_message_chat_id=cq.message.chat.id,
+        chat_page=None,
+    )
+    await render_chat_page(
+        cq.message.bot,
+        cq.message.chat.id,
+        cq.message.message_id,
+        db,
+        order_id,
+        page=None,
+    )
+    await cq.answer()
+
+
+@router.callback_query(F.data.startswith("r:chatp:"))
+async def paginate_chat(cq: CallbackQuery, state: FSMContext, db: Database):
+    if not await is_restaurant_admin(db, cq.from_user.id):
+        await cq.answer("Нет доступа", show_alert=True)
+        return
+    _, _, order_id_str, page_str = cq.data.split(":")
+    order_id = int(order_id_str)
+    page = int(page_str)
+    orders = OrdersRepo(db)
+    order = await orders.get_order(order_id)
+    ids = await get_admin_restaurant_ids(db, cq.from_user.id)
+    if not order or int(order["shop_id"]) not in ids:
+        await cq.message.edit_text("Чат недоступен.", reply_markup=kb_admin_main())
+        await cq.answer()
+        return
+    await state.update_data(chat_order_id=order_id, chat_page=page)
+    await render_chat_page(
+        cq.message.bot,
+        cq.message.chat.id,
+        cq.message.message_id,
+        db,
+        order_id,
+        page=page,
+    )
     await cq.answer()
 
 
@@ -342,4 +440,29 @@ async def send_chat_message(message: Message, state: FSMContext, db: Database):
         await message.bot.send_message(int(order["client_user_id"]), f"💬 Сообщение по заказу #{order_id}\n{text}")
     except Exception:
         pass
-    await message.answer("Сообщение отправлено.", reply_markup=kb_chat_nav(order_id))
+    data = await state.get_data()
+    chat_message_id = data.get("chat_message_id")
+    chat_message_chat_id = data.get("chat_message_chat_id")
+    if chat_message_id and chat_message_chat_id:
+        await render_chat_page(
+            message.bot,
+            int(chat_message_chat_id),
+            int(chat_message_id),
+            db,
+            order_id,
+            page=None,
+        )
+    else:
+        text, kb = await render_chat_page(
+            message.bot,
+            message.chat.id,
+            None,
+            db,
+            order_id,
+            page=None,
+        )
+        sent = await message.answer(text, reply_markup=kb)
+        await state.update_data(
+            chat_message_id=sent.message_id,
+            chat_message_chat_id=sent.chat.id,
+        )
