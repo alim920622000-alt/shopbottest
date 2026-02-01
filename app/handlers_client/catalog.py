@@ -25,6 +25,7 @@ from app.handlers_client.kb import (
     kb_checkout_choose_shop,
     kb_checkout_confirm,
     kb_after_order,
+    kb_inline_search_help,
 )
 
 router = Router()
@@ -408,6 +409,24 @@ async def search_prompt(cq: CallbackQuery, state: FSMContext):
     await cq.message.edit_text(
         "Введите текст для поиска. Я буду показывать результаты по мере ввода.",
         reply_markup=kb_back(f"categories:{kind}:{shop_id_str}"),
+    )
+    await cq.answer()
+
+
+@router.callback_query(F.data.startswith("c:at_search:"))
+async def at_search_prompt(cq: CallbackQuery):
+    # c:at_search:{kind}:{shop_id}
+    _, _, kind, shop_id_str = cq.data.split(":", 3)
+    me = await cq.bot.get_me()
+    username = me.username or "username_бота"
+    text = (
+        "Поиск через @ работает в любом поле ввода.\n\n"
+        f"Напишите:\n@{username} название товара\n\n"
+        f"Например: @{username} молоко"
+    )
+    await cq.message.edit_text(
+        text,
+        reply_markup=kb_inline_search_help(f"categories:{kind}:{shop_id_str}"),
     )
     await cq.answer()
 
