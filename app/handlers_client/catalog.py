@@ -400,7 +400,8 @@ async def render_cart(
     await message.edit_text("\n".join(text_lines), reply_markup=kb_cart(items, back_target))
 
 
-@router.callback_query(F.data.startswith("c:cart"))
+# Фильтр с точным совпадением и префиксом через ":" нужен, чтобы не перехватывать c:cart_inc/dec/del.
+@router.callback_query((F.data == "c:cart") | (F.data.startswith("c:cart:")))
 async def open_cart(cq: CallbackQuery, db: Database, state: FSMContext):
     data = await state.get_data()
     parts = cq.data.split(":")
