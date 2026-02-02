@@ -71,13 +71,35 @@ async def list_shops(cq: CallbackQuery, db: Database, state: FSMContext):
 
 @router.callback_query(F.data == "c:home")
 async def client_home(cq: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    last_kind = data.get("last_kind")
+    last_view = data.get("last_view")
+    # Сохраняем контекст корзины, чтобы он не терялся после очистки состояния.
     await state.clear()
+    restore_data = {}
+    if last_kind is not None:
+        restore_data["last_kind"] = last_kind
+    if last_view is not None:
+        restore_data["last_view"] = last_view
+    if restore_data:
+        await state.update_data(**restore_data)
     await cq.message.edit_text("Выберите раздел:", reply_markup=kb_client_main())
     await cq.answer()
 
 @router.callback_query(F.data == "c:order_menu")
 async def order_menu(cq: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    last_kind = data.get("last_kind")
+    last_view = data.get("last_view")
+    # Сохраняем контекст корзины, чтобы он не терялся после очистки состояния.
     await state.clear()
+    restore_data = {}
+    if last_kind is not None:
+        restore_data["last_kind"] = last_kind
+    if last_view is not None:
+        restore_data["last_view"] = last_view
+    if restore_data:
+        await state.update_data(**restore_data)
     await cq.message.edit_text("Что будем заказывать?", reply_markup=kb_order_menu())
     await cq.answer()
 
@@ -288,7 +310,17 @@ async def back(cq: CallbackQuery, db: Database, state: FSMContext):
         await cq.answer()
         return
 
+    last_kind = data.get("last_kind")
+    last_view = data.get("last_view")
+    # Сохраняем контекст корзины при возврате, чтобы не потерять тип.
     await state.clear()
+    restore_data = {}
+    if last_kind is not None:
+        restore_data["last_kind"] = last_kind
+    if last_view is not None:
+        restore_data["last_view"] = last_view
+    if restore_data:
+        await state.update_data(**restore_data)
 
     if target == "main":
         await cq.message.edit_text("Выберите раздел:", reply_markup=kb_client_main())
@@ -375,7 +407,13 @@ async def open_cart(cq: CallbackQuery, db: Database, state: FSMContext):
     kind = parts[2] if len(parts) > 2 else "auto"
     back_parts = parts[3:] if len(parts) > 3 else []
     if kind == "auto":
-        kind = data.get("last_kind") or ""
+        last_kind = data.get("last_kind")
+        if last_kind not in ("shop", "restaurant"):
+            # Страховка для режима auto: если контекст сброшен, даём выбрать корзину.
+            await cq.message.edit_text("Выберите корзину:", reply_markup=kb_cart_menu())
+            await cq.answer()
+            return
+        kind = last_kind
     business_type = kind if kind in ("shop", "restaurant") else None
     return_view = _parse_cart_back_target(back_parts) or data.get("last_view")
     await state.update_data(

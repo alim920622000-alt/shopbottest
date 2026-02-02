@@ -74,7 +74,17 @@ async def save_full_name(message: Message, state: FSMContext, db: Database):
         return
     repo = ClientProfilesRepo(db)
     await repo.upsert(message.from_user.id, full_name=name)
+    data = await state.get_data()
+    last_kind = data.get("last_kind")
+    last_view = data.get("last_view")
     await state.clear()
+    restore_data = {}
+    if last_kind is not None:
+        restore_data["last_kind"] = last_kind
+    if last_view is not None:
+        restore_data["last_view"] = last_view
+    if restore_data:
+        await state.update_data(**restore_data)
     await message.answer("ФИО сохранено.", reply_markup=kb_client_main())
 
 
@@ -86,7 +96,17 @@ async def save_phone(message: Message, state: FSMContext, db: Database):
         return
     repo = ClientProfilesRepo(db)
     await repo.upsert(message.from_user.id, phone=phone)
+    data = await state.get_data()
+    last_kind = data.get("last_kind")
+    last_view = data.get("last_view")
     await state.clear()
+    restore_data = {}
+    if last_kind is not None:
+        restore_data["last_kind"] = last_kind
+    if last_view is not None:
+        restore_data["last_view"] = last_view
+    if restore_data:
+        await state.update_data(**restore_data)
     await message.answer("Телефон сохранён.", reply_markup=kb_client_main())
 
 
@@ -98,5 +118,15 @@ async def save_address(message: Message, state: FSMContext, db: Database):
         return
     repo = ClientProfilesRepo(db)
     await repo.upsert(message.from_user.id, address=address)
+    data = await state.get_data()
+    last_kind = data.get("last_kind")
+    last_view = data.get("last_view")
     await state.clear()
+    restore_data = {}
+    if last_kind is not None:
+        restore_data["last_kind"] = last_kind
+    if last_view is not None:
+        restore_data["last_view"] = last_view
+    if restore_data:
+        await state.update_data(**restore_data)
     await message.answer("Адрес сохранён.", reply_markup=kb_client_main())

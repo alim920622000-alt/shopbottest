@@ -49,7 +49,17 @@ def kb_chat_nav_rows(order_id: int) -> list[list[InlineKeyboardButton]]:
 
 @router.callback_query(F.data == "c:orders")
 async def list_orders(cq: CallbackQuery, db: Database, state: FSMContext):
+    data = await state.get_data()
+    last_kind = data.get("last_kind")
+    last_view = data.get("last_view")
     await state.clear()
+    restore_data = {}
+    if last_kind is not None:
+        restore_data["last_kind"] = last_kind
+    if last_view is not None:
+        restore_data["last_view"] = last_view
+    if restore_data:
+        await state.update_data(**restore_data)
     orders = OrdersRepo(db)
     rows = await orders.list_for_client(cq.from_user.id)
     if not rows:
@@ -64,7 +74,17 @@ async def list_orders(cq: CallbackQuery, db: Database, state: FSMContext):
 
 @router.callback_query(F.data == "c:history")
 async def list_history(cq: CallbackQuery, db: Database, state: FSMContext):
+    data = await state.get_data()
+    last_kind = data.get("last_kind")
+    last_view = data.get("last_view")
     await state.clear()
+    restore_data = {}
+    if last_kind is not None:
+        restore_data["last_kind"] = last_kind
+    if last_view is not None:
+        restore_data["last_view"] = last_view
+    if restore_data:
+        await state.update_data(**restore_data)
     orders = OrdersRepo(db)
     rows = await orders.list_for_client(cq.from_user.id, statuses=DONE_STATUSES)
     if not rows:
@@ -79,7 +99,17 @@ async def list_history(cq: CallbackQuery, db: Database, state: FSMContext):
 
 @router.callback_query(F.data.startswith("c:order:"))
 async def order_card(cq: CallbackQuery, db: Database, state: FSMContext):
+    data = await state.get_data()
+    last_kind = data.get("last_kind")
+    last_view = data.get("last_view")
     await state.clear()
+    restore_data = {}
+    if last_kind is not None:
+        restore_data["last_kind"] = last_kind
+    if last_view is not None:
+        restore_data["last_view"] = last_view
+    if restore_data:
+        await state.update_data(**restore_data)
     order_id = int(cq.data.split(":")[2])
     orders = OrdersRepo(db)
     o = await orders.get_order(order_id)
@@ -111,7 +141,17 @@ async def order_card(cq: CallbackQuery, db: Database, state: FSMContext):
 
 @router.callback_query(F.data == "c:chat")
 async def chat_list(cq: CallbackQuery, db: Database, state: FSMContext):
+    data = await state.get_data()
+    last_kind = data.get("last_kind")
+    last_view = data.get("last_view")
     await state.clear()
+    restore_data = {}
+    if last_kind is not None:
+        restore_data["last_kind"] = last_kind
+    if last_view is not None:
+        restore_data["last_view"] = last_view
+    if restore_data:
+        await state.update_data(**restore_data)
     chats = ChatRepo(db)
     order_ids = await chats.list_order_ids_with_chat(user_id=cq.from_user.id)
     if not order_ids:
