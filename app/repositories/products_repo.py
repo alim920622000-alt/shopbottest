@@ -140,6 +140,15 @@ class ProductsRepo:
             row = await cur.fetchone()
             return dict(row) if row else None
 
+    async def get_by_sku_any(self, sku: str) -> Optional[dict]:
+        async with self.db.conn() as conn:
+            cur = await conn.execute(
+                "SELECT * FROM products WHERE sku=? LIMIT 1",
+                ((sku or "").strip().upper(),),
+            )
+            row = await cur.fetchone()
+            return dict(row) if row else None
+
     async def find_by_natural_key(self, shop_id: int, category_id: int, name_norm: str) -> Optional[dict]:
         async with self.db.conn() as conn:
             cur = await conn.execute(

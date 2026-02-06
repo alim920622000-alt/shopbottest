@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from aiogram import Router
 from aiogram.types import (
-    InlineKeyboardButton,
-    InlineKeyboardMarkup,
     InlineQuery,
     InlineQueryResultArticle,
     InputTextMessageContent,
@@ -35,15 +33,6 @@ def _format_price(value: object) -> str:
     return f"{number:.2f}"
 
 
-def _inline_actions_markup(shop_id: int, sku: str) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [
-            InlineKeyboardButton(text="➕ В корзину", callback_data=f"c:addsku:{shop_id}:{sku}"),
-            InlineKeyboardButton(text="📦 Открыть товар", callback_data=f"c:prodsku:{shop_id}:{sku}"),
-        ]
-    ])
-
-
 @router.inline_query()
 async def inline_search(inline_query: InlineQuery, db: Database):
     query = (inline_query.query or "").strip()
@@ -60,7 +49,6 @@ async def inline_search(inline_query: InlineQuery, db: Database):
         shop = item.shop
         price = product.get("price")
         price_text = _format_price(price) if price is not None else ""
-        shop_id = int(shop.get("id"))
         sku = (product.get("sku") or "").strip().upper()
         if not sku:
             continue
@@ -73,16 +61,7 @@ async def inline_search(inline_query: InlineQuery, db: Database):
         if sku:
             description_parts.append(sku)
 
-        message_lines = [f"🛒 {product.get('name', '')}".strip()]
-        if price_text:
-            message_lines.append(f"💰 {price_text}")
-        if product.get("description"):
-            message_lines.append(f"\n{product['description']}")
-        if shop.get("name"):
-            message_lines.append(f"\n🏪 {shop['name']}")
-
-        result_id = f"shop:{shop_id}:sku:{sku}"
-        message_text = _clamp_text("\n".join(message_lines).strip(), 4000)
+        result_id = f"shop:{shop.get('id')}:sku:{sku}"
         title = _clamp_text(product.get("name", "Товар"), 80)
         description = " • ".join(description_parts) if description_parts else ""
         description = _clamp_text(description, 240) if description else None
@@ -91,8 +70,8 @@ async def inline_search(inline_query: InlineQuery, db: Database):
                 id=result_id,
                 title=title,
                 description=description,
-                input_message_content=InputTextMessageContent(message_text=message_text),
-                reply_markup=_inline_actions_markup(shop_id, sku),
+                # Inline-результат публикует только SKU — без кнопок и доп. текста.
+                input_message_content=InputTextMessageContent(message_text=sku),
                 thumb_url=product.get("photo_url") or None,
             )
         )

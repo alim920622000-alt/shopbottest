@@ -1,6 +1,8 @@
 import logging
+import re
 from aiogram import Router, F
 from aiogram.types import CallbackQuery, Message
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
 from app.db.database import Database
@@ -11,7 +13,7 @@ from app.repositories.orders_repo import OrdersRepo
 from app.repositories.cart_repo import CartRepo
 from app.services.search_service import SearchService
 from app.services.admin_notifications import notify_admins_new_order
-from app.services.screen import clear_state_keep_screen, safe_edit_text
+from app.services.screen import clear_state_keep_screen, delete_screen, safe_edit_text, set_screen_message_id
 from app.handlers_client.kb import (
     kb_client_main,
     kb_order_menu,
@@ -34,9 +36,28 @@ from app.handlers_client.kb import (
 router = Router()
 logger = logging.getLogger(__name__)
 
+SKU_RE = re.compile(r"^SKU-[0-9A-F]{8}$")
+
 
 class ClientCatalogStates(StatesGroup):
     search = State()
+
+
+SKU_PATTERN = re.compile(r"^SKU-[A-Z0-9]{4,64}$")
+
+
+def _build_product_card_text(product: dict) -> str:
+    text = f"{product['name']}\n\nЦена: {product['price']}\n"
+    if product.get("description"):
+        text += f"\nОписание: {product['description']}\n"
+    return text
+
+
+def _parse_sku_from_message(text: str | None) -> str | None:
+    normalized = (text or "").strip().upper()
+    if not normalized or not SKU_PATTERN.fullmatch(normalized):
+        return None
+    return normalized
 
 
 def _parse_cart_back_target(parts: list[str]) -> dict | None:
@@ -56,6 +77,46 @@ def _parse_cart_back_target(parts: list[str]) -> dict | None:
     if name == "order_menu":
         return {"name": "order_menu"}
     return None
+
+
+@router.message(F.via_bot.is_not(None), F.text.regexp(SKU_RE))
+async def open_product_from_inline_sku(message: Message, db: Database, state: FSMContext):
+
+
+    sku = _parse_sku_from_message(message.text)
+    if not sku:
+        return
+
+    products_repo = ProductsRepo(db)
+    product = await products_repo.get_by_sku_any(sku)
+    if not product:
+        return
+
+    shop = await ShopsRepo(db).get(int(product["shop_id"]))
+    if not shop or shop.get("business_type") != "shop":
+        return
+
+    # Удаляем только текущее экранное сообщение бота. Inline-сообщение не трогаем.
+    await delete_screen(message.bot, message.chat.id, state)
+
+    text = _build_product_card_text(product)
+    sent = await message.answer(
+        text,
+        reply_markup=kb_product_card_shop(
+            shop_id=int(product["shop_id"]),
+            category_id=int(product["category_id"]),
+            sku=sku,
+        ),
+    )
+    await set_screen_message_id(state, sent.message_id)
+    await state.update_data(
+        last_kind="shop",
+        last_view={
+            "name": "products",
+            "shop_id": int(product["shop_id"]),
+            "category_id": int(product["category_id"]),
+        },
+    )
 
 
 @router.callback_query(F.data == "c:shops")
@@ -203,9 +264,7 @@ async def open_product(cq: CallbackQuery, db: Database):
         await cq.answer()
         return
 
-    text = f"{p['name']}\n\nЦена: {p['price']}\n"
-    if p.get("description"):
-        text += f"\nОписание: {p['description']}\n"
+    text = _build_product_card_text(p)
 
     markup = kb_product_card(
         product_id=product_id,
@@ -255,9 +314,7 @@ async def open_product_by_sku(cq: CallbackQuery, db: Database):
         await cq.answer()
         return
 
-    text = f"{p['name']}\n\nЦена: {p['price']}\n"
-    if p.get("description"):
-        text += f"\nОписание: {p['description']}\n"
+    text = _build_product_card_text(p)
 
     await safe_edit_text(
         cq,
