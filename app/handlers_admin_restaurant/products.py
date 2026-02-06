@@ -11,13 +11,22 @@ from app.handlers_admin_restaurant.utils import get_admin_restaurant_ids
 from app.repositories.categories_repo import CategoriesRepo
 from app.repositories.products_repo import ProductsRepo
 from app.services.search_utils import normalize_text, build_keywords
+from app.config import get_settings
 from app.services.screen import clear_state_keep_screen
 
 router = Router()
+
+
+def is_superadmin(user_id: int) -> bool:
+    s = get_settings()
+    return user_id in set(s.superadmin_ids)
+
+
 class ProductFSM(StatesGroup):
     add_name = State()
     add_price = State()
     add_desc = State()
+    add_category = State()
 
     edit_name = State()
     edit_price = State()
@@ -37,13 +46,15 @@ def kb_cancel() -> InlineKeyboardMarkup:
     ])
 
 
-def kb_categories(categories: list[dict], restaurant_id: int) -> InlineKeyboardMarkup:
+def kb_categories(categories: list[dict], restaurant_id: int, user_id: int) -> InlineKeyboardMarkup:
     kb = []
     for c in categories:
         kb.append([InlineKeyboardButton(
             text=c["name"],
             callback_data=f"r:cat:{restaurant_id}:{c['id']}"
         )])
+    if is_superadmin(user_id):
+        kb.append([InlineKeyboardButton(text="➕ Добавить категорию", callback_data="r:paddcat")])
     kb.append([
         InlineKeyboardButton(text="🏠 Главная", callback_data="r:home"),
         InlineKeyboardButton(text="🔙 Назад", callback_data="r:back:main"),
@@ -445,16 +456,77 @@ async def list_categories(cq: CallbackQuery, db: Database):
     categories = await cats.list_for_shop(restaurant_id, active_only=True)
 
     if not categories:
-        await cq.message.edit_text(
-            "В ресторане пока нет категорий (создаёт суперадмин).",
-            reply_markup=nav("r:home", "r:back:main")
-        )
+        if is_superadmin(cq.from_user.id):
+            await cq.message.edit_text(
+                "В ресторане пока нет категорий. Нажмите «➕ Добавить категорию».",
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="➕ Добавить категорию", callback_data="r:paddcat")],
+                    [
+                        InlineKeyboardButton(text="🏠 Главная", callback_data="r:home"),
+                        InlineKeyboardButton(text="🔙 Назад", callback_data="r:back:main"),
+                    ],
+                ])
+            )
+        else:
+            await cq.message.edit_text(
+                "В ресторане пока нет категорий (создаёт суперадмин).",
+                reply_markup=nav("r:home", "r:back:main")
+            )
         await cq.answer()
         return
 
-    await cq.message.edit_text("Выберите категорию:", reply_markup=kb_categories(categories, restaurant_id))
+    await cq.message.edit_text("Выберите категорию:", reply_markup=kb_categories(categories, restaurant_id, cq.from_user.id))
     await cq.answer()
 
+
+
+
+@router.callback_query(F.data == "r:paddcat")
+async def add_category_prompt(cq: CallbackQuery, state: FSMContext, db: Database):
+    ids = await get_admin_restaurant_ids(db, cq.from_user.id)
+    if not ids:
+        await cq.answer("Нет доступа", show_alert=True)
+        return
+
+    if not is_superadmin(cq.from_user.id):
+        await cq.answer("Только супер-админ может добавлять категории.", show_alert=True)
+        return
+
+    await state.set_state(ProductFSM.add_category)
+    await cq.message.edit_text("Введите название категории:", reply_markup=kb_cancel())
+    await cq.answer()
+
+
+@router.message(StateFilter(ProductFSM.add_category))
+async def add_category_save(message: Message, state: FSMContext, db: Database):
+    ids = await get_admin_restaurant_ids(db, message.from_user.id)
+    if not ids:
+        await message.answer("Нет доступа.")
+        await clear_state_keep_screen(state)
+        return
+
+    if not is_superadmin(message.from_user.id):
+        await message.answer("Только супер-админ может добавлять категории.")
+        await clear_state_keep_screen(state)
+        return
+
+    name = (message.text or "").strip()
+    if len(name) < 2:
+        await message.answer("Слишком коротко. Введите название категории ещё раз:")
+        return
+
+    restaurant_id = int(ids[0])
+    cats = CategoriesRepo(db)
+    await cats.create(shop_id=restaurant_id, name=name)
+
+    await clear_state_keep_screen(state)
+    await message.answer(
+        "Категория добавлена ✅",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔙 К категориям", callback_data="r:cats")],
+            [InlineKeyboardButton(text="🏠 Главная", callback_data="r:home")],
+        ]),
+    )
 
 @router.callback_query(F.data.startswith("r:cat:"))
 async def open_category(cq: CallbackQuery, db: Database):

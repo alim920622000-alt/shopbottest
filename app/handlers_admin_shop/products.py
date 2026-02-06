@@ -9,6 +9,7 @@ from app.db.database import Database
 from app.handlers_admin_shop.utils import get_admin_shop_ids, is_shop_admin
 from app.handlers_admin_shop.start import kb_admin_main
 from app.repositories.products_repo import ProductsRepo
+from app.repositories.categories_repo import CategoriesRepo
 from app.repositories.shops_repo import ShopsRepo
 from app.services.search_service import SearchService
 from app.services.search_utils import normalize_text
@@ -127,12 +128,8 @@ async def products_root(cq: CallbackQuery, db: Database):
         await cq.answer()
         return
 
-    async with db.conn() as conn:
-        cur = await conn.execute(
-            "SELECT id, name, sort, is_active FROM categories WHERE shop_id=? ORDER BY sort, id",
-            (shop_id,),
-        )
-        cats = [dict(r) for r in await cur.fetchall()]
+    cats_repo = CategoriesRepo(db)
+    cats = await cats_repo.list_for_shop(shop_id, active_only=False)
 
     if not cats:
         is_root = is_superadmin(cq.from_user.id)
@@ -200,12 +197,8 @@ async def add_category_save(message: Message, state: FSMContext, db: Database):
         await message.answer("Слишком коротко. Введите название категории ещё раз:")
         return
 
-    async with db.conn() as conn:
-        await conn.execute(
-            "INSERT INTO categories(shop_id, name, name_norm, sort, is_active) VALUES(?,?,?,0,1)",
-            (shop_id, name, normalize_text(name)),
-        )
-        await conn.commit()
+    cats_repo = CategoriesRepo(db)
+    await cats_repo.create(shop_id=shop_id, name=name)
 
     await clear_state_keep_screen(state)
     await message.answer("Категория добавлена ✅")
