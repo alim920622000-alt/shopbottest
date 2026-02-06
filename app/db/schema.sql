@@ -27,12 +27,11 @@ CREATE TABLE IF NOT EXISTS shop_admins (
 
 CREATE TABLE IF NOT EXISTS categories (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    shop_id INTEGER NOT NULL,
+    business_type TEXT CHECK (business_type IN ('shop','restaurant')) NOT NULL,
     name TEXT NOT NULL,
     name_norm TEXT DEFAULT '',
     sort INTEGER DEFAULT 0,
-    is_active INTEGER DEFAULT 1,
-    FOREIGN KEY (shop_id) REFERENCES shops(id) ON DELETE CASCADE
+    is_active INTEGER DEFAULT 1
 );
 
 CREATE TABLE IF NOT EXISTS products (
@@ -127,7 +126,8 @@ CREATE TABLE IF NOT EXISTS order_chat_messages (
 );
 
 -- Индексы под частые выборки
-CREATE INDEX IF NOT EXISTS idx_categories_shop ON categories(shop_id);
+CREATE INDEX IF NOT EXISTS idx_categories_business ON categories(business_type);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_categories_business_name_norm ON categories(business_type, name_norm);
 CREATE INDEX IF NOT EXISTS idx_products_shop ON products(shop_id);
 CREATE INDEX IF NOT EXISTS idx_products_category ON products(category_id);
 CREATE INDEX IF NOT EXISTS idx_products_name_norm ON products(name_norm);
