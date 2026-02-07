@@ -11,6 +11,7 @@ from app.handlers_client.orders import router as orders_router
 from app.handlers_client.cabinet import router as cabinet_router
 from app.handlers_client.inline_search import router as inline_search_router
 from app.handlers_client.fallback import router as fallback_router
+from app.middlewares.client_i18n import ClientI18nMiddleware
 
 
 async def main():
@@ -27,6 +28,7 @@ async def main():
 
     # пробросим db в data (глобально)
     dp["db"] = db
+    dp.update.middleware(ClientI18nMiddleware())
 
     dp.include_router(start_router)
     dp.include_router(catalog_router)

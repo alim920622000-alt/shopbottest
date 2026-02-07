@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Callable
+
 from aiogram import Router
 from aiogram.types import (
     InlineQuery,
@@ -34,7 +36,7 @@ def _format_price(value: object) -> str:
 
 
 @router.inline_query()
-async def inline_search(inline_query: InlineQuery, db: Database):
+async def inline_search(inline_query: InlineQuery, db: Database, locale: str, t: Callable[[str, str], str]):
     query = (inline_query.query or "").strip()
     if not query:
         await inline_query.answer([], cache_time=1, is_personal=True)
@@ -55,14 +57,14 @@ async def inline_search(inline_query: InlineQuery, db: Database):
 
         description_parts = []
         if price_text:
-            description_parts.append(f"Цена: {price_text}")
+            description_parts.append(t(locale, "inline.price", price=price_text))
         if shop.get("name"):
             description_parts.append(shop["name"])
         if sku:
             description_parts.append(sku)
 
         result_id = f"shop:{shop.get('id')}:sku:{sku}"
-        title = _clamp_text(product.get("name", "Товар"), 80)
+        title = _clamp_text(product.get("name", t(locale, "inline.product_fallback")), 80)
         description = " • ".join(description_parts) if description_parts else ""
         description = _clamp_text(description, 240) if description else None
         items.append(

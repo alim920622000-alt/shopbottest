@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from datetime import datetime
 from math import ceil
-from typing import Sequence
+from typing import Sequence, Callable
 
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+
+from app.i18n.client import ru
 
 CLIENT_INDENT = " " * 8
 PAGE_SIZE = 6
@@ -26,20 +28,39 @@ def calc_total_pages(total_messages: int, page_size: int = PAGE_SIZE) -> int:
     return max(1, ceil(total_messages / page_size))
 
 
+def _chat_text(
+    locale: str | None,
+    t: Callable[[str, str], str] | None,
+    key: str,
+    **kwargs: object,
+) -> str:
+    if t and locale:
+        return t(locale, key, **kwargs)
+    value = ru.TEXTS.get(key, key)
+    if kwargs:
+        try:
+            return value.format(**kwargs)
+        except (KeyError, ValueError):
+            return value
+    return value
+
+
 def build_chat_screen_text(
     order_id: int,
     messages: Sequence[dict],
     show_hint: bool,
     business_type: str,
+    locale: str | None = None,
+    t: Callable[[str, str], str] | None = None,
 ) -> str:
-    lines: list[str] = [f"💬 Чат по заказу #{order_id}", ""]
+    lines: list[str] = [_chat_text(locale, t, "chat.title", order_id=order_id), ""]
     if show_hint:
-        lines.append("ℹ️ Просто напишите сообщение в поле ниже и отправьте.")
-    lines.append("────────────────────────")
+        lines.append(_chat_text(locale, t, "chat.hint"))
+    lines.append(_chat_text(locale, t, "chat.separator"))
 
     if not messages:
         lines.append("")
-        lines.append("Пока сообщений нет.")
+        lines.append(_chat_text(locale, t, "chat.no_messages"))
         return "\n".join(lines)
 
     lines.append("")
@@ -48,14 +69,14 @@ def build_chat_screen_text(
         indent = CLIENT_INDENT if is_client else ""
         if is_client:
             icon = "🟢"
-            role = "Клиент"
+            role = _chat_text(locale, t, "chat.role.client")
         else:
             if business_type == "restaurant":
                 icon = "🧑‍🍳"
-                role = "Ресторан"
+                role = _chat_text(locale, t, "chat.role.restaurant")
             else:
                 icon = "🛒"
-                role = "Магазин"
+                role = _chat_text(locale, t, "chat.role.shop")
         time_str = _format_time(msg.get("created_at"))
         lines.append(f"{indent}{icon} {role} · {time_str}")
         text = str(msg.get("message_text") or "")
