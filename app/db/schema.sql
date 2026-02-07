@@ -90,6 +90,12 @@ CREATE TABLE IF NOT EXISTS client_profiles (
     address TEXT DEFAULT ''
 );
 
+CREATE TABLE IF NOT EXISTS client_user_settings (
+    user_id INTEGER PRIMARY KEY,
+    locale TEXT NOT NULL DEFAULT 'ru',
+    updated_at TEXT
+);
+
 CREATE TABLE IF NOT EXISTS search_synonyms (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     shop_id INTEGER,

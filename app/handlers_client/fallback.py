@@ -1,5 +1,7 @@
 import asyncio
 
+from typing import Callable
+
 from aiogram import Router, F
 from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
@@ -12,7 +14,7 @@ router = Router()
 
 
 @router.message(F.text)
-async def fallback_handler(message: Message, state: FSMContext, db: Database):
+async def fallback_handler(message: Message, state: FSMContext, db: Database, locale: str, t: Callable[[str, str], str]):
     if message.via_bot is not None:
         return
 
@@ -23,11 +25,11 @@ async def fallback_handler(message: Message, state: FSMContext, db: Database):
         bot=message.bot,
         chat_id=message.chat.id,
         state=state,
-        render=lambda: render_client_screen(db, state),
+        render=lambda: render_client_screen(db, state, locale, t),
     )
 
     await controller.delete_user_message(message)
-    notice = await message.answer("Я не понял команду. Используйте меню ниже.")
+    notice = await message.answer(t(locale, "msg.unknown_command"))
     await controller.refresh()
 
     try:

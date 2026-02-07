@@ -2,7 +2,11 @@ from __future__ import annotations
 
 from aiogram import Bot
 from aiogram.fsm.context import FSMContext
+from typing import Callable
+
 from aiogram.types import InlineKeyboardMarkup
+
+from app.i18n.client import ru
 from aiogram.exceptions import TelegramBadRequest
 
 SCREEN_MESSAGE_ID_KEY = "screen_message_id"
@@ -84,7 +88,13 @@ async def show_main_menu(
     )
 
 
-async def safe_edit_text(cq, text: str, reply_markup: InlineKeyboardMarkup | None = None) -> None:
+async def safe_edit_text(
+    cq,
+    text: str,
+    reply_markup: InlineKeyboardMarkup | None = None,
+    locale: str | None = None,
+    t: Callable[[str, str], str] | None = None,
+) -> None:
     # Безопасное обновление обычного или inline-сообщения.
     try:
         if cq.message is not None:
@@ -97,7 +107,10 @@ async def safe_edit_text(cq, text: str, reply_markup: InlineKeyboardMarkup | Non
                 reply_markup=reply_markup,
             )
             return
-        await cq.answer("Не удалось обновить сообщение")
+        if t and locale:
+            await cq.answer(t(locale, "screen.update_failed"))
+        else:
+            await cq.answer(ru.TEXTS.get("screen.update_failed", "screen.update_failed"))
     except TelegramBadRequest as exc:
         if "message is not modified" in str(exc):
             return
