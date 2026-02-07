@@ -126,6 +126,14 @@ CREATE TABLE IF NOT EXISTS order_chat_messages (
     FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS ui_screens (
+    bot_kind TEXT NOT NULL,
+    chat_id INTEGER NOT NULL,
+    screen_message_id INTEGER,
+    updated_at TEXT,
+    PRIMARY KEY (bot_kind, chat_id)
+);
+
 -- Индексы под частые выборки
 -- CREATE INDEX IF NOT EXISTS idx_categories_shop ON categories(shop_id);
 CREATE INDEX IF NOT EXISTS idx_products_shop ON products(shop_id);

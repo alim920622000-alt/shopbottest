@@ -143,6 +143,17 @@ class Database:
             )
             """
         )
+        await connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS ui_screens (
+                bot_kind TEXT NOT NULL,
+                chat_id INTEGER NOT NULL,
+                screen_message_id INTEGER,
+                updated_at TEXT,
+                PRIMARY KEY (bot_kind, chat_id)
+            )
+            """
+        )
 
         await connection.execute("CREATE INDEX IF NOT EXISTS idx_products_name_norm ON products(name_norm);")
         await connection.execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_products_sku ON products(sku);")

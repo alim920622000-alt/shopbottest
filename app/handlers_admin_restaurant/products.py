@@ -243,7 +243,7 @@ async def add_product_desc(message: Message, state: FSMContext, db: Database):
         await conn.commit()
 
     # ВАЖНО: очищаем FSM, чтобы не спрашивало описание снова
-    await clear_state_keep_screen(state)
+    await clear_state_keep_screen(state, db, "admin_restaurant", message.chat.id)
 
     # Чтобы кнопки были ВНИЗУ, делаем новый список сообщением (а не edit старого)
     prod = ProductsRepo(db)
@@ -339,7 +339,7 @@ async def edit_name_apply(message: Message, state: FSMContext, db: Database):
     prod = ProductsRepo(db)
     await prod.update(product_id, name=name)
 
-    await clear_state_keep_screen(state)
+    await clear_state_keep_screen(state, db, "admin_restaurant", message.chat.id)
 
     await render_product_card_edit(
         message.bot,
@@ -378,7 +378,7 @@ async def edit_price_apply(message: Message, state: FSMContext, db: Database):
     prod = ProductsRepo(db)
     await prod.update(product_id, price=price)
 
-    await clear_state_keep_screen(state)
+    await clear_state_keep_screen(state, db, "admin_restaurant", message.chat.id)
 
     await render_product_card_edit(
         message.bot,
@@ -414,7 +414,7 @@ async def edit_desc_apply(message: Message, state: FSMContext, db: Database):
     prod = ProductsRepo(db)
     await prod.update(product_id, description=desc)
 
-    await clear_state_keep_screen(state)
+    await clear_state_keep_screen(state, db, "admin_restaurant", message.chat.id)
 
     await render_product_card_edit(
         message.bot,
@@ -502,9 +502,9 @@ async def open_product(cq: CallbackQuery, db: Database):
 
 
 @router.callback_query(F.data == "r:cancel")
-async def cancel_fsm(cq: CallbackQuery, state: FSMContext):
+async def cancel_fsm(cq: CallbackQuery, state: FSMContext, db: Database):
     data = await state.get_data()
-    await clear_state_keep_screen(state)
+    await clear_state_keep_screen(state, db, "admin_restaurant", cq.message.chat.id)
 
     # если знаем, откуда пришли — возвращаем в список позиций категории
     restaurant_id = data.get("restaurant_id")

@@ -153,12 +153,14 @@ async def promo_add_description(message: Message, state: FSMContext, db: Databas
         return
     repo = PromotionsRepo(db)
     await repo.create(shop_ids[0], title=title, description=desc)
-    await clear_state_keep_screen(state)
+    await clear_state_keep_screen(state, db, "admin_shop", message.chat.id)
     await message.answer("Акция добавлена ✅")
     await show_main_menu(
         message.bot,
         message.chat.id,
         state,
+        db,
+        "admin_shop",
         "Админ-меню магазина:",
         kb_admin_main(),
     )

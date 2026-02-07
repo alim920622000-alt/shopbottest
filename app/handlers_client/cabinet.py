@@ -78,11 +78,19 @@ async def save_full_name(message: Message, state: FSMContext, db: Database):
         return
     repo = ClientProfilesRepo(db)
     await repo.upsert(message.from_user.id, full_name=name)
-    await clear_state_keep_screen(state)
+    await clear_state_keep_screen(state, db, "client", message.chat.id)
     await state.update_data(user_id=message.from_user.id)
     await remember_client_screen(state, "main", {})
     await message.answer("ФИО сохранено.")
-    await show_main_menu(message.bot, message.chat.id, state, "Выберите раздел:", kb_client_main())
+    await show_main_menu(
+        message.bot,
+        message.chat.id,
+        state,
+        db,
+        "client",
+        "Выберите раздел:",
+        kb_client_main(),
+    )
 
 
 @router.message(CabinetStates.edit_phone)
@@ -93,11 +101,19 @@ async def save_phone(message: Message, state: FSMContext, db: Database):
         return
     repo = ClientProfilesRepo(db)
     await repo.upsert(message.from_user.id, phone=phone)
-    await clear_state_keep_screen(state)
+    await clear_state_keep_screen(state, db, "client", message.chat.id)
     await state.update_data(user_id=message.from_user.id)
     await remember_client_screen(state, "main", {})
     await message.answer("Телефон сохранён.")
-    await show_main_menu(message.bot, message.chat.id, state, "Выберите раздел:", kb_client_main())
+    await show_main_menu(
+        message.bot,
+        message.chat.id,
+        state,
+        db,
+        "client",
+        "Выберите раздел:",
+        kb_client_main(),
+    )
 
 
 @router.message(CabinetStates.edit_address)
@@ -108,8 +124,16 @@ async def save_address(message: Message, state: FSMContext, db: Database):
         return
     repo = ClientProfilesRepo(db)
     await repo.upsert(message.from_user.id, address=address)
-    await clear_state_keep_screen(state)
+    await clear_state_keep_screen(state, db, "client", message.chat.id)
     await state.update_data(user_id=message.from_user.id)
     await remember_client_screen(state, "main", {})
     await message.answer("Адрес сохранён.")
-    await show_main_menu(message.bot, message.chat.id, state, "Выберите раздел:", kb_client_main())
+    await show_main_menu(
+        message.bot,
+        message.chat.id,
+        state,
+        db,
+        "client",
+        "Выберите раздел:",
+        kb_client_main(),
+    )

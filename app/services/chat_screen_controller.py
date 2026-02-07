@@ -1,14 +1,16 @@
 from __future__ import annotations
-
+import inspect
 from dataclasses import dataclass
 from typing import Awaitable, Callable, Optional, Tuple
 
 from aiogram.types import InlineKeyboardMarkup, Message
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 
+from app.db.database import Database
+from app.repositories.ui_screen_repo import UiScreenRepo
 
 RenderResult = Tuple[str, Optional[InlineKeyboardMarkup]]
-RenderFn = Callable[[], Awaitable[RenderResult]]
+RenderFn = Callable[[], RenderResult | Awaitable[RenderResult]]
 
 
 @dataclass
@@ -25,8 +27,32 @@ class ChatScreenController:
     chat_id: int
     state: any  # FSMContext
     render: RenderFn
+    db: Database
+    bot_kind: str
 
     SCREEN_KEY: str = "screen_message_id"
+
+    @property
+    def _repo(self) -> UiScreenRepo:
+        return UiScreenRepo(self.db)
+
+    async def _get_screen_id(self) -> Optional[int]:
+        data = await self.state.get_data()
+        prev_id = data.get(self.SCREEN_KEY)
+        if prev_id:
+            return int(prev_id)
+        prev_id = await self._repo.get(self.bot_kind, self.chat_id)
+        if prev_id:
+            await self.state.update_data(**{self.SCREEN_KEY: prev_id})
+        return prev_id
+
+    async def _set_screen_id(self, message_id: int) -> None:
+        await self.state.update_data(**{self.SCREEN_KEY: message_id})
+        await self._repo.set(self.bot_kind, self.chat_id, message_id)
+
+    async def _clear_screen_id(self) -> None:
+        await self.state.update_data(**{self.SCREEN_KEY: None})
+        await self._repo.clear(self.bot_kind, self.chat_id)
 
     async def _safe_delete(self, message_id: int) -> None:
         try:
@@ -49,24 +75,29 @@ class ChatScreenController:
 
     async def delete_screen(self) -> None:
 #        """Удалить текущий экран (сообщение бота), если есть."""
-        data = await self.state.get_data()
-        prev_id = data.get(self.SCREEN_KEY)
+        prev_id = await self._get_screen_id()
         if prev_id:
             await self._safe_delete(int(prev_id))
-            await self.state.update_data(**{self.SCREEN_KEY: None})
+        await self._clear_screen_id()
 
     async def refresh(self) -> int:
- #       """
-  #        """
-        data = await self.state.get_data()
-        prev_id = data.get(self.SCREEN_KEY)
+        prev_id = await self._get_screen_id()
         if prev_id:
             await self._safe_delete(int(prev_id))
-
-        text, markup = await self.render()
-        sent = await self.bot.send_message(self.chat_id, text, reply_markup=markup)
-
-        await self.state.update_data(**{self.SCREEN_KEY: sent.message_id})
+    
+        result = self.render()
+        if inspect.isawaitable(result):
+            result = await result
+    
+        text, markup = result
+    
+        sent = await self.bot.send_message(
+            self.chat_id,
+            text,
+            reply_markup=markup,
+        )
+    
+        await self._set_screen_id(sent.message_id)
         return sent.message_id
 
     async def refresh_after_user_message(self, message: Message) -> int:

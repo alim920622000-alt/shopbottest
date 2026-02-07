@@ -98,7 +98,7 @@ async def open_product_from_inline_sku(message: Message, db: Database, state: FS
         return
 
     # Удаляем только текущее экранное сообщение бота. Inline-сообщение не трогаем.
-    await delete_screen(message.bot, message.chat.id, state)
+    await delete_screen(message.bot, message.chat.id, state, db, "client")
 
     text = _build_product_card_text(product)
     sent = await message.answer(
@@ -109,7 +109,7 @@ async def open_product_from_inline_sku(message: Message, db: Database, state: FS
             sku=sku,
         ),
     )
-    await set_screen_message_id(state, sent.message_id)
+    await set_screen_message_id(state, db, "client", message.chat.id, sent.message_id)
     await state.update_data(
         last_kind="shop",
         last_view={
@@ -144,16 +144,16 @@ async def list_shops(cq: CallbackQuery, db: Database, state: FSMContext):
 
 
 @router.callback_query(F.data == "c:home")
-async def client_home(cq: CallbackQuery, state: FSMContext):
-    await clear_state_keep_screen(state)
+async def client_home(cq: CallbackQuery, db: Database, state: FSMContext):
+    await clear_state_keep_screen(state, db, "client", cq.from_user.id)
     await state.update_data(user_id=cq.from_user.id)
     await remember_client_screen(state, "main", {})
     await cq.message.edit_text("Выберите раздел:", reply_markup=kb_client_main())
     await cq.answer()
 
 @router.callback_query(F.data == "c:order_menu")
-async def order_menu(cq: CallbackQuery, state: FSMContext):
-    await clear_state_keep_screen(state)
+async def order_menu(cq: CallbackQuery, db: Database, state: FSMContext):
+    await clear_state_keep_screen(state, db, "client", cq.from_user.id)
     await state.update_data(user_id=cq.from_user.id)
     await remember_client_screen(state, "order_menu", {})
     await cq.message.edit_text("Что будем заказывать?", reply_markup=kb_order_menu())
@@ -471,7 +471,7 @@ async def back(cq: CallbackQuery, db: Database, state: FSMContext):
         await cq.answer()
         return
 
-    await clear_state_keep_screen(state)
+    await clear_state_keep_screen(state, db, "client", cq.from_user.id)
 
     if target == "main":
         await cq.message.edit_text("Выберите раздел:", reply_markup=kb_client_main())

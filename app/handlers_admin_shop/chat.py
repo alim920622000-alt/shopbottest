@@ -45,7 +45,7 @@ async def list_chats(cq: CallbackQuery, db: Database, state: FSMContext):
         await cq.answer("Нет доступа", show_alert=True)
         return
 
-    await clear_state_keep_screen(state)
+    await clear_state_keep_screen(state, db, "admin_shop", cq.message.chat.id)
     shop_ids = await get_admin_shop_ids(db, cq.from_user.id)
     if not shop_ids:
         await cq.message.edit_text("Нет доступа.", reply_markup=kb_admin_main())
@@ -92,7 +92,7 @@ async def open_chat(cq: CallbackQuery, state: FSMContext, db: Database):
         return
     await state.set_state(AdminShopChatStates.active)
     await state.update_data(chat_order_id=order_id, chat_message_id=cq.message.message_id)
-    await set_screen_message_id(state, cq.message.message_id)
+    await set_screen_message_id(state, db, "admin_shop", cq.message.chat.id, cq.message.message_id)
     await render_chat(cq, db, order_id, page=10**9)
     await cq.answer()
 
@@ -111,7 +111,7 @@ async def paginate_chat(cq: CallbackQuery, state: FSMContext, db: Database):
         await cq.answer("Чат недоступен.", show_alert=True)
         return
     await state.update_data(chat_order_id=order_id, chat_message_id=cq.message.message_id)
-    await set_screen_message_id(state, cq.message.message_id)
+    await set_screen_message_id(state, db, "admin_shop", cq.message.chat.id, cq.message.message_id)
     await render_chat(cq, db, order_id, page=page)
     await cq.answer()
 
@@ -161,12 +161,12 @@ async def send_chat_message(message: Message, state: FSMContext, db: Database):
                 message_id=int(chat_message_id),
                 reply_markup=kb,
             )
-            await set_screen_message_id(state, int(chat_message_id))
+            await set_screen_message_id(state, db, "admin_shop", message.chat.id, int(chat_message_id))
         except Exception:
             new_message = await message.answer(text, reply_markup=kb)
             await state.update_data(chat_message_id=new_message.message_id)
-            await set_screen_message_id(state, new_message.message_id)
+            await set_screen_message_id(state, db, "admin_shop", message.chat.id, new_message.message_id)
     else:
         new_message = await message.answer(text, reply_markup=kb)
         await state.update_data(chat_message_id=new_message.message_id)
-        await set_screen_message_id(state, new_message.message_id)
+        await set_screen_message_id(state, db, "admin_shop", message.chat.id, new_message.message_id)

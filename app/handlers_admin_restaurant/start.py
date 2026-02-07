@@ -5,7 +5,8 @@ from aiogram.fsm.context import FSMContext
 
 from app.db.database import Database
 from app.handlers_admin_restaurant.utils import is_restaurant_admin
-from app.services.screen import clear_state_keep_screen, show_main_menu
+from app.services.screen import clear_state_keep_screen
+from app.services.chat_screen_controller import ChatScreenController
 
 router = Router()
 
@@ -26,18 +27,31 @@ async def start_cmd(message: Message, db: Database, state: FSMContext):
     if not await is_restaurant_admin(db, message.from_user.id):
         await message.answer("Нет доступа. Ваш user_id не назначен админом ресторана.")
         return
-    await clear_state_keep_screen(state)
-    await show_main_menu(
-        message.bot,
-        message.chat.id,
-        state,
-        "Админ-меню ресторана:",
-        kb_admin_main(),
+    await clear_state_keep_screen(state, db, "admin_restaurant", message.chat.id)
+    controller = ChatScreenController(
+        bot=message.bot,
+        chat_id=message.chat.id,
+        state=state,
+        render=lambda: ("Админ-меню ресторана:", kb_admin_main()),
+        db=db,
+        bot_kind="admin_restaurant",
     )
+    await controller.delete_user_message(message)
+    await controller.delete_screen()
+    await controller.refresh()
 
 
 @router.callback_query(F.data == "r:home")
 async def home(cq: CallbackQuery, db: Database, state: FSMContext):
-    await clear_state_keep_screen(state)
-    await cq.message.edit_text("Админ-меню ресторана:", reply_markup=kb_admin_main())
+    await clear_state_keep_screen(state, db, "admin_restaurant", cq.message.chat.id)
+    controller = ChatScreenController(
+        bot=cq.bot,
+        chat_id=cq.message.chat.id,
+        state=state,
+        render=lambda: ("Админ-меню ресторана:", kb_admin_main()),
+        db=db,
+        bot_kind="admin_restaurant",
+    )
+    await controller.delete_screen()
+    await controller.refresh()
     await cq.answer()

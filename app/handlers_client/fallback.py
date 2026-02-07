@@ -1,5 +1,3 @@
-import asyncio
-
 from aiogram import Router, F
 from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
@@ -24,14 +22,10 @@ async def fallback_handler(message: Message, state: FSMContext, db: Database):
         chat_id=message.chat.id,
         state=state,
         render=lambda: render_client_screen(db, state),
+        db=db,
+        bot_kind="client",
     )
 
     await controller.delete_user_message(message)
-    notice = await message.answer("Я не понял команду. Используйте меню ниже.")
+    await message.answer("Я не понял команду. Используйте меню ниже.")
     await controller.refresh()
-
-    try:
-        await asyncio.sleep(2)
-        await message.bot.delete_message(message.chat.id, notice.message_id)
-    except Exception:
-        pass

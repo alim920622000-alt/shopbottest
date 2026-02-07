@@ -184,17 +184,19 @@ async def add_category_save(message: Message, state: FSMContext, db: Database):
     
     if not is_superadmin(message.from_user.id):
         await message.answer("Только супер-админ может добавлять категории.")
-        await clear_state_keep_screen(state)
+        await clear_state_keep_screen(state, db, "admin_shop", message.chat.id)
         return
 
     shop_id = await _get_shop_id_for_admin(db, message.from_user.id)
     if not shop_id:
         await message.answer("Нет привязанного магазина.")
-        await clear_state_keep_screen(state)
+        await clear_state_keep_screen(state, db, "admin_shop", message.chat.id)
         await show_main_menu(
             message.bot,
             message.chat.id,
             state,
+            db,
+            "admin_shop",
             "Админ-меню магазина:",
             kb_admin_main(),
         )
@@ -207,12 +209,14 @@ async def add_category_save(message: Message, state: FSMContext, db: Database):
 
     await CategoriesRepo(db).create(shop_id=shop_id, name=name, sort=0)
 
-    await clear_state_keep_screen(state)
+    await clear_state_keep_screen(state, db, "admin_shop", message.chat.id)
     await message.answer("Категория добавлена ✅")
     await show_main_menu(
         message.bot,
         message.chat.id,
         state,
+        db,
+        "admin_shop",
         "Админ-меню магазина:",
         kb_admin_main(),
     )
@@ -273,11 +277,13 @@ async def add_product_save(message: Message, state: FSMContext, db: Database):
     shop_id = await _get_shop_id_for_admin(db, message.from_user.id)
     if not shop_id:
         await message.answer("Нет привязанного магазина.")
-        await clear_state_keep_screen(state)
+        await clear_state_keep_screen(state, db, "admin_shop", message.chat.id)
         await show_main_menu(
             message.bot,
             message.chat.id,
             state,
+            db,
+            "admin_shop",
             "Админ-меню магазина:",
             kb_admin_main(),
         )
@@ -301,12 +307,14 @@ async def add_product_save(message: Message, state: FSMContext, db: Database):
     repo = ProductsRepo(db)
     await repo.create(shop_id=shop_id, category_id=cat_id, name=name, price=price)
 
-    await clear_state_keep_screen(state)
+    await clear_state_keep_screen(state, db, "admin_shop", message.chat.id)
     await message.answer("Товар добавлен ✅")
     await show_main_menu(
         message.bot,
         message.chat.id,
         state,
+        db,
+        "admin_shop",
         "Админ-меню магазина:",
         kb_admin_main(),
     )
@@ -497,7 +505,7 @@ async def bulk_import_prompt(cq: CallbackQuery, state: FSMContext, db: Database)
                     )
         except Exception:
             logger.error("Bulk import failed for admin %s", cq.from_user.id, exc_info=True)
-            await clear_state_keep_screen(state)
+            await clear_state_keep_screen(state, db, "admin_shop", cq.message.chat.id)
             await cq.message.edit_text(
                 "Ошибка во время импорта. Проверьте файл и попробуйте снова.",
                 reply_markup=kb_admin_main(),
@@ -518,14 +526,14 @@ async def bulk_import_prompt(cq: CallbackQuery, state: FSMContext, db: Database)
             if len(errors) > 5:
                 summary_lines.append(f"... и ещё {len(errors) - 5} ошибок")
 
-        await clear_state_keep_screen(state)
+        await clear_state_keep_screen(state, db, "admin_shop", cq.message.chat.id)
         await cq.message.edit_text("\n".join(summary_lines), reply_markup=kb_admin_main())
         await cq.answer()
         return
 
     if action == "cancel":
         logger.info("Bulk import canceled by admin %s", cq.from_user.id)
-        await clear_state_keep_screen(state)
+        await clear_state_keep_screen(state, db, "admin_shop", cq.message.chat.id)
         await cq.message.edit_text("Импорт отменён.", reply_markup=kb_admin_main())
         await cq.answer()
         return

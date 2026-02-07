@@ -1,3 +1,5 @@
+from aiogram.exceptions import TelegramBadRequest
+from app.utils.tg_safe import safe_edit_text
 from aiogram import Router, F
 from aiogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from app.handlers_admin_shop.start import kb_admin_main  # добавь импорт
@@ -43,7 +45,8 @@ def kb_order_card(order_id: int) -> InlineKeyboardMarkup:
 
 @router.callback_query(F.data == "a:home")
 async def admin_home(cq: CallbackQuery, db: Database):
-    await cq.message.edit_text("Админ-меню магазина:", reply_markup=kb_admin_main())
+    await safe_edit_text(cq.message, "Админ-меню магазина:", reply_markup=kb_admin_main())
+
     await cq.answer()
 
 
@@ -51,7 +54,7 @@ async def admin_home(cq: CallbackQuery, db: Database):
 async def list_orders(cq: CallbackQuery, db: Database):
     shop_ids = await get_admin_shop_ids(db, cq.from_user.id)
     if not shop_ids:
-        await cq.message.edit_text("Нет доступа.", reply_markup=kb_back_admin())
+        await safe_edit_text(cq.message, "Нет доступа.", reply_markup=kb_back_admin())
         await cq.answer()
         return
 
@@ -61,7 +64,11 @@ async def list_orders(cq: CallbackQuery, db: Database):
     orders = OrdersRepo(db)
     rows = await orders.list_current_for_shop(shop_id=shop_id, statuses=["new", "preparing", "ready"])
     if not rows:
-        await cq.message.edit_text("Текущих заказов нет.", reply_markup=kb_back_admin())
+        await safe_edit_text(
+            cq.message,
+            f"Текущие заказы (shop_id={shop_id}):",
+            reply_markup=kb_orders_list(order_ids),
+        )
         await cq.answer()
         return
 
@@ -77,7 +84,7 @@ async def order_card(cq: CallbackQuery, db: Database):
     orders = OrdersRepo(db)
     o = await orders.get_order(order_id)
     if not o:
-        await cq.message.edit_text("Заказ не найден.", reply_markup=kb_back_admin())
+        await safe_edit_text(cq.message, "Заказ не найден.", reply_markup=kb_back_admin())
         await cq.answer()
         return
 
@@ -86,7 +93,7 @@ async def order_card(cq: CallbackQuery, db: Database):
     for it in items:
         lines.append(f"- {it['name']} x{it['quantity']} = {it['price_at_moment']}")
 
-    await cq.message.edit_text("\n".join(lines), reply_markup=kb_order_card(order_id))
+    await safe_edit_text(cq.message, "\n".join(lines), reply_markup=kb_order_card(order_id))
     await cq.answer()
 
 
@@ -106,10 +113,10 @@ async def set_status(cq: CallbackQuery, db: Database):
     lines = [f"Заказ #{o['id']}", f"Статус: {o['status']}", f"Сумма: {o['total_amount']}", "", "Состав:"]
     for it in items:
         lines.append(f"- {it['name']} x{it['quantity']} = {it['price_at_moment']}")
-    await cq.message.edit_text("\n".join(lines), reply_markup=kb_order_card(order_id))
+    await safe_edit_text(cq.message, "\n".join(lines), reply_markup=kb_order_card(order_id))
 
 
 @router.callback_query(F.data == "a:back:main")
 async def back_main(cq: CallbackQuery):
-    await cq.message.edit_text("Админ-меню магазина:", reply_markup=kb_admin_main())
+    await safe_edit_text(cq.message, "Админ-меню магазина:", reply_markup=kb_admin_main())
     await cq.answer()
