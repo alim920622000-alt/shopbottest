@@ -1,10 +1,14 @@
 from aiogram import Router, F
 from aiogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.fsm.context import FSMContext
 from app.handlers_admin_restaurant.start import kb_admin_main  # добавь импорт
 
 from app.db.database import Database
 from app.handlers_admin_restaurant.utils import get_admin_restaurant_ids
 from app.repositories.orders_repo import OrdersRepo
+from app.services.chat_reminders import is_chat_reminder_text
+from app.services.screen import clear_state_keep_screen, show_screen
+from app.utils.tg_safe import safe_delete_cq_message
 
 router = Router()
 
@@ -39,20 +43,21 @@ def kb_order_card(order_id: int) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
 
-async def render_order_card(cq: CallbackQuery, db: Database, order_id: int):
+async def build_order_card_payload(db: Database, order_id: int) -> tuple[str, InlineKeyboardMarkup]:
     orders = OrdersRepo(db)
     o = await orders.get_order(order_id)
     if not o:
-        await cq.message.edit_text(
+        return (
             "Заказ не найден.",
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-                [
-                    InlineKeyboardButton(text="🏠 Главная", callback_data="r:home"),
-                    InlineKeyboardButton(text="🔙 Назад", callback_data="r:orders"),
+            InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [
+                        InlineKeyboardButton(text="🏠 Главная", callback_data="r:home"),
+                        InlineKeyboardButton(text="🔙 Назад", callback_data="r:orders"),
+                    ]
                 ]
-            ])
+            ),
         )
-        return
 
     items = await orders.get_order_items(order_id)
     lines = [
@@ -65,7 +70,12 @@ async def render_order_card(cq: CallbackQuery, db: Database, order_id: int):
     for it in items:
         lines.append(f"- {it['name']} x{it['quantity']} = {it['price_at_moment']}")
 
-    await cq.message.edit_text("\n".join(lines), reply_markup=kb_order_card(order_id))
+    return "\n".join(lines), kb_order_card(order_id)
+
+
+async def render_order_card(cq: CallbackQuery, db: Database, order_id: int):
+    text, kb = await build_order_card_payload(db, order_id)
+    await cq.message.edit_text(text, reply_markup=kb)
 
 
 @router.callback_query(F.data == "r:orders")
@@ -106,9 +116,24 @@ async def list_orders(cq: CallbackQuery, db: Database):
 
 
 @router.callback_query(F.data.startswith("r:order:"))
-async def order_card(cq: CallbackQuery, db: Database):
+async def order_card(cq: CallbackQuery, db: Database, state: FSMContext):
     order_id = int(cq.data.split(":")[2])
-    await render_order_card(cq, db, order_id)
+    if is_chat_reminder_text(cq.message.text if cq.message else None):
+        # Напоминание удаляем и показываем карточку через screen.py.
+        await clear_state_keep_screen(state, db, "admin_restaurant", cq.from_user.id)
+        await safe_delete_cq_message(cq)
+        text, kb = await build_order_card_payload(db, order_id)
+        await show_screen(
+            bot=cq.bot,
+            chat_id=cq.from_user.id,
+            state=state,
+            db=db,
+            bot_kind="admin_restaurant",
+            text=text,
+            reply_markup=kb,
+        )
+    else:
+        await render_order_card(cq, db, order_id)
     await cq.answer()
 
 

@@ -13,8 +13,16 @@ from app.repositories.orders_repo import OrdersRepo
 from app.repositories.cart_repo import CartRepo
 from app.services.search_service import SearchService
 from app.services.admin_notifications import notify_admins_new_order
-from app.services.screen import clear_state_keep_screen, delete_screen, safe_edit_text, set_screen_message_id
+from app.services.screen import (
+    clear_state_keep_screen,
+    delete_screen,
+    safe_edit_text,
+    set_screen_message_id,
+    show_main_menu,
+)
 from app.services.client_ui_state import remember_client_screen
+from app.services.chat_reminders import is_chat_reminder_text
+from app.utils.tg_safe import safe_delete_cq_message
 from app.handlers_client.kb import (
     kb_client_main,
     kb_order_menu,
@@ -148,7 +156,20 @@ async def client_home(cq: CallbackQuery, db: Database, state: FSMContext):
     await clear_state_keep_screen(state, db, "client", cq.from_user.id)
     await state.update_data(user_id=cq.from_user.id)
     await remember_client_screen(state, "main", {})
-    await cq.message.edit_text("Выберите раздел:", reply_markup=kb_client_main())
+    if is_chat_reminder_text(cq.message.text if cq.message else None):
+        # Для напоминания сначала удаляем сообщение, потом показываем экран заново.
+        await safe_delete_cq_message(cq)
+        await show_main_menu(
+            bot=cq.bot,
+            chat_id=cq.from_user.id,
+            state=state,
+            db=db,
+            bot_kind="client",
+            text="Выберите раздел:",
+            reply_markup=kb_client_main(),
+        )
+    else:
+        await cq.message.edit_text("Выберите раздел:", reply_markup=kb_client_main())
     await cq.answer()
 
 @router.callback_query(F.data == "c:order_menu")

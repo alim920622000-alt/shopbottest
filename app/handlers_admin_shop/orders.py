@@ -1,12 +1,15 @@
 from aiogram.exceptions import TelegramBadRequest
-from app.utils.tg_safe import safe_edit_text
+from app.utils.tg_safe import safe_edit_text, safe_delete_cq_message
 from aiogram import Router, F
 from aiogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from app.handlers_admin_shop.start import kb_admin_main  # добавь импорт
+from aiogram.fsm.context import FSMContext
 
 from app.db.database import Database
 from app.handlers_admin_shop.utils import get_admin_shop_ids
 from app.repositories.orders_repo import OrdersRepo
+from app.services.chat_reminders import is_chat_reminder_text
+from app.services.screen import clear_state_keep_screen, show_main_menu, show_screen
 
 router = Router()
 
@@ -44,8 +47,22 @@ def kb_order_card(order_id: int) -> InlineKeyboardMarkup:
 
 
 @router.callback_query(F.data == "a:home")
-async def admin_home(cq: CallbackQuery, db: Database):
-    await safe_edit_text(cq.message, "Админ-меню магазина:", reply_markup=kb_admin_main())
+async def admin_home(cq: CallbackQuery, db: Database, state: FSMContext):
+    if is_chat_reminder_text(cq.message.text if cq.message else None):
+        # Напоминание удаляем и показываем домашний экран через screen.py.
+        await clear_state_keep_screen(state, db, "admin_shop", cq.from_user.id)
+        await safe_delete_cq_message(cq)
+        await show_main_menu(
+            bot=cq.bot,
+            chat_id=cq.from_user.id,
+            state=state,
+            db=db,
+            bot_kind="admin_shop",
+            text="Админ-меню магазина:",
+            reply_markup=kb_admin_main(),
+        )
+    else:
+        await safe_edit_text(cq.message, "Админ-меню магазина:", reply_markup=kb_admin_main())
 
     await cq.answer()
 
@@ -78,13 +95,27 @@ async def list_orders(cq: CallbackQuery, db: Database):
 
 
 @router.callback_query(F.data.startswith("a:order:"))
-async def order_card(cq: CallbackQuery, db: Database):
+async def order_card(cq: CallbackQuery, db: Database, state: FSMContext):
     order_id = int(cq.data.split(":")[2])
 
     orders = OrdersRepo(db)
     o = await orders.get_order(order_id)
     if not o:
-        await safe_edit_text(cq.message, "Заказ не найден.", reply_markup=kb_back_admin())
+        if is_chat_reminder_text(cq.message.text if cq.message else None):
+            # Напоминание удаляем и рисуем экран через screen.py.
+            await clear_state_keep_screen(state, db, "admin_shop", cq.from_user.id)
+            await safe_delete_cq_message(cq)
+            await show_screen(
+                bot=cq.bot,
+                chat_id=cq.from_user.id,
+                state=state,
+                db=db,
+                bot_kind="admin_shop",
+                text="Заказ не найден.",
+                reply_markup=kb_back_admin(),
+            )
+        else:
+            await safe_edit_text(cq.message, "Заказ не найден.", reply_markup=kb_back_admin())
         await cq.answer()
         return
 
@@ -93,7 +124,22 @@ async def order_card(cq: CallbackQuery, db: Database):
     for it in items:
         lines.append(f"- {it['name']} x{it['quantity']} = {it['price_at_moment']}")
 
-    await safe_edit_text(cq.message, "\n".join(lines), reply_markup=kb_order_card(order_id))
+    text = "\n".join(lines)
+    if is_chat_reminder_text(cq.message.text if cq.message else None):
+        # Напоминание удаляем и показываем карточку заказа заново.
+        await clear_state_keep_screen(state, db, "admin_shop", cq.from_user.id)
+        await safe_delete_cq_message(cq)
+        await show_screen(
+            bot=cq.bot,
+            chat_id=cq.from_user.id,
+            state=state,
+            db=db,
+            bot_kind="admin_shop",
+            text=text,
+            reply_markup=kb_order_card(order_id),
+        )
+    else:
+        await safe_edit_text(cq.message, text, reply_markup=kb_order_card(order_id))
     await cq.answer()
 
 

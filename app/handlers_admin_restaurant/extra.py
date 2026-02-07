@@ -20,8 +20,9 @@ from app.services.chat_ui import (
     build_chat_screen_text,
     calc_total_pages,
 )
-from app.services.chat_reminders import cancel_chat_reminder, schedule_chat_reminder
-from app.services.screen import clear_state_keep_screen, show_main_menu, set_screen_message_id
+from app.services.chat_reminders import cancel_chat_reminder, schedule_chat_reminder, is_chat_reminder_text
+from app.services.screen import clear_state_keep_screen, show_main_menu, set_screen_message_id, show_screen
+from app.utils.tg_safe import safe_delete_cq_message
 from app.ui.nav import kb_nav
 
 router = Router()
@@ -304,7 +305,7 @@ async def chat_list(cq: CallbackQuery, db: Database, state: FSMContext):
     await cq.answer()
 
 
-async def render_chat(cq: CallbackQuery, db: Database, order_id: int, page: int) -> None:
+async def build_chat_payload(db: Database, order_id: int, page: int) -> tuple[str, InlineKeyboardMarkup]:
     chat = ChatRepo(db)
     total_messages = await chat.count_messages(order_id)
     total_pages = calc_total_pages(total_messages, PAGE_SIZE)
@@ -314,6 +315,11 @@ async def render_chat(cq: CallbackQuery, db: Database, order_id: int, page: int)
 
     text = build_chat_screen_text(order_id, messages, False, "restaurant")
     kb = build_chat_screen_kb(order_id, page, total_pages, "r", kb_chat_nav_rows())
+    return text, kb
+
+
+async def render_chat(cq: CallbackQuery, db: Database, order_id: int, page: int) -> None:
+    text, kb = await build_chat_payload(db, order_id, page)
     await cq.message.edit_text(text, reply_markup=kb)
 
 
@@ -332,9 +338,25 @@ async def open_chat(cq: CallbackQuery, state: FSMContext, db: Database):
         return
     await cancel_chat_reminder(db, order_id, cq.from_user.id, "admin_restaurant")
     await state.set_state(RestaurantChatStates.active)
-    await state.update_data(chat_order_id=order_id, chat_message_id=cq.message.message_id)
-    await set_screen_message_id(state, db, "admin_restaurant", cq.message.chat.id, cq.message.message_id)
-    await render_chat(cq, db, order_id, page=10**9)
+    await state.update_data(chat_order_id=order_id)
+    if is_chat_reminder_text(cq.message.text if cq.message else None):
+        # Для напоминания удаляем сообщение и рисуем чат новым экраном.
+        await safe_delete_cq_message(cq)
+        text, kb = await build_chat_payload(db, order_id, page=10**9)
+        message_id = await show_screen(
+            bot=cq.bot,
+            chat_id=cq.message.chat.id,
+            state=state,
+            db=db,
+            bot_kind="admin_restaurant",
+            text=text,
+            reply_markup=kb,
+        )
+        await state.update_data(chat_message_id=message_id)
+    else:
+        await state.update_data(chat_message_id=cq.message.message_id)
+        await set_screen_message_id(state, db, "admin_restaurant", cq.message.chat.id, cq.message.message_id)
+        await render_chat(cq, db, order_id, page=10**9)
     await cq.answer()
 
 

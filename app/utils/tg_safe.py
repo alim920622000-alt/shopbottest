@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from aiogram.exceptions import TelegramBadRequest
-from aiogram.types import InlineKeyboardMarkup, Message
+from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
+from aiogram.types import InlineKeyboardMarkup, Message, CallbackQuery
 
 
 async def safe_edit_text(
@@ -20,3 +20,12 @@ async def safe_edit_text(
         if "message is not modified" in str(e):
             return False
         raise
+
+
+async def safe_delete_cq_message(cq: CallbackQuery) -> None:
+    # Безопасно удаляет сообщение callback-запроса.
+    try:
+        if cq.message:
+            await cq.message.delete()
+    except (TelegramBadRequest, TelegramForbiddenError):
+        pass

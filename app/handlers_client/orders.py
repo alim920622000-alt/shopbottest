@@ -18,10 +18,11 @@ from app.services.chat_ui import (
     calc_total_pages,
     remember_client_hint,
 )
-from app.services.chat_reminders import cancel_chat_reminder, schedule_chat_reminder
-from app.services.screen import clear_state_keep_screen
+from app.services.chat_reminders import cancel_chat_reminder, schedule_chat_reminder, is_chat_reminder_text
+from app.services.screen import clear_state_keep_screen, show_screen
 from app.services.chat_screen_controller import ChatScreenController
 from app.services.client_ui_state import remember_client_screen
+from app.utils.tg_safe import safe_delete_cq_message
 
 router = Router()
 
@@ -123,7 +124,20 @@ async def order_card(cq: CallbackQuery, db: Database, state: FSMContext):
     orders = OrdersRepo(db)
     o = await orders.get_order(order_id)
     if not o or int(o["client_user_id"]) != cq.from_user.id:
-        await cq.message.edit_text("Заказ не найден.", reply_markup=kb_client_main())
+        if is_chat_reminder_text(cq.message.text if cq.message else None):
+            # Напоминание удаляем и показываем экран без редактирования старого сообщения.
+            await safe_delete_cq_message(cq)
+            await show_screen(
+                bot=cq.bot,
+                chat_id=cq.from_user.id,
+                state=state,
+                db=db,
+                bot_kind="client",
+                text="Заказ не найден.",
+                reply_markup=kb_client_main(),
+            )
+        else:
+            await cq.message.edit_text("Заказ не найден.", reply_markup=kb_client_main())
         await cq.answer()
         return
 
@@ -144,7 +158,21 @@ async def order_card(cq: CallbackQuery, db: Database, state: FSMContext):
         lines.append(f"- {it['name']} x{it['quantity']} = {it['price_at_moment']}")
 
     back_cb = "c:history" if o["status"] in DONE_STATUSES else "c:orders"
-    await cq.message.edit_text("\n".join(lines), reply_markup=kb_order_card(order_id, back_cb))
+    text = "\n".join(lines)
+    if is_chat_reminder_text(cq.message.text if cq.message else None):
+        # Для напоминания сначала удаляем сообщение, потом показываем карточку.
+        await safe_delete_cq_message(cq)
+        await show_screen(
+            bot=cq.bot,
+            chat_id=cq.from_user.id,
+            state=state,
+            db=db,
+            bot_kind="client",
+            text=text,
+            reply_markup=kb_order_card(order_id, back_cb),
+        )
+    else:
+        await cq.message.edit_text(text, reply_markup=kb_order_card(order_id, back_cb))
     await cq.answer()
 
 
@@ -192,6 +220,9 @@ async def render_chat(
 @router.callback_query(F.data.startswith("c:chat:"))
 @router.callback_query(F.data.startswith("c:chat:"))
 async def open_chat(cq: CallbackQuery, state: FSMContext, db: Database):
+    if is_chat_reminder_text(cq.message.text if cq.message else None):
+        # Для напоминания сначала удаляем сообщение.
+        await safe_delete_cq_message(cq)
     order_id = int(cq.data.split(":")[2])
     orders = OrdersRepo(db)
     o = await orders.get_order(order_id)

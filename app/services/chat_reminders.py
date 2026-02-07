@@ -16,6 +16,10 @@ logger = logging.getLogger(__name__)
 PREVIEW_LIMIT = 260
 
 
+def is_chat_reminder_text(text: str | None) -> bool:
+    return bool(text) and text.startswith("Новое сообщение по заказу #")
+
+
 def _normalize_preview(text: str, limit: int = PREVIEW_LIMIT) -> str:
     compact = " ".join((text or "").split())
     if len(compact) > limit:

@@ -5,8 +5,10 @@ from aiogram.fsm.context import FSMContext
 
 from app.db.database import Database
 from app.handlers_admin_restaurant.utils import is_restaurant_admin
-from app.services.screen import clear_state_keep_screen
+from app.services.screen import clear_state_keep_screen, show_main_menu
 from app.services.chat_screen_controller import ChatScreenController
+from app.services.chat_reminders import is_chat_reminder_text
+from app.utils.tg_safe import safe_delete_cq_message
 
 router = Router()
 
@@ -44,14 +46,27 @@ async def start_cmd(message: Message, db: Database, state: FSMContext):
 @router.callback_query(F.data == "r:home")
 async def home(cq: CallbackQuery, db: Database, state: FSMContext):
     await clear_state_keep_screen(state, db, "admin_restaurant", cq.message.chat.id)
-    controller = ChatScreenController(
-        bot=cq.bot,
-        chat_id=cq.message.chat.id,
-        state=state,
-        render=lambda: ("Админ-меню ресторана:", kb_admin_main()),
-        db=db,
-        bot_kind="admin_restaurant",
-    )
-    await controller.delete_screen()
-    await controller.refresh()
+    if is_chat_reminder_text(cq.message.text if cq.message else None):
+        # Для напоминания удаляем сообщение и показываем главный экран через screen.py.
+        await safe_delete_cq_message(cq)
+        await show_main_menu(
+            bot=cq.bot,
+            chat_id=cq.message.chat.id,
+            state=state,
+            db=db,
+            bot_kind="admin_restaurant",
+            text="Админ-меню ресторана:",
+            reply_markup=kb_admin_main(),
+        )
+    else:
+        controller = ChatScreenController(
+            bot=cq.bot,
+            chat_id=cq.message.chat.id,
+            state=state,
+            render=lambda: ("Админ-меню ресторана:", kb_admin_main()),
+            db=db,
+            bot_kind="admin_restaurant",
+        )
+        await controller.delete_screen()
+        await controller.refresh()
     await cq.answer()
