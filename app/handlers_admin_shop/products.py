@@ -14,6 +14,8 @@ from app.services.search_service import SearchService
 from app.services.search_utils import normalize_text
 from app.config import get_settings
 from app.services.screen import clear_state_keep_screen, show_main_menu
+from app.repositories.categories_repo import CategoriesRepo
+
 
 def is_superadmin(user_id: int) -> bool:
     s = get_settings()
@@ -128,11 +130,14 @@ async def products_root(cq: CallbackQuery, db: Database):
         return
 
     async with db.conn() as conn:
-        cur = await conn.execute(
-            "SELECT id, name, sort, is_active FROM categories WHERE shop_id=? ORDER BY sort, id",
-            (shop_id,),
-        )
-        cats = [dict(r) for r in await cur.fetchall()]
+        shop = await ShopsRepo(db).get(shop_id)
+        if not shop:
+            await cq.message.edit_text("Магазин не найден.", reply_markup=kb_home())
+            await cq.answer()
+            return
+
+    cats = await CategoriesRepo(db).list_for_business_type(shop["business_type"], active_only=True)
+
 
     if not cats:
         is_root = is_superadmin(cq.from_user.id)
@@ -200,12 +205,7 @@ async def add_category_save(message: Message, state: FSMContext, db: Database):
         await message.answer("Слишком коротко. Введите название категории ещё раз:")
         return
 
-    async with db.conn() as conn:
-        await conn.execute(
-            "INSERT INTO categories(shop_id, name, name_norm, sort, is_active) VALUES(?,?,?,0,1)",
-            (shop_id, name, normalize_text(name)),
-        )
-        await conn.commit()
+    await CategoriesRepo(db).create(shop_id=shop_id, name=name, sort=0)
 
     await clear_state_keep_screen(state)
     await message.answer("Категория добавлена ✅")

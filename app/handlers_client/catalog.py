@@ -14,6 +14,7 @@ from app.repositories.cart_repo import CartRepo
 from app.services.search_service import SearchService
 from app.services.admin_notifications import notify_admins_new_order
 from app.services.screen import clear_state_keep_screen, delete_screen, safe_edit_text, set_screen_message_id
+from app.services.client_ui_state import remember_client_screen
 from app.handlers_client.kb import (
     kb_client_main,
     kb_order_menu,
@@ -116,6 +117,12 @@ async def open_product_from_inline_sku(message: Message, db: Database, state: FS
             "shop_id": int(product["shop_id"]),
             "category_id": int(product["category_id"]),
         },
+        user_id=message.from_user.id,
+    )
+    await remember_client_screen(
+        state,
+        "product_card_shop",
+        {"shop_id": int(product["shop_id"]), "sku": sku},
     )
 
 
@@ -130,6 +137,8 @@ async def list_shops(cq: CallbackQuery, db: Database, state: FSMContext):
         return
 
     await state.update_data(last_kind="shop", last_view={"name": "shops_list"})
+    await state.update_data(user_id=cq.from_user.id)
+    await remember_client_screen(state, "shops", {})
     await cq.message.edit_text("Выберите магазин:", reply_markup=kb_shops_list(items, "shop"))
     await cq.answer()
 
@@ -137,18 +146,24 @@ async def list_shops(cq: CallbackQuery, db: Database, state: FSMContext):
 @router.callback_query(F.data == "c:home")
 async def client_home(cq: CallbackQuery, state: FSMContext):
     await clear_state_keep_screen(state)
+    await state.update_data(user_id=cq.from_user.id)
+    await remember_client_screen(state, "main", {})
     await cq.message.edit_text("Выберите раздел:", reply_markup=kb_client_main())
     await cq.answer()
 
 @router.callback_query(F.data == "c:order_menu")
 async def order_menu(cq: CallbackQuery, state: FSMContext):
     await clear_state_keep_screen(state)
+    await state.update_data(user_id=cq.from_user.id)
+    await remember_client_screen(state, "order_menu", {})
     await cq.message.edit_text("Что будем заказывать?", reply_markup=kb_order_menu())
     await cq.answer()
 
 @router.callback_query(F.data == "c:cart_menu")
 async def cart_menu(cq: CallbackQuery, state: FSMContext):
     await state.update_data(last_view={"name": "cart_menu"})
+    await state.update_data(user_id=cq.from_user.id)
+    await remember_client_screen(state, "cart_menu", {})
     await cq.message.edit_text("Выберите корзину:", reply_markup=kb_cart_menu())
     await cq.answer()
 
@@ -163,6 +178,8 @@ async def list_restaurants(cq: CallbackQuery, db: Database, state: FSMContext):
         return
 
     await state.update_data(last_kind="restaurant", last_view={"name": "restaurants_list"})
+    await state.update_data(user_id=cq.from_user.id)
+    await remember_client_screen(state, "restaurants", {})
     await cq.message.edit_text("Выберите ресторан:", reply_markup=kb_shops_list(items, "restaurant"))
     await cq.answer()
 
@@ -176,7 +193,9 @@ async def pick_shop(cq: CallbackQuery, db: Database, state: FSMContext):
     await state.update_data(
         last_kind=kind,
         last_view={"name": "categories", "kind": kind, "shop_id": shop_id},
+        user_id=cq.from_user.id,
     )
+    await remember_client_screen(state, "categories", {"kind": kind, "shop_id": shop_id})
 
     await show_categories(cq.message, db, kind, shop_id)
     await cq.answer()
@@ -212,7 +231,7 @@ async def show_category_products(
     category_id: int,
 ):
     prod = ProductsRepo(db)
-    products = await prod.list_by_category(category_id, active_only=True)
+    products = await prod.list_by_category_for_shop(shop_id, category_id, active_only=True)
 
     if not products:
         data = await state.get_data()
@@ -228,6 +247,11 @@ async def show_category_products(
     await state.update_data(last_view={"name": "products", "shop_id": shop_id, "category_id": category_id})
     data = await state.get_data()
     kind = data.get("last_kind") or "shop"
+    await remember_client_screen(
+        state,
+        "products",
+        {"shop_id": shop_id, "category_id": category_id, "kind": kind},
+    )
     products_kb = kb_products_list_shop(products, shop_id, category_id) if kind == "shop" else kb_products_list(products, shop_id, category_id)
 
     await message.edit_text(
@@ -237,7 +261,7 @@ async def show_category_products(
 
 
 @router.callback_query(F.data.startswith("c:prod:"))
-async def open_product(cq: CallbackQuery, db: Database):
+async def open_product(cq: CallbackQuery, db: Database, state: FSMContext):
     # c:prod:{product_id}
     product_id = int(cq.data.split(":")[2])
 
@@ -265,6 +289,8 @@ async def open_product(cq: CallbackQuery, db: Database):
         return
 
     text = _build_product_card_text(p)
+    await state.update_data(user_id=cq.from_user.id)
+    await remember_client_screen(state, "product_card", {"product_id": product_id})
 
     markup = kb_product_card(
         product_id=product_id,
@@ -296,7 +322,7 @@ async def open_product(cq: CallbackQuery, db: Database):
 
 
 @router.callback_query(F.data.startswith("c:prodsku:"))
-async def open_product_by_sku(cq: CallbackQuery, db: Database):
+async def open_product_by_sku(cq: CallbackQuery, db: Database, state: FSMContext):
     # c:prodsku:{shop_id}:{sku}
     _, _, shop_id_str, sku = cq.data.split(":", 3)
     shop_id = int(shop_id_str)
@@ -315,6 +341,8 @@ async def open_product_by_sku(cq: CallbackQuery, db: Database):
         return
 
     text = _build_product_card_text(p)
+    await state.update_data(user_id=cq.from_user.id)
+    await remember_client_screen(state, "product_card_shop", {"shop_id": shop_id, "sku": sku})
 
     await safe_edit_text(
         cq,
@@ -537,9 +565,18 @@ async def open_cart(cq: CallbackQuery, db: Database, state: FSMContext):
     await state.update_data(
         cart_return_view=return_view,
         cart_back_target=":".join(back_parts) if back_parts else None,
+        user_id=cq.from_user.id,
     )
     if business_type:
         await state.update_data(cart_kind=business_type)
+    await remember_client_screen(
+        state,
+        "cart",
+        {
+            "business_type": business_type,
+            "back_target": ":".join(back_parts) if back_parts else None,
+        },
+    )
     await render_cart(
         cq.message,
         cq.from_user.id,

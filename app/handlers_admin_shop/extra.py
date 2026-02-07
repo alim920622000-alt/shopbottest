@@ -213,7 +213,9 @@ async def promo_pick_category(cq: CallbackQuery, db: Database):
         await cq.answer()
         return
     cats = CategoriesRepo(db)
-    categories = await cats.list_for_shop(shop_ids[0], active_only=True)
+    shop = await ShopsRepo(db).get(shop_ids[0])
+    categories = await cats.list_for_business_type(shop["business_type"], active_only=True)
+
     if not categories:
         await cq.message.edit_text("Нет категорий для выбора.", reply_markup=kb_back_home())
         await cq.answer()

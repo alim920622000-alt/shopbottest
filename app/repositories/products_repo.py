@@ -124,6 +124,31 @@ class ProductsRepo:
             cur = await conn.execute(q, params)
             rows = await cur.fetchall()
             return [dict(r) for r in rows]
+   
+    async def list_by_category_for_shop(
+        self,
+        shop_id: int,
+        category_id: int,
+        active_only: bool = True,
+    ) -> list[dict]:
+        q = """
+        SELECT *
+        FROM products
+        WHERE shop_id = ?
+          AND category_id = ?
+        """
+        params = [shop_id, category_id]
+
+        if active_only:
+            q += " AND is_active = 1"
+    
+        q += " ORDER BY id ASC"
+    
+        async with self.db.conn() as conn:
+            cur = await conn.execute(q, params)
+            rows = await cur.fetchall()
+            return [dict(r) for r in rows]
+
 
     async def get(self, product_id: int) -> Optional[dict]:
         async with self.db.conn() as conn:

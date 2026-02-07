@@ -127,7 +127,7 @@ CREATE TABLE IF NOT EXISTS order_chat_messages (
 );
 
 -- Индексы под частые выборки
-CREATE INDEX IF NOT EXISTS idx_categories_shop ON categories(shop_id);
+-- CREATE INDEX IF NOT EXISTS idx_categories_shop ON categories(shop_id);
 CREATE INDEX IF NOT EXISTS idx_products_shop ON products(shop_id);
 CREATE INDEX IF NOT EXISTS idx_products_category ON products(category_id);
 CREATE INDEX IF NOT EXISTS idx_products_name_norm ON products(name_norm);
@@ -140,3 +140,5 @@ CREATE INDEX IF NOT EXISTS idx_search_synonyms_term ON search_synonyms(term);
 CREATE INDEX IF NOT EXISTS idx_promotions_shop ON promotions(shop_id);
 CREATE INDEX IF NOT EXISTS idx_promo_items_promo ON promotion_items(promo_id);
 CREATE INDEX IF NOT EXISTS idx_chat_order ON order_chat_messages(order_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_categories_business ON categories(business_type);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_categories_business_name_norm ON categories(business_type, name_norm);

@@ -13,8 +13,8 @@ class CategoriesRepo:
 
     async def create(self, shop_id: int, name: str, sort: int = 0) -> int:
         """
-        РљР°С‚РµРіРѕСЂРёРё РѕР±С‰РёРµ РїРѕ business_type.
-        shop_id РЅСѓР¶РµРЅ С‚РѕР»СЊРєРѕ С‡С‚РѕР±С‹ РѕРїСЂРµРґРµР»РёС‚СЊ business_type (shop/restaurant).
+        Категории общие по business_type.
+        shop_id нужен только чтобы определить business_type (shop/restaurant).
         """
         shop = await ShopsRepo(self.db).get(shop_id)
         if not shop:
@@ -24,7 +24,7 @@ class CategoriesRepo:
         name_norm = normalize_text(name)
 
         async with self.db.conn() as conn:
-            # Р•СЃР»Рё СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓРµС‚ РєР°С‚РµРіРѕСЂРёСЏ РґР»СЏ СЌС‚РѕРіРѕ business_type вЂ” РІРѕР·РІСЂР°С‰Р°РµРј id
+            # Если уже существует категория для этого business_type — возвращаем id
             cur = await conn.execute(
                 "SELECT id FROM categories WHERE business_type=? AND name_norm=?",
                 (business_type, name_norm),
@@ -69,8 +69,8 @@ class CategoriesRepo:
 
     async def list_for_shop(self, shop_id: int, active_only: bool = True) -> Sequence[dict]:
         """
-        Р”Р»СЏ РєР»РёРµРЅС‚СЃРєРѕРіРѕ UI: РїРѕРєР°Р·С‹РІР°РµРј С‚РѕР»СЊРєРѕ РєР°С‚РµРіРѕСЂРёРё, РіРґРµ РµСЃС‚СЊ С‚РѕРІР°СЂС‹ РєРѕРЅРєСЂРµС‚РЅРѕРіРѕ shop_id,
-        РЅРѕ РєР°С‚РµРіРѕСЂРёРё Р±РµСЂС‘Рј РёР· РѕР±С‰РµРіРѕ СЃРїРёСЃРєР° РїРѕ business_type.
+        Для клиентского UI: показываем только категории, где есть товары конкретного shop_id,
+        но категории берём из общего списка по business_type.
         """
         shop = await ShopsRepo(self.db).get(shop_id)
         if not shop:

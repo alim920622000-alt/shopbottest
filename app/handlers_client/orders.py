@@ -20,6 +20,7 @@ from app.services.chat_ui import (
 )
 from app.services.screen import clear_state_keep_screen, set_screen_message_id
 from app.services.chat_screen_controller import ChatScreenController
+from app.services.client_ui_state import remember_client_screen
 
 router = Router()
 
@@ -81,6 +82,8 @@ def make_chat_render_fn(db: Database, state: FSMContext):
 @router.callback_query(F.data == "c:orders")
 async def list_orders(cq: CallbackQuery, db: Database, state: FSMContext):
     await clear_state_keep_screen(state)
+    await state.update_data(user_id=cq.from_user.id)
+    await remember_client_screen(state, "orders", {})
     orders = OrdersRepo(db)
     rows = await orders.list_for_client(cq.from_user.id)
     if not rows:
@@ -96,6 +99,8 @@ async def list_orders(cq: CallbackQuery, db: Database, state: FSMContext):
 @router.callback_query(F.data == "c:history")
 async def list_history(cq: CallbackQuery, db: Database, state: FSMContext):
     await clear_state_keep_screen(state)
+    await state.update_data(user_id=cq.from_user.id)
+    await remember_client_screen(state, "history", {})
     orders = OrdersRepo(db)
     rows = await orders.list_for_client(cq.from_user.id, statuses=DONE_STATUSES)
     if not rows:
@@ -112,6 +117,8 @@ async def list_history(cq: CallbackQuery, db: Database, state: FSMContext):
 async def order_card(cq: CallbackQuery, db: Database, state: FSMContext):
     await clear_state_keep_screen(state)
     order_id = int(cq.data.split(":")[2])
+    await state.update_data(user_id=cq.from_user.id)
+    await remember_client_screen(state, "order_card", {"order_id": order_id})
     orders = OrdersRepo(db)
     o = await orders.get_order(order_id)
     if not o or int(o["client_user_id"]) != cq.from_user.id:
@@ -143,6 +150,8 @@ async def order_card(cq: CallbackQuery, db: Database, state: FSMContext):
 @router.callback_query(F.data == "c:chat")
 async def chat_list(cq: CallbackQuery, db: Database, state: FSMContext):
     await clear_state_keep_screen(state)
+    await state.update_data(user_id=cq.from_user.id)
+    await remember_client_screen(state, "chat_list", {})
     chats = ChatRepo(db)
     order_ids = await chats.list_order_ids_with_chat(user_id=cq.from_user.id)
     if not order_ids:
@@ -198,6 +207,8 @@ async def open_chat(cq: CallbackQuery, state: FSMContext, db: Database):
     total_messages = await chat.count_messages(order_id)
     total_pages = max(1, calc_total_pages(total_messages, PAGE_SIZE))
     await state.update_data(chat_page=total_pages)
+    await state.update_data(user_id=cq.from_user.id)
+    await remember_client_screen(state, "chat", {"order_id": order_id, "page": total_pages})
 
     controller = ChatScreenController(
         bot=cq.bot,
@@ -222,6 +233,8 @@ async def paginate_chat(cq: CallbackQuery, state: FSMContext, db: Database):
         return
 
     await state.update_data(chat_order_id=order_id, chat_page=page)
+    await state.update_data(user_id=cq.from_user.id)
+    await remember_client_screen(state, "chat", {"order_id": order_id, "page": page})
 
     controller = ChatScreenController(
         bot=cq.bot,
@@ -262,6 +275,8 @@ async def send_chat_message(message: Message, state: FSMContext, db: Database):
     total_messages = await chat.count_messages(order_id)
     total_pages = max(1, calc_total_pages(total_messages, PAGE_SIZE))
     await state.update_data(chat_page=total_pages)
+    await state.update_data(user_id=message.from_user.id)
+    await remember_client_screen(state, "chat", {"order_id": order_id, "page": total_pages})
 
     # 4) удалить сообщение пользователя + пересоздать экран
     controller = ChatScreenController(

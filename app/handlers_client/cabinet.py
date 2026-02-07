@@ -9,6 +9,7 @@ from app.db.database import Database
 from app.handlers_client.kb import kb_client_main
 from app.repositories.client_profiles_repo import ClientProfilesRepo
 from app.services.screen import clear_state_keep_screen, show_main_menu
+from app.services.client_ui_state import remember_client_screen
 
 router = Router()
 
@@ -29,7 +30,7 @@ def kb_cabinet() -> InlineKeyboardMarkup:
 
 
 @router.callback_query(F.data == "c:cabinet")
-async def open_cabinet(cq: CallbackQuery, db: Database):
+async def open_cabinet(cq: CallbackQuery, db: Database, state: FSMContext):
     repo = ClientProfilesRepo(db)
     profile = await repo.get(cq.from_user.id)
     full_name = profile["full_name"] if profile else ""
@@ -42,6 +43,8 @@ async def open_cabinet(cq: CallbackQuery, db: Database):
         f"Телефон: {phone or '—'}\n"
         f"Адрес: {address or '—'}"
     )
+    await state.update_data(user_id=cq.from_user.id)
+    await remember_client_screen(state, "cabinet", {})
     await cq.message.edit_text(text, reply_markup=kb_cabinet())
     await cq.answer()
 
@@ -76,6 +79,8 @@ async def save_full_name(message: Message, state: FSMContext, db: Database):
     repo = ClientProfilesRepo(db)
     await repo.upsert(message.from_user.id, full_name=name)
     await clear_state_keep_screen(state)
+    await state.update_data(user_id=message.from_user.id)
+    await remember_client_screen(state, "main", {})
     await message.answer("ФИО сохранено.")
     await show_main_menu(message.bot, message.chat.id, state, "Выберите раздел:", kb_client_main())
 
@@ -89,6 +94,8 @@ async def save_phone(message: Message, state: FSMContext, db: Database):
     repo = ClientProfilesRepo(db)
     await repo.upsert(message.from_user.id, phone=phone)
     await clear_state_keep_screen(state)
+    await state.update_data(user_id=message.from_user.id)
+    await remember_client_screen(state, "main", {})
     await message.answer("Телефон сохранён.")
     await show_main_menu(message.bot, message.chat.id, state, "Выберите раздел:", kb_client_main())
 
@@ -102,5 +109,7 @@ async def save_address(message: Message, state: FSMContext, db: Database):
     repo = ClientProfilesRepo(db)
     await repo.upsert(message.from_user.id, address=address)
     await clear_state_keep_screen(state)
+    await state.update_data(user_id=message.from_user.id)
+    await remember_client_screen(state, "main", {})
     await message.answer("Адрес сохранён.")
     await show_main_menu(message.bot, message.chat.id, state, "Выберите раздел:", kb_client_main())
