@@ -20,6 +20,7 @@ from app.services.chat_ui import (
     build_chat_screen_text,
     calc_total_pages,
 )
+from app.services.chat_reminders import cancel_chat_reminder, schedule_chat_reminder
 from app.services.screen import clear_state_keep_screen, show_main_menu, set_screen_message_id
 from app.ui.nav import kb_nav
 
@@ -329,6 +330,7 @@ async def open_chat(cq: CallbackQuery, state: FSMContext, db: Database):
         await cq.message.edit_text("Чат недоступен.", reply_markup=kb_admin_main())
         await cq.answer()
         return
+    await cancel_chat_reminder(db, order_id, cq.from_user.id, "admin_restaurant")
     await state.set_state(RestaurantChatStates.active)
     await state.update_data(chat_order_id=order_id, chat_message_id=cq.message.message_id)
     await set_screen_message_id(state, db, "admin_restaurant", cq.message.chat.id, cq.message.message_id)
@@ -374,10 +376,9 @@ async def send_chat_message(message: Message, state: FSMContext, db: Database):
         return
     chat = ChatRepo(db)
     await chat.add_message(order_id, message.from_user.id, "admin", text)
-    try:
-        await message.bot.send_message(int(order["client_user_id"]), f"💬 Сообщение по заказу #{order_id}\n{text}")
-    except Exception:
-        pass
+    await cancel_chat_reminder(db, order_id, message.from_user.id, "admin_restaurant")
+    if order.get("client_user_id"):
+        await schedule_chat_reminder(db, order_id, int(order["client_user_id"]), "client", text)
     data = await state.get_data()
     chat_message_id = data.get("chat_message_id")
     chat = ChatRepo(db)

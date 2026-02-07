@@ -126,6 +126,19 @@ CREATE TABLE IF NOT EXISTS order_chat_messages (
     FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS chat_message_reminders (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    order_id INTEGER NOT NULL,
+    recipient_user_id INTEGER NOT NULL,
+    recipient_kind TEXT NOT NULL,
+    last_message_at DATETIME NOT NULL,
+    last_message_preview TEXT NOT NULL,
+    scheduled_at DATETIME NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+    UNIQUE (order_id, recipient_user_id, recipient_kind)
+);
+
 CREATE TABLE IF NOT EXISTS ui_screens (
     bot_kind TEXT NOT NULL,
     chat_id INTEGER NOT NULL,
@@ -148,5 +161,6 @@ CREATE INDEX IF NOT EXISTS idx_search_synonyms_term ON search_synonyms(term);
 CREATE INDEX IF NOT EXISTS idx_promotions_shop ON promotions(shop_id);
 CREATE INDEX IF NOT EXISTS idx_promo_items_promo ON promotion_items(promo_id);
 CREATE INDEX IF NOT EXISTS idx_chat_order ON order_chat_messages(order_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_chat_reminders_due ON chat_message_reminders(recipient_kind, status, scheduled_at);
 CREATE INDEX IF NOT EXISTS idx_categories_business ON categories(business_type);
 CREATE UNIQUE INDEX IF NOT EXISTS uq_categories_business_name_norm ON categories(business_type, name_norm);

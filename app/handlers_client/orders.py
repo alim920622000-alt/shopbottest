@@ -18,6 +18,7 @@ from app.services.chat_ui import (
     calc_total_pages,
     remember_client_hint,
 )
+from app.services.chat_reminders import cancel_chat_reminder, schedule_chat_reminder
 from app.services.screen import clear_state_keep_screen
 from app.services.chat_screen_controller import ChatScreenController
 from app.services.client_ui_state import remember_client_screen
@@ -199,6 +200,7 @@ async def open_chat(cq: CallbackQuery, state: FSMContext, db: Database):
         await cq.answer()
         return
 
+    await cancel_chat_reminder(db, order_id, cq.from_user.id, "client")
     await state.set_state(ClientChatStates.active)
     await state.update_data(chat_order_id=order_id)
 
@@ -268,13 +270,16 @@ async def send_chat_message(message: Message, state: FSMContext, db: Database):
     chat = ChatRepo(db)
     await chat.add_message(order_id, message.from_user.id, "client", text)
 
+    await cancel_chat_reminder(db, order_id, message.from_user.id, "client")
     admins = AdminsRepo(db)
     admin_ids = await admins.list_admin_user_ids(int(o["shop_id"]))
+    shops = ShopsRepo(db)
+    shop = await shops.get(int(o["shop_id"]))
+    admin_kind = "admin_shop"
+    if shop and shop.get("business_type") == "restaurant":
+        admin_kind = "admin_restaurant"
     for uid in admin_ids:
-        try:
-            await message.bot.send_message(uid, f"💬 Сообщение по заказу #{order_id}\n{text}")
-        except Exception:
-            pass
+        await schedule_chat_reminder(db, order_id, uid, admin_kind, text)
     # 3) после добавления — пересчитать последнюю страницу
     total_messages = await chat.count_messages(order_id)
     total_pages = max(1, calc_total_pages(total_messages, PAGE_SIZE))

@@ -11,6 +11,7 @@ from app.handlers_client.orders import router as orders_router
 from app.handlers_client.cabinet import router as cabinet_router
 from app.handlers_client.inline_search import router as inline_search_router
 from app.handlers_client.fallback import router as fallback_router
+from app.services.chat_reminders import run_chat_reminder_worker
 
 
 async def main():
@@ -35,6 +36,7 @@ async def main():
     dp.include_router(inline_search_router)
     dp.include_router(fallback_router)
 
+    asyncio.create_task(run_chat_reminder_worker(bot, db, "client"))
     await dp.start_polling(bot)
 
 
