@@ -88,3 +88,51 @@ async def notify_admins_new_order(db: Database, order_id: int, shop_id: int) -> 
                 )
     finally:
         await bot.session.close()
+
+
+async def notify_admins_order_canceled(db: Database, order_id: int, shop_id: int) -> None:
+    shops = ShopsRepo(db)
+    shop = await shops.get(shop_id)
+    if not shop:
+        logger.warning("Shop %s not found for order %s", shop_id, order_id)
+        return
+
+    business_type = shop.get("business_type")
+    if business_type not in ("shop", "restaurant"):
+        return
+
+    token_env = "ADMIN_SHOP_BOT_TOKEN" if business_type == "shop" else "ADMIN_RESTAURANT_BOT_TOKEN"
+    token = os.getenv(token_env, "").strip()
+    if not token:
+        logger.warning("Admin bot token %s is empty, skip order notify", token_env)
+        return
+
+    admins = AdminsRepo(db)
+    admin_ids = await admins.list_admin_user_ids(shop_id)
+    if not admin_ids:
+        return
+
+    orders = OrdersRepo(db)
+    order = await orders.get_order(order_id)
+
+    lines = [f"❌ Клиент отменил заказ #{order_id}"]
+    if order and order.get("total_amount") is not None:
+        lines.append(f"Сумма: {order['total_amount']}")
+
+    text = "\n".join(lines)
+    reply_markup = _build_admin_keyboard(order_id, business_type)
+
+    bot = Bot(token=token)
+    try:
+        for uid in admin_ids:
+            try:
+                await bot.send_message(uid, text, reply_markup=reply_markup)
+            except Exception:
+                logger.warning(
+                    "Не удалось отправить уведомление админу %s по заказу %s",
+                    uid,
+                    order_id,
+                    exc_info=True,
+                )
+    finally:
+        await bot.session.close()

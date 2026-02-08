@@ -1,16 +1,21 @@
 from __future__ import annotations
 
+import logging
+from datetime import datetime, timedelta
+
 from aiogram import Router, F
 from aiogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, Message
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 
+from app.config import CANCEL_WINDOW_MINUTES
 from app.db.database import Database
 from app.handlers_client.kb import kb_client_main, kb_orders_list, kb_chat_orders, kb_back
 from app.repositories.orders_repo import OrdersRepo
 from app.repositories.shops_repo import ShopsRepo
 from app.repositories.chat_repo import ChatRepo
 from app.repositories.admins_repo import AdminsRepo
+from app.services.admin_notifications import notify_admins_order_canceled
 from app.services.chat_ui import (
     PAGE_SIZE,
     build_chat_screen_kb,
@@ -25,22 +30,98 @@ from app.services.client_ui_state import remember_client_screen
 from app.utils.tg_safe import safe_delete_cq_message
 
 router = Router()
+logger = logging.getLogger(__name__)
 
 DONE_STATUSES = ["ready", "finished", "canceled", "delivered"]
+CANCELABLE_STATUSES = ["new"]
 
 
 class ClientChatStates(StatesGroup):
     active = State()
 
 
-def kb_order_card(order_id: int, back_cb: str) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(inline_keyboard=[
+def kb_order_card(order_id: int, back_cb: str, can_cancel: bool) -> InlineKeyboardMarkup:
+    kb = [
         [InlineKeyboardButton(text="💬 Чат по заказу", callback_data=f"c:chat:{order_id}")],
-        [
-            InlineKeyboardButton(text="🏠 Главная", callback_data="c:home"),
-            InlineKeyboardButton(text="🔙 Назад", callback_data=back_cb),
-        ],
+    ]
+    if can_cancel:
+        kb.append([InlineKeyboardButton(text="❌ Отменить заказ", callback_data=f"c:cancel:{order_id}")])
+    kb.append([
+        InlineKeyboardButton(text="🏠 Главная", callback_data="c:home"),
+        InlineKeyboardButton(text="🔙 Назад", callback_data=back_cb),
     ])
+    return InlineKeyboardMarkup(inline_keyboard=kb)
+
+
+def _parse_created_at(value: object) -> datetime | None:
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, str):
+        for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M"):
+            try:
+                return datetime.strptime(value, fmt)
+            except ValueError:
+                continue
+        try:
+            return datetime.fromisoformat(value)
+        except ValueError:
+            return None
+    return None
+
+
+def _can_cancel_order(order: dict | None, now: datetime | None = None) -> bool:
+    if not order or order.get("status") not in CANCELABLE_STATUSES:
+        return False
+    created_at = _parse_created_at(order.get("created_at"))
+    if not created_at:
+        return False
+    now = now or datetime.utcnow()
+    return now - created_at <= timedelta(minutes=CANCEL_WINDOW_MINUTES)
+
+
+def _build_order_text(order: dict, items: list[dict], shop_name: str) -> str:
+    comment = (order.get("comment") or "").strip()
+    comment_line = comment or "— не добавлен —"
+    lines = [
+        f"Заказ #{order['id']}",
+        f"Точка: {shop_name}",
+        f"Статус: {order['status']}",
+        f"Сумма: {order['total_amount']}",
+        f"Комментарий: {comment_line}",
+        "",
+        "Состав:",
+    ]
+    for it in items:
+        lines.append(f"- {it['name']} x{it['quantity']} = {it['price_at_moment']}")
+    return "\n".join(lines)
+
+
+async def _render_order_card(
+    cq: CallbackQuery,
+    state: FSMContext,
+    db: Database,
+    order: dict,
+    items: list[dict],
+    shop_name: str,
+) -> None:
+    back_cb = "c:history" if order["status"] in DONE_STATUSES else "c:orders"
+    text = _build_order_text(order, items, shop_name)
+    can_cancel = _can_cancel_order(order)
+    reply_markup = kb_order_card(int(order["id"]), back_cb, can_cancel)
+    if is_chat_reminder_text(cq.message.text if cq.message else None):
+        # Для напоминания сначала удаляем сообщение, потом показываем карточку.
+        await safe_delete_cq_message(cq)
+        await show_screen(
+            bot=cq.bot,
+            chat_id=cq.from_user.id,
+            state=state,
+            db=db,
+            bot_kind="client",
+            text=text,
+            reply_markup=reply_markup,
+        )
+    else:
+        await cq.message.edit_text(text, reply_markup=reply_markup)
 
 
 def kb_chat_nav_rows(order_id: int) -> list[list[InlineKeyboardButton]]:
@@ -146,37 +227,56 @@ async def order_card(cq: CallbackQuery, db: Database, state: FSMContext):
     shop_info = await shop.get(int(o["shop_id"]))
     shop_name = shop_info["name"] if shop_info else f"#{o['shop_id']}"
 
-    comment = (o.get("comment") or "").strip()
-    comment_line = comment or "— не добавлен —"
-    lines = [
-        f"Заказ #{o['id']}",
-        f"Точка: {shop_name}",
-        f"Статус: {o['status']}",
-        f"Сумма: {o['total_amount']}",
-        f"Комментарий: {comment_line}",
-        "",
-        "Состав:",
-    ]
-    for it in items:
-        lines.append(f"- {it['name']} x{it['quantity']} = {it['price_at_moment']}")
-
-    back_cb = "c:history" if o["status"] in DONE_STATUSES else "c:orders"
-    text = "\n".join(lines)
-    if is_chat_reminder_text(cq.message.text if cq.message else None):
-        # Для напоминания сначала удаляем сообщение, потом показываем карточку.
-        await safe_delete_cq_message(cq)
-        await show_screen(
-            bot=cq.bot,
-            chat_id=cq.from_user.id,
-            state=state,
-            db=db,
-            bot_kind="client",
-            text=text,
-            reply_markup=kb_order_card(order_id, back_cb),
-        )
-    else:
-        await cq.message.edit_text(text, reply_markup=kb_order_card(order_id, back_cb))
+    await _render_order_card(cq, state, db, o, items, shop_name)
     await cq.answer()
+
+
+@router.callback_query(F.data.startswith("c:cancel:"))
+async def cancel_order(cq: CallbackQuery, db: Database, state: FSMContext):
+    await clear_state_keep_screen(state, db, "client", cq.from_user.id)
+    order_id = int(cq.data.split(":")[2])
+    orders = OrdersRepo(db)
+    o = await orders.get_order(order_id)
+    if not o or int(o["client_user_id"]) != cq.from_user.id:
+        if is_chat_reminder_text(cq.message.text if cq.message else None):
+            # Напоминание удаляем и показываем экран без редактирования старого сообщения.
+            await safe_delete_cq_message(cq)
+            await show_screen(
+                bot=cq.bot,
+                chat_id=cq.from_user.id,
+                state=state,
+                db=db,
+                bot_kind="client",
+                text="Заказ не найден.",
+                reply_markup=kb_client_main(),
+            )
+        else:
+            await cq.message.edit_text("Заказ не найден.", reply_markup=kb_client_main())
+        await cq.answer()
+        return
+
+    now = datetime.utcnow()
+    created_at = _parse_created_at(o.get("created_at"))
+    if o.get("status") == "canceled":
+        await cq.answer("Заказ уже отменён.", show_alert=True)
+    elif o.get("status") not in CANCELABLE_STATUSES:
+        await cq.answer("Отмена недоступна, заказ уже в обработке.", show_alert=True)
+    elif not created_at or now - created_at > timedelta(minutes=CANCEL_WINDOW_MINUTES):
+        await cq.answer("Время для отмены заказа истекло.", show_alert=True)
+    else:
+        await orders.set_status(order_id, "canceled")
+        o["status"] = "canceled"
+        try:
+            await notify_admins_order_canceled(db, order_id=order_id, shop_id=int(o["shop_id"]))
+        except Exception:
+            logger.warning("Не удалось отправить уведомление об отмене заказа %s", order_id, exc_info=True)
+        await cq.answer("Заказ отменён.")
+
+    items = await orders.get_order_items(order_id)
+    shop = ShopsRepo(db)
+    shop_info = await shop.get(int(o["shop_id"]))
+    shop_name = shop_info["name"] if shop_info else f"#{o['shop_id']}"
+    await _render_order_card(cq, state, db, o, items, shop_name)
 
 
 @router.callback_query(F.data == "c:chat")

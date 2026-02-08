@@ -4,6 +4,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+CANCEL_WINDOW_MINUTES = 10
+
 def _parse_ids(value: str) -> set[int]:
     if not value:
         return set()
