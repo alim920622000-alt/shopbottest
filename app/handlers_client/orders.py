@@ -146,11 +146,14 @@ async def order_card(cq: CallbackQuery, db: Database, state: FSMContext):
     shop_info = await shop.get(int(o["shop_id"]))
     shop_name = shop_info["name"] if shop_info else f"#{o['shop_id']}"
 
+    comment = (o.get("comment") or "").strip()
+    comment_line = comment or "— не добавлен —"
     lines = [
         f"Заказ #{o['id']}",
         f"Точка: {shop_name}",
         f"Статус: {o['status']}",
         f"Сумма: {o['total_amount']}",
+        f"Комментарий: {comment_line}",
         "",
         "Состав:",
     ]

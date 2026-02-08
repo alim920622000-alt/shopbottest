@@ -60,10 +60,13 @@ async def build_order_card_payload(db: Database, order_id: int) -> tuple[str, In
         )
 
     items = await orders.get_order_items(order_id)
+    comment = (o.get("comment") or "").strip()
+    comment_line = comment or "— не добавлен —"
     lines = [
         f"Заказ #{o['id']}",
         f"Статус: {o['status']}",
         f"Сумма: {o['total_amount']}",
+        f"Комментарий: {comment_line}",
         "",
         "Состав:",
     ]

@@ -85,6 +85,9 @@ class Database:
         await add_column("products", "updated_at", "updated_at DATETIME")
         await add_column("products", "sku", "sku TEXT")
 
+        # orders: комментарий клиента
+        await add_column("orders", "comment", "comment TEXT DEFAULT ''")
+
         await connection.execute(
             """
             CREATE TABLE IF NOT EXISTS client_profiles (

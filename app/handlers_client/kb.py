@@ -198,6 +198,7 @@ def kb_checkout_choose_shop(shop_ids: list[int]) -> InlineKeyboardMarkup:
 
 def kb_checkout_confirm(confirm_cb: str, back_cb: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✏️ Добавить комментарий", callback_data="c:checkout_comment")],
         [
             InlineKeyboardButton(text="✅ Подтвердить", callback_data=confirm_cb),
             InlineKeyboardButton(text="🔙 Назад", callback_data=back_cb),

@@ -16,6 +16,7 @@ from app.services.admin_notifications import notify_admins_new_order
 from app.services.screen import (
     clear_state_keep_screen,
     delete_screen,
+    get_screen_message_id,
     safe_edit_text,
     set_screen_message_id,
     show_main_menu,
@@ -50,6 +51,7 @@ SKU_RE = re.compile(r"^SKU-[0-9A-F]{8}$")
 
 class ClientCatalogStates(StatesGroup):
     search = State()
+    waiting_order_comment = State()
 
 
 SKU_PATTERN = re.compile(r"^SKU-[A-Z0-9]{4,64}$")
@@ -746,7 +748,7 @@ async def checkout(cq: CallbackQuery, db: Database, state: FSMContext):
         return
 
     shop_ids = sorted({int(i["shop_id"]) for i in items})
-    await state.update_data(checkout_shop_ids=shop_ids)
+    await state.update_data(checkout_shop_ids=shop_ids, order_comment="")
     if len(shop_ids) == 1:
         await _render_checkout_confirm(cq, db, state, shop_ids[0], back_cb="c:back:cart")
         return
@@ -783,7 +785,15 @@ async def checkout_back(cq: CallbackQuery, state: FSMContext):
 @router.callback_query(F.data.startswith("c:checkout_confirm:"))
 async def checkout_confirm(cq: CallbackQuery, db: Database, state: FSMContext):
     shop_id = int(cq.data.split(":")[2])
-    await _create_order_for_shop(cq, db, shop_id)
+    await _create_order_for_shop(cq, db, state, shop_id)
+
+
+@router.callback_query(F.data == "c:checkout_comment")
+async def checkout_comment(cq: CallbackQuery, state: FSMContext, db: Database):
+    await set_screen_message_id(state, db, "client", cq.message.chat.id, cq.message.message_id)
+    await state.set_state(ClientCatalogStates.waiting_order_comment)
+    await cq.message.edit_text("Напишите комментарий к заказу обычным текстом:")
+    await cq.answer()
 
 
 async def _render_checkout_confirm(
@@ -793,36 +803,99 @@ async def _render_checkout_confirm(
     shop_id: int,
     back_cb: str,
 ):
+    await state.update_data(
+        checkout_confirm_shop_id=shop_id,
+        checkout_confirm_back_cb=back_cb,
+    )
+    text, reply_markup = await _build_checkout_confirm_payload(
+        db=db,
+        state=state,
+        user_id=cq.from_user.id,
+        shop_id=shop_id,
+        back_cb=back_cb,
+    )
+    await cq.message.edit_text(text, reply_markup=reply_markup)
+    await cq.answer()
+
+
+async def _build_checkout_confirm_payload(
+    db: Database,
+    state: FSMContext,
+    user_id: int,
+    shop_id: int,
+    back_cb: str,
+):
     cart = CartRepo(db)
     data = await state.get_data()
-    items = await cart.list_items(cq.from_user.id, business_type=data.get("cart_kind"))
+    items = await cart.list_items(user_id, business_type=data.get("cart_kind"))
     shop_items = [it for it in items if int(it["shop_id"]) == shop_id]
     if not shop_items:
-        await cq.message.edit_text("Корзина пуста для этой точки.", reply_markup=kb_back("cart_menu"))
-        await cq.answer()
-        return
+        return "Корзина пуста для этой точки.", kb_back("cart_menu")
     total = sum(float(i["price"]) * int(i["quantity"]) for i in shop_items)
     lines = ["Подтвердите оформление заказа:"]
     for i in shop_items:
         line_total = float(i["price"]) * int(i["quantity"])
         lines.append(f"- {i['name']} x{i['quantity']} = {line_total}")
     lines.append(f"\nИтого: {total}")
-    await cq.message.edit_text(
+    comment = (data.get("order_comment") or "").strip()
+    lines.append("📝 Комментарий:")
+    lines.append(comment or "— не добавлен —")
+    return (
         "\n".join(lines),
-        reply_markup=kb_checkout_confirm(
+        kb_checkout_confirm(
             confirm_cb=f"c:checkout_confirm:{shop_id}",
             back_cb=back_cb,
         ),
     )
-    await cq.answer()
 
 
-async def _create_order_for_shop(cq: CallbackQuery, db: Database, shop_id: int):
+@router.message(ClientCatalogStates.waiting_order_comment)
+async def save_order_comment(message: Message, state: FSMContext, db: Database):
+    if not message.text:
+        await message.answer("Отправьте комментарий текстом.")
+        return
+    comment = message.text.strip()
+    await state.update_data(order_comment=comment)
+    await state.set_state(None)
+
+    data = await state.get_data()
+    shop_id = data.get("checkout_confirm_shop_id")
+    back_cb = data.get("checkout_confirm_back_cb") or "c:back:cart"
+    if not shop_id:
+        await message.answer("Не удалось обновить комментарий. Попробуйте снова.")
+        return
+
+    text, reply_markup = await _build_checkout_confirm_payload(
+        db=db,
+        state=state,
+        user_id=message.from_user.id,
+        shop_id=int(shop_id),
+        back_cb=back_cb,
+    )
+    screen_message_id = await get_screen_message_id(state, db, "client", message.chat.id)
+    if screen_message_id:
+        await message.bot.edit_message_text(
+            text=text,
+            chat_id=message.chat.id,
+            message_id=screen_message_id,
+            reply_markup=reply_markup,
+        )
+    else:
+        await message.answer(text, reply_markup=reply_markup)
+
+
+async def _create_order_for_shop(cq: CallbackQuery, db: Database, state: FSMContext, shop_id: int):
     orders = OrdersRepo(db)
+    data = await state.get_data()
+    comment = (data.get("order_comment") or "").strip()
 
     # 1) создаём заказ
     try:
-        order_id = await orders.create_order_from_cart(shop_id=shop_id, client_user_id=cq.from_user.id)
+        order_id = await orders.create_order_from_cart(
+            shop_id=shop_id,
+            client_user_id=cq.from_user.id,
+            comment=comment,
+        )
     except ValueError:
         await cq.message.edit_text(
             "Не удалось создать заказ: корзина пуста или заказ уже создан для этой точки.",
@@ -841,5 +914,10 @@ async def _create_order_for_shop(cq: CallbackQuery, db: Database, shop_id: int):
     await cq.message.edit_text(
         f"✅ Заказ успешно создан!\nНомер заказа: {order_id}\nСтатус: new",
         reply_markup=kb_after_order(),
+    )
+    await state.update_data(
+        order_comment="",
+        checkout_confirm_shop_id=None,
+        checkout_confirm_back_cb=None,
     )
     await cq.answer()

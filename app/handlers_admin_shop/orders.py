@@ -120,7 +120,16 @@ async def order_card(cq: CallbackQuery, db: Database, state: FSMContext):
         return
 
     items = await orders.get_order_items(order_id)
-    lines = [f"Заказ #{o['id']}", f"Статус: {o['status']}", f"Сумма: {o['total_amount']}", "", "Состав:"]
+    comment = (o.get("comment") or "").strip()
+    comment_line = comment or "— не добавлен —"
+    lines = [
+        f"Заказ #{o['id']}",
+        f"Статус: {o['status']}",
+        f"Сумма: {o['total_amount']}",
+        f"Комментарий: {comment_line}",
+        "",
+        "Состав:",
+    ]
     for it in items:
         lines.append(f"- {it['name']} x{it['quantity']} = {it['price_at_moment']}")
 
@@ -156,7 +165,16 @@ async def set_status(cq: CallbackQuery, db: Database):
     # перерисуем карточку заказа
     o = await orders.get_order(order_id)
     items = await orders.get_order_items(order_id)
-    lines = [f"Заказ #{o['id']}", f"Статус: {o['status']}", f"Сумма: {o['total_amount']}", "", "Состав:"]
+    comment = (o.get("comment") or "").strip()
+    comment_line = comment or "— не добавлен —"
+    lines = [
+        f"Заказ #{o['id']}",
+        f"Статус: {o['status']}",
+        f"Сумма: {o['total_amount']}",
+        f"Комментарий: {comment_line}",
+        "",
+        "Состав:",
+    ]
     for it in items:
         lines.append(f"- {it['name']} x{it['quantity']} = {it['price_at_moment']}")
     await safe_edit_text(cq.message, "\n".join(lines), reply_markup=kb_order_card(order_id))

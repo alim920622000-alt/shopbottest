@@ -60,6 +60,7 @@ CREATE TABLE IF NOT EXISTS orders (
     client_user_id INTEGER NOT NULL,
     status TEXT NOT NULL,
     total_amount REAL NOT NULL,
+    comment TEXT DEFAULT '',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME,
     FOREIGN KEY (shop_id) REFERENCES shops(id) ON DELETE CASCADE
