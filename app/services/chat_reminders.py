@@ -59,7 +59,7 @@ async def schedule_chat_reminder(
     recipient_user_id: int,
     recipient_kind: str,
     message_text: str,
-    delay_seconds: int = 180,
+    delay_seconds: int = 60,
 ) -> None:
     repo = ChatRemindersRepo(db)
     now = datetime.utcnow()

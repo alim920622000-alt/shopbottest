@@ -19,6 +19,7 @@ from app.services.chat_ui import (
 )
 from app.services.chat_reminders import cancel_chat_reminder, schedule_chat_reminder, is_chat_reminder_text
 from app.services.screen import clear_state_keep_screen, set_screen_message_id, show_screen
+from app.services.chat_screen_controller import ChatScreenController
 from app.utils.tg_safe import safe_delete_cq_message
 
 router = Router()
@@ -39,6 +40,16 @@ def kb_chat_list(order_ids: list[int]) -> InlineKeyboardMarkup:
 def kb_chat_nav_rows() -> list[list[InlineKeyboardButton]]:
     nav = kb_nav(home_cb="a:home", back_cb="a:chat")
     return [list(row) for row in nav.inline_keyboard]
+
+
+def make_chat_render_fn(db: Database, state: FSMContext):
+    async def render():
+        data = await state.get_data()
+        order_id = int(data.get("chat_order_id") or 0)
+        page = int(data.get("chat_page") or 1)
+        return await build_chat_payload(db, order_id, page=page)
+
+    return render
 
 
 @router.callback_query(F.data == "a:chat")
@@ -115,6 +126,10 @@ async def open_chat(cq: CallbackQuery, state: FSMContext, db: Database):
         )
         await state.update_data(chat_message_id=message_id)
     else:
+        chat = ChatRepo(db)
+        total_messages = await chat.count_messages(order_id)
+        total_pages = max(1, calc_total_pages(total_messages, PAGE_SIZE))
+        await state.update_data(chat_page=total_pages)
         await state.update_data(chat_message_id=cq.message.message_id)
         await set_screen_message_id(state, db, "admin_shop", cq.message.chat.id, cq.message.message_id)
         await render_chat(cq, db, order_id, page=10**9)
@@ -134,7 +149,7 @@ async def paginate_chat(cq: CallbackQuery, state: FSMContext, db: Database):
     if not order or int(order["shop_id"]) not in shop_ids:
         await cq.answer("Чат недоступен.", show_alert=True)
         return
-    await state.update_data(chat_order_id=order_id, chat_message_id=cq.message.message_id)
+    await state.update_data(chat_order_id=order_id, chat_page=page, chat_message_id=cq.message.message_id)
     await set_screen_message_id(state, db, "admin_shop", cq.message.chat.id, cq.message.message_id)
     await render_chat(cq, db, order_id, page=page)
     await cq.answer()
@@ -166,30 +181,16 @@ async def send_chat_message(message: Message, state: FSMContext, db: Database):
     await cancel_chat_reminder(db, order_id, message.from_user.id, "admin_shop")
     if order.get("client_user_id"):
         await schedule_chat_reminder(db, order_id, int(order["client_user_id"]), "client", text)
-    data = await state.get_data()
-    chat_message_id = data.get("chat_message_id")
-    chat = ChatRepo(db)
     total_messages = await chat.count_messages(order_id)
-    total_pages = calc_total_pages(total_messages, PAGE_SIZE)
-    page = total_pages
-    offset = (total_pages - page) * PAGE_SIZE
-    messages = await chat.list_messages(order_id, limit=PAGE_SIZE, offset=offset)
-    text = build_chat_screen_text(order_id, messages, False, "shop")
-    kb = build_chat_screen_kb(order_id, page, total_pages, "a", kb_chat_nav_rows())
-    if chat_message_id:
-        try:
-            await message.bot.edit_message_text(
-                text,
-                chat_id=message.chat.id,
-                message_id=int(chat_message_id),
-                reply_markup=kb,
-            )
-            await set_screen_message_id(state, db, "admin_shop", message.chat.id, int(chat_message_id))
-        except Exception:
-            new_message = await message.answer(text, reply_markup=kb)
-            await state.update_data(chat_message_id=new_message.message_id)
-            await set_screen_message_id(state, db, "admin_shop", message.chat.id, new_message.message_id)
-    else:
-        new_message = await message.answer(text, reply_markup=kb)
-        await state.update_data(chat_message_id=new_message.message_id)
-        await set_screen_message_id(state, db, "admin_shop", message.chat.id, new_message.message_id)
+    total_pages = max(1, calc_total_pages(total_messages, PAGE_SIZE))
+    await state.update_data(chat_page=total_pages)
+
+    controller = ChatScreenController(
+        bot=message.bot,
+        chat_id=message.chat.id,
+        state=state,
+        render=make_chat_render_fn(db, state),
+        db=db,
+        bot_kind="admin_shop",
+    )
+    await controller.refresh_after_user_message(message)
