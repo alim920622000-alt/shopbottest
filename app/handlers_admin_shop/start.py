@@ -30,7 +30,7 @@ async def start_cmd(message: Message, db: Database, state: FSMContext):
         return
 
     await clear_state_keep_screen(state, db, "admin_shop", message.chat.id)
-    await remember_admin_prev_target(state, "a:home")
+    await remember_admin_prev_target(db, "admin_shop", message.from_user.id, "a:home")
     controller = ChatScreenController(
         bot=message.bot,
         chat_id=message.chat.id,
@@ -48,7 +48,7 @@ async def start_cmd(message: Message, db: Database, state: FSMContext):
 async def home(cq, db: Database, state: FSMContext):
     # Быстрый возврат в главное меню
     await clear_state_keep_screen(state, db, "admin_shop", cq.message.chat.id)
-    await remember_admin_prev_target(state, "a:home")
+    await remember_admin_prev_target(db, "admin_shop", cq.from_user.id, "a:home")
     controller = ChatScreenController(
         bot=cq.bot,
         chat_id=cq.message.chat.id,

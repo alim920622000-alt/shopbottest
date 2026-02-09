@@ -28,6 +28,7 @@ from app.services.chat_reminders import cancel_chat_reminder, schedule_chat_remi
 from app.services.screen import clear_state_keep_screen, show_screen
 from app.services.chat_screen_controller import ChatScreenController
 from app.services.client_ui_state import remember_client_screen
+from app.services.notification_center import parse_notif_context, NOTIF_SRC_MSGS
 from app.utils.tg_safe import safe_delete_cq_message
 
 router = Router()
@@ -125,11 +126,12 @@ async def _render_order_card(
         await cq.message.edit_text(text, reply_markup=reply_markup)
 
 
-def kb_chat_nav_rows(order_id: int) -> list[list[InlineKeyboardButton]]:
+def kb_chat_nav_rows(order_id: int, back_target: str | None = None) -> list[list[InlineKeyboardButton]]:
+    back_cb = back_target or f"c:order:{order_id}"
     return [
         [
             InlineKeyboardButton(text="🏠 Главная", callback_data="c:home"),
-            InlineKeyboardButton(text="🔙 Назад", callback_data=f"c:order:{order_id}"),
+            InlineKeyboardButton(text="🔙 Назад", callback_data=back_cb),
         ],
     ]
 
@@ -137,6 +139,7 @@ def make_chat_render_fn(db: Database, state: FSMContext):
     async def render():
         data = await state.get_data()
         order_id = int(data.get("chat_order_id") or 0)
+        back_target = data.get("chat_back_target")
 
         orders = OrdersRepo(db)
         order = await orders.get_order(order_id)
@@ -157,7 +160,7 @@ def make_chat_render_fn(db: Database, state: FSMContext):
         messages = await chat.list_messages(order_id, limit=PAGE_SIZE, offset=offset)
 
         text = build_chat_screen_text(order_id, messages, False, business_type)
-        kb = build_chat_screen_kb(order_id, page, total_pages, "c", kb_chat_nav_rows(order_id))
+        kb = build_chat_screen_kb(order_id, page, total_pages, "c", kb_chat_nav_rows(order_id, back_target))
         return text, kb
 
     return render
@@ -302,6 +305,7 @@ async def render_chat(
     order_id: int,
     page: int,
     show_hint: bool,
+    back_target: str | None = None,
 ) -> None:
     orders = OrdersRepo(db)
     order = await orders.get_order(order_id)
@@ -317,7 +321,7 @@ async def render_chat(
     messages = await chat.list_messages(order_id, limit=PAGE_SIZE, offset=offset)
 
     text = build_chat_screen_text(order_id, messages, show_hint, business_type)
-    kb = build_chat_screen_kb(order_id, page, total_pages, "c", kb_chat_nav_rows(order_id))
+    kb = build_chat_screen_kb(order_id, page, total_pages, "c", kb_chat_nav_rows(order_id, back_target))
     await cq.message.edit_text(text, reply_markup=kb)
 
 
@@ -328,6 +332,11 @@ async def open_chat(cq: CallbackQuery, state: FSMContext, db: Database):
         # Для напоминания сначала удаляем сообщение.
         await safe_delete_cq_message(cq)
     order_id = int(cq.data.split(":")[2])
+    src, page = parse_notif_context(cq.data)
+    back_target = None
+    if src == NOTIF_SRC_MSGS:
+        page = max(1, page or 1)
+        back_target = "c:notif:msgs" if page == 1 else f"c:notif:msgp:{page}"
     orders = OrdersRepo(db)
     o = await orders.get_order(order_id)
     if not o or int(o["client_user_id"]) != cq.from_user.id:
@@ -337,7 +346,7 @@ async def open_chat(cq: CallbackQuery, state: FSMContext, db: Database):
 
     await cancel_chat_reminder(db, order_id, cq.from_user.id, "client")
     await state.set_state(ClientChatStates.active)
-    await state.update_data(chat_order_id=order_id)
+    await state.update_data(chat_order_id=order_id, chat_back_target=back_target)
 
     # сразу ставим страницу на последнюю
     chat = ChatRepo(db)
@@ -345,7 +354,11 @@ async def open_chat(cq: CallbackQuery, state: FSMContext, db: Database):
     total_pages = max(1, calc_total_pages(total_messages, PAGE_SIZE))
     await state.update_data(chat_page=total_pages)
     await state.update_data(user_id=cq.from_user.id)
-    await remember_client_screen(state, "chat", {"order_id": order_id, "page": total_pages})
+    await remember_client_screen(
+        state,
+        "chat",
+        {"order_id": order_id, "page": total_pages, "back_target": back_target},
+    )
 
     controller = ChatScreenController(
         bot=cq.bot,
@@ -372,9 +385,15 @@ async def paginate_chat(cq: CallbackQuery, state: FSMContext, db: Database):
         await cq.answer("Чат недоступен.", show_alert=True)
         return
 
-    await state.update_data(chat_order_id=order_id, chat_page=page)
+    data = await state.get_data()
+    back_target = data.get("chat_back_target")
+    await state.update_data(chat_order_id=order_id, chat_page=page, chat_back_target=back_target)
     await state.update_data(user_id=cq.from_user.id)
-    await remember_client_screen(state, "chat", {"order_id": order_id, "page": page})
+    await remember_client_screen(
+        state,
+        "chat",
+        {"order_id": order_id, "page": page, "back_target": back_target},
+    )
 
     controller = ChatScreenController(
         bot=cq.bot,
@@ -421,7 +440,12 @@ async def send_chat_message(message: Message, state: FSMContext, db: Database):
     total_pages = max(1, calc_total_pages(total_messages, PAGE_SIZE))
     await state.update_data(chat_page=total_pages)
     await state.update_data(user_id=message.from_user.id)
-    await remember_client_screen(state, "chat", {"order_id": order_id, "page": total_pages})
+    back_target = data.get("chat_back_target")
+    await remember_client_screen(
+        state,
+        "chat",
+        {"order_id": order_id, "page": total_pages, "back_target": back_target},
+    )
 
     # 4) удалить сообщение пользователя + пересоздать экран
     controller = ChatScreenController(

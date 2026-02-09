@@ -7,12 +7,13 @@ from aiogram.fsm.context import FSMContext
 from app.db.database import Database
 from app.handlers_admin_restaurant.orders import list_orders as render_orders, render_order_card_by_id
 from app.handlers_admin_restaurant.extra import chat_list as render_chats, open_chat_by_order_id
+from app.handlers_admin_restaurant.products import list_categories as render_categories
 from app.handlers_admin_restaurant.start import kb_admin_main
+from app.repositories.admin_nav_repo import AdminNavRepo
 from app.services.notification_center import (
     build_admin_center_payload,
     build_admin_orders_payload,
     build_admin_messages_payload,
-    NOTIF_PREV_TARGET_KEY,
     NOTIF_SCREEN_KEY,
 )
 from app.services.screen import show_main_menu, show_screen
@@ -78,9 +79,8 @@ async def notif_back(cq: CallbackQuery, db: Database, state: FSMContext) -> None
 
 @router.callback_query(F.data == "r:notif:return")
 async def notif_return(cq: CallbackQuery, db: Database, state: FSMContext) -> None:
-    data = await state.get_data()
-    target = data.get(NOTIF_PREV_TARGET_KEY)
-    await state.update_data({NOTIF_PREV_TARGET_KEY: None, NOTIF_SCREEN_KEY: None})
+    target = await AdminNavRepo(db).get_prev_target("admin_restaurant", cq.from_user.id)
+    await state.update_data({NOTIF_SCREEN_KEY: None})
     if not target or target == "r:home":
         await show_main_menu(
             cq.bot,
@@ -97,6 +97,10 @@ async def notif_return(cq: CallbackQuery, db: Database, state: FSMContext) -> No
         await render_orders(cq, db, state)
         await cq.answer()
         return
+    if target == "r:cats":
+        await render_categories(cq, db)
+        await cq.answer()
+        return
     if target.startswith("r:order:"):
         order_id = int(target.split(":")[2])
         await render_order_card_by_id(cq, db, state, order_id)
@@ -108,7 +112,7 @@ async def notif_return(cq: CallbackQuery, db: Database, state: FSMContext) -> No
         return
     if target.startswith("r:chat:"):
         order_id = int(target.split(":")[2])
-        await open_chat_by_order_id(cq, state, db, order_id)
+        await open_chat_by_order_id(cq, state, db, order_id, "r:chat")
         await cq.answer()
         return
     await show_main_menu(

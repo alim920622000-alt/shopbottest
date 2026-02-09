@@ -11,16 +11,17 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from app.db.database import Database
 from app.repositories.chat_reads_repo import ChatReadsRepo
 from app.repositories.order_seen_repo import OrderSeenRepo
+from app.repositories.admin_nav_repo import AdminNavRepo
 from app.services.client_ui_state import remember_client_screen
 from app.services.chat_screen_controller import ChatScreenController
 from app.services.screen import show_screen
 
 PAGE_SIZE = 6
-ADMIN_PREV_TARGET_KEY = "admin_prev_target"
-NOTIF_PREV_TARGET_KEY = "notif_prev_target"
 NOTIF_PREV_SCREEN_KEY = "notif_prev_ui_screen"
 NOTIF_PREV_PAYLOAD_KEY = "notif_prev_ui_payload"
 NOTIF_SCREEN_KEY = "notif_screen"
+NOTIF_SRC_ORDERS = "notif_orders"
+NOTIF_SRC_MSGS = "notif_msgs"
 
 
 def _calc_total_pages(total: int, page_size: int = PAGE_SIZE) -> int:
@@ -72,6 +73,23 @@ def _build_pagination(prefix: str, base: str, page: int, total_pages: int) -> li
     return buttons
 
 
+def _with_notif_context(base: str, src: str, page: int) -> str:
+    return f"{base}:src={src}:p={page}"
+
+
+def parse_notif_context(callback_data: str) -> tuple[str | None, int | None]:
+    src = None
+    page = None
+    for part in callback_data.split(":")[3:]:
+        if part.startswith("src="):
+            src = part.split("=", 1)[1]
+        elif part.startswith("p="):
+            value = part.split("=", 1)[1]
+            if value.isdigit():
+                page = int(value)
+    return src, page
+
+
 async def build_client_center_payload(db: Database, user_id: int) -> tuple[str, InlineKeyboardMarkup]:
     unread_orders = await ChatReadsRepo(db).count_unread_orders("client", user_id)
     text = f"🔔 Уведомления\n\n💬 Новые сообщения: {unread_orders}"
@@ -102,7 +120,7 @@ async def build_client_messages_payload(
         rows.append([
             InlineKeyboardButton(
                 text=f"💬 Заказ #{order_id} · {unread_count} {suffix}",
-                callback_data=f"c:chat:{order_id}",
+                callback_data=_with_notif_context(f"c:chat:{order_id}", NOTIF_SRC_MSGS, page),
             )
         ])
 
@@ -158,7 +176,7 @@ async def build_admin_orders_payload(
         rows.append([
             InlineKeyboardButton(
                 text=f"{order_label} Заказ #{order_id} · {time_str}",
-                callback_data=f"{prefix}:order:{order_id}",
+                callback_data=_with_notif_context(f"{prefix}:order:{order_id}", NOTIF_SRC_ORDERS, page),
             )
         ])
 
@@ -190,7 +208,7 @@ async def build_admin_messages_payload(
         rows.append([
             InlineKeyboardButton(
                 text=f"💬 Заказ #{order_id} · {unread_count} новых",
-                callback_data=f"{prefix}:chat:{order_id}",
+                callback_data=_with_notif_context(f"{prefix}:chat:{order_id}", NOTIF_SRC_MSGS, page),
             )
         ])
 
@@ -201,8 +219,8 @@ async def build_admin_messages_payload(
     return "💬 Новые сообщения", InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-async def remember_admin_prev_target(state: FSMContext, target: str) -> None:
-    await state.update_data({ADMIN_PREV_TARGET_KEY: target})
+async def remember_admin_prev_target(db: Database, bot_kind: str, user_id: int, target: str) -> None:
+    await AdminNavRepo(db).set_prev_target(bot_kind, user_id, target)
 
 
 async def show_notification_center(
@@ -237,11 +255,6 @@ async def show_notification_center(
         return
 
     role = bot_kind
-    if store_prev:
-        data = await state.get_data()
-        if data.get(NOTIF_SCREEN_KEY) != "center":
-            prev_target = data.get(ADMIN_PREV_TARGET_KEY) or f"{_prefix_for_role(role)}:home"
-            await state.update_data({NOTIF_PREV_TARGET_KEY: prev_target})
     await state.update_data(user_id=user_id)
     await state.update_data({NOTIF_SCREEN_KEY: "center"})
     text, kb = await build_admin_center_payload(db, role, user_id)

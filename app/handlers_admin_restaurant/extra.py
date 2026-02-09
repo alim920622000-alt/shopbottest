@@ -24,7 +24,7 @@ from app.services.chat_ui import (
 from app.services.chat_reminders import cancel_chat_reminder, schedule_chat_reminder, is_chat_reminder_text
 from app.services.screen import clear_state_keep_screen, show_main_menu, set_screen_message_id, show_screen
 from app.services.chat_screen_controller import ChatScreenController
-from app.services.notification_center import remember_admin_prev_target
+from app.services.notification_center import remember_admin_prev_target, parse_notif_context, NOTIF_SRC_MSGS
 from app.utils.tg_safe import safe_delete_cq_message
 from app.ui.nav import kb_nav
 
@@ -282,8 +282,8 @@ def kb_chat_list(order_ids: list[int]) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
 
-def kb_chat_nav_rows() -> list[list[InlineKeyboardButton]]:
-    nav = kb_nav(home_cb="r:home", back_cb="r:chat")
+def kb_chat_nav_rows(back_target: str) -> list[list[InlineKeyboardButton]]:
+    nav = kb_nav(home_cb="r:home", back_cb=back_target)
     return [list(row) for row in nav.inline_keyboard]
 
 
@@ -292,7 +292,8 @@ def make_chat_render_fn(db: Database, state: FSMContext):
         data = await state.get_data()
         order_id = int(data.get("chat_order_id") or 0)
         page = int(data.get("chat_page") or 1)
-        return await build_chat_payload(db, order_id, page=page)
+        back_target = data.get("chat_back_target") or "r:chat"
+        return await build_chat_payload(db, order_id, page=page, back_target=back_target)
 
     return render
 
@@ -303,7 +304,7 @@ async def chat_list(cq: CallbackQuery, db: Database, state: FSMContext):
         await cq.answer("Нет доступа", show_alert=True)
         return
     await clear_state_keep_screen(state, db, "admin_restaurant", cq.message.chat.id)
-    await remember_admin_prev_target(state, "r:chat")
+    await remember_admin_prev_target(db, "admin_restaurant", cq.from_user.id, "r:chat")
     ids = await get_admin_restaurant_ids(db, cq.from_user.id)
     if not ids:
         await cq.message.edit_text("Нет доступа.", reply_markup=kb_back_home())
@@ -319,7 +320,12 @@ async def chat_list(cq: CallbackQuery, db: Database, state: FSMContext):
     await cq.answer()
 
 
-async def build_chat_payload(db: Database, order_id: int, page: int) -> tuple[str, InlineKeyboardMarkup]:
+async def build_chat_payload(
+    db: Database,
+    order_id: int,
+    page: int,
+    back_target: str,
+) -> tuple[str, InlineKeyboardMarkup]:
     chat = ChatRepo(db)
     total_messages = await chat.count_messages(order_id)
     total_pages = calc_total_pages(total_messages, PAGE_SIZE)
@@ -328,20 +334,26 @@ async def build_chat_payload(db: Database, order_id: int, page: int) -> tuple[st
     messages = await chat.list_messages(order_id, limit=PAGE_SIZE, offset=offset)
 
     text = build_chat_screen_text(order_id, messages, False, "restaurant")
-    kb = build_chat_screen_kb(order_id, page, total_pages, "r", kb_chat_nav_rows())
+    kb = build_chat_screen_kb(order_id, page, total_pages, "r", kb_chat_nav_rows(back_target))
     return text, kb
 
 
-async def render_chat(cq: CallbackQuery, db: Database, order_id: int, page: int) -> None:
-    text, kb = await build_chat_payload(db, order_id, page)
+async def render_chat(cq: CallbackQuery, db: Database, order_id: int, page: int, back_target: str) -> None:
+    text, kb = await build_chat_payload(db, order_id, page, back_target)
     await cq.message.edit_text(text, reply_markup=kb)
 
 
-async def open_chat_by_order_id(cq: CallbackQuery, state: FSMContext, db: Database, order_id: int) -> None:
+async def open_chat_by_order_id(
+    cq: CallbackQuery,
+    state: FSMContext,
+    db: Database,
+    order_id: int,
+    back_target: str,
+) -> None:
     if not await is_restaurant_admin(db, cq.from_user.id):
         await cq.answer("Нет доступа", show_alert=True)
         return
-    await remember_admin_prev_target(state, f"r:chat:{order_id}")
+    await remember_admin_prev_target(db, "admin_restaurant", cq.from_user.id, f"r:chat:{order_id}")
     orders = OrdersRepo(db)
     order = await orders.get_order(order_id)
     ids = await get_admin_restaurant_ids(db, cq.from_user.id)
@@ -351,11 +363,11 @@ async def open_chat_by_order_id(cq: CallbackQuery, state: FSMContext, db: Databa
         return
     await cancel_chat_reminder(db, order_id, cq.from_user.id, "admin_restaurant")
     await state.set_state(RestaurantChatStates.active)
-    await state.update_data(chat_order_id=order_id)
+    await state.update_data(chat_order_id=order_id, chat_back_target=back_target)
     if is_chat_reminder_text(cq.message.text if cq.message else None):
         # Для напоминания удаляем сообщение и рисуем чат новым экраном.
         await safe_delete_cq_message(cq)
-        text, kb = await build_chat_payload(db, order_id, page=10**9)
+        text, kb = await build_chat_payload(db, order_id, page=10**9, back_target=back_target)
         message_id = await show_screen(
             bot=cq.bot,
             chat_id=cq.message.chat.id,
@@ -373,7 +385,7 @@ async def open_chat_by_order_id(cq: CallbackQuery, state: FSMContext, db: Databa
         await state.update_data(chat_page=total_pages)
         await state.update_data(chat_message_id=cq.message.message_id)
         await set_screen_message_id(state, db, "admin_restaurant", cq.message.chat.id, cq.message.message_id)
-        await render_chat(cq, db, order_id, page=10**9)
+        await render_chat(cq, db, order_id, page=10**9, back_target=back_target)
     await ChatReadsRepo(db).mark_read(order_id, "admin_restaurant", cq.from_user.id)
     await cq.answer()
 
@@ -381,7 +393,12 @@ async def open_chat_by_order_id(cq: CallbackQuery, state: FSMContext, db: Databa
 @router.callback_query(F.data.startswith("r:chat:"))
 async def open_chat(cq: CallbackQuery, state: FSMContext, db: Database):
     order_id = int(cq.data.split(":")[2])
-    await open_chat_by_order_id(cq, state, db, order_id)
+    src, page = parse_notif_context(cq.data)
+    back_target = "r:chat"
+    if src == NOTIF_SRC_MSGS:
+        page = max(1, page or 1)
+        back_target = f"r:notif:msgs" if page == 1 else f"r:notif:mp:{page}"
+    await open_chat_by_order_id(cq, state, db, order_id, back_target)
 
 
 @router.callback_query(F.data.startswith("r:chatp:"))
@@ -397,9 +414,16 @@ async def paginate_chat(cq: CallbackQuery, state: FSMContext, db: Database):
     if not order or int(order["shop_id"]) not in ids:
         await cq.answer("Чат недоступен.", show_alert=True)
         return
-    await state.update_data(chat_order_id=order_id, chat_page=page, chat_message_id=cq.message.message_id)
+    data = await state.get_data()
+    back_target = data.get("chat_back_target") or "r:chat"
+    await state.update_data(
+        chat_order_id=order_id,
+        chat_page=page,
+        chat_message_id=cq.message.message_id,
+        chat_back_target=back_target,
+    )
     await set_screen_message_id(state, db, "admin_restaurant", cq.message.chat.id, cq.message.message_id)
-    await render_chat(cq, db, order_id, page=page)
+    await render_chat(cq, db, order_id, page=page, back_target=back_target)
     await cq.answer()
 
 

@@ -169,6 +169,7 @@ async def render_client_screen(db: Database, state: FSMContext) -> tuple[str, In
 
     if screen == "chat":
         order_id = int(payload.get("order_id") or data.get("chat_order_id") or 0)
+        back_target = payload.get("back_target") or data.get("chat_back_target")
         orders = OrdersRepo(db)
         order = await orders.get_order(order_id)
         shop_info = await ShopsRepo(db).get(int(order["shop_id"])) if order else None
@@ -181,7 +182,7 @@ async def render_client_screen(db: Database, state: FSMContext) -> tuple[str, In
         offset = (total_pages - page) * PAGE_SIZE
         messages = await chat.list_messages(order_id, limit=PAGE_SIZE, offset=offset)
         text = build_chat_screen_text(order_id, messages, False, business_type)
-        kb = build_chat_screen_kb(order_id, page, total_pages, "c", kb_chat_nav_rows(order_id))
+        kb = build_chat_screen_kb(order_id, page, total_pages, "c", kb_chat_nav_rows(order_id, back_target))
         return text, kb
 
     if screen == "notif_center":

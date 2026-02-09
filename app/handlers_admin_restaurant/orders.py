@@ -8,7 +8,7 @@ from app.handlers_admin_restaurant.utils import get_admin_restaurant_ids
 from app.repositories.orders_repo import OrdersRepo
 from app.repositories.order_seen_repo import OrderSeenRepo
 from app.services.chat_reminders import is_chat_reminder_text
-from app.services.notification_center import remember_admin_prev_target
+from app.services.notification_center import remember_admin_prev_target, parse_notif_context, NOTIF_SRC_ORDERS
 from app.services.screen import clear_state_keep_screen, show_screen
 from app.utils.tg_safe import safe_delete_cq_message
 
@@ -31,6 +31,10 @@ def kb_orders_list(order_ids: list[int]) -> InlineKeyboardMarkup:
 
 
 def kb_order_card(order_id: int) -> InlineKeyboardMarkup:
+    return kb_order_card_with_back(order_id, "r:orders")
+
+
+def kb_order_card_with_back(order_id: int, back_target: str) -> InlineKeyboardMarkup:
     kb = [
         [InlineKeyboardButton(text="👨‍🍳 Готовится", callback_data=f"r:st:{order_id}:preparing")],
         [InlineKeyboardButton(text="🚚 В пути", callback_data=f"r:st:{order_id}:on_the_way")],
@@ -39,13 +43,17 @@ def kb_order_card(order_id: int) -> InlineKeyboardMarkup:
         [InlineKeyboardButton(text="💬 Чат по заказу", callback_data=f"r:chat:{order_id}")],
         [
             InlineKeyboardButton(text="🏠 Главная", callback_data="r:home"),
-            InlineKeyboardButton(text="🔙 Назад", callback_data="r:orders"),
+            InlineKeyboardButton(text="🔙 Назад", callback_data=back_target),
         ],
     ]
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
 
-async def build_order_card_payload(db: Database, order_id: int) -> tuple[str, InlineKeyboardMarkup]:
+async def build_order_card_payload(
+    db: Database,
+    order_id: int,
+    back_target: str,
+) -> tuple[str, InlineKeyboardMarkup]:
     orders = OrdersRepo(db)
     o = await orders.get_order(order_id)
     if not o:
@@ -55,7 +63,7 @@ async def build_order_card_payload(db: Database, order_id: int) -> tuple[str, In
                 inline_keyboard=[
                     [
                         InlineKeyboardButton(text="🏠 Главная", callback_data="r:home"),
-                        InlineKeyboardButton(text="🔙 Назад", callback_data="r:orders"),
+                        InlineKeyboardButton(text="🔙 Назад", callback_data=back_target),
                     ]
                 ]
             ),
@@ -75,11 +83,11 @@ async def build_order_card_payload(db: Database, order_id: int) -> tuple[str, In
     for it in items:
         lines.append(f"- {it['name']} x{it['quantity']} = {it['price_at_moment']}")
 
-    return "\n".join(lines), kb_order_card(order_id)
+    return "\n".join(lines), kb_order_card_with_back(order_id, back_target)
 
 
 async def render_order_card_by_id(cq: CallbackQuery, db: Database, state: FSMContext, order_id: int) -> None:
-    text, kb = await build_order_card_payload(db, order_id)
+    text, kb = await build_order_card_payload(db, order_id, "r:orders")
     await show_screen(
         bot=cq.bot,
         chat_id=cq.from_user.id,
@@ -93,13 +101,13 @@ async def render_order_card_by_id(cq: CallbackQuery, db: Database, state: FSMCon
 
 
 async def render_order_card(cq: CallbackQuery, db: Database, order_id: int):
-    text, kb = await build_order_card_payload(db, order_id)
+    text, kb = await build_order_card_payload(db, order_id, "r:orders")
     await cq.message.edit_text(text, reply_markup=kb)
 
 
 @router.callback_query(F.data == "r:orders")
 async def list_orders(cq: CallbackQuery, db: Database, state: FSMContext):
-    await remember_admin_prev_target(state, "r:orders")
+    await remember_admin_prev_target(db, "admin_restaurant", cq.from_user.id, "r:orders")
     ids = await get_admin_restaurant_ids(db, cq.from_user.id)
     if not ids:
         await cq.message.edit_text(
@@ -138,12 +146,18 @@ async def list_orders(cq: CallbackQuery, db: Database, state: FSMContext):
 @router.callback_query(F.data.startswith("r:order:"))
 async def order_card(cq: CallbackQuery, db: Database, state: FSMContext):
     order_id = int(cq.data.split(":")[2])
-    await remember_admin_prev_target(state, f"r:order:{order_id}")
+    await remember_admin_prev_target(db, "admin_restaurant", cq.from_user.id, f"r:order:{order_id}")
+    src, page = parse_notif_context(cq.data)
+    back_target = "r:orders"
+    if src == NOTIF_SRC_ORDERS:
+        page = max(1, page or 1)
+        back_target = f"r:notif:orders" if page == 1 else f"r:notif:op:{page}"
+    await state.update_data(order_back_target=back_target)
     if is_chat_reminder_text(cq.message.text if cq.message else None):
         # Напоминание удаляем и показываем карточку через screen.py.
         await clear_state_keep_screen(state, db, "admin_restaurant", cq.from_user.id)
         await safe_delete_cq_message(cq)
-        text, kb = await build_order_card_payload(db, order_id)
+        text, kb = await build_order_card_payload(db, order_id, back_target)
         await show_screen(
             bot=cq.bot,
             chat_id=cq.from_user.id,
@@ -154,13 +168,14 @@ async def order_card(cq: CallbackQuery, db: Database, state: FSMContext):
             reply_markup=kb,
         )
     else:
-        await render_order_card(cq, db, order_id)
+        text, kb = await build_order_card_payload(db, order_id, back_target)
+        await cq.message.edit_text(text, reply_markup=kb)
     await OrderSeenRepo(db).mark_order_seen(order_id, "admin_restaurant", cq.from_user.id)
     await cq.answer()
 
 
 @router.callback_query(F.data.startswith("r:st:"))
-async def set_status(cq: CallbackQuery, db: Database):
+async def set_status(cq: CallbackQuery, db: Database, state: FSMContext):
     _, _, order_id_str, status = cq.data.split(":", 3)
     order_id = int(order_id_str)
 
@@ -168,7 +183,10 @@ async def set_status(cq: CallbackQuery, db: Database):
     await orders.set_status(order_id, status)
 
     await cq.answer("Статус обновлён")
-    await render_order_card(cq, db, order_id)
+    data = await state.get_data()
+    back_target = data.get("order_back_target") or "r:orders"
+    text, kb = await build_order_card_payload(db, order_id, back_target)
+    await cq.message.edit_text(text, reply_markup=kb)
 
 
 @router.callback_query(F.data == "r:back:main")

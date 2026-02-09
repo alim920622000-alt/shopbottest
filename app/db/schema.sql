@@ -166,6 +166,14 @@ CREATE TABLE IF NOT EXISTS ui_screens (
     PRIMARY KEY (bot_kind, chat_id)
 );
 
+CREATE TABLE IF NOT EXISTS admin_nav_state (
+    bot_kind TEXT NOT NULL,
+    user_id INTEGER NOT NULL,
+    prev_target TEXT NOT NULL,
+    updated_at DATETIME,
+    PRIMARY KEY (bot_kind, user_id)
+);
+
 -- Индексы под частые выборки
 -- CREATE INDEX IF NOT EXISTS idx_categories_shop ON categories(shop_id);
 CREATE INDEX IF NOT EXISTS idx_products_shop ON products(shop_id);

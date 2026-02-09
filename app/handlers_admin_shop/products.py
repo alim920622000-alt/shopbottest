@@ -15,6 +15,7 @@ from app.services.search_utils import normalize_text
 from app.config import get_settings
 from app.services.screen import clear_state_keep_screen, show_main_menu
 from app.repositories.categories_repo import CategoriesRepo
+from app.services.notification_center import remember_admin_prev_target
 
 
 def is_superadmin(user_id: int) -> bool:
@@ -119,6 +120,7 @@ async def _get_shop_id_for_admin(db: Database, user_id: int) -> int | None:
 
 @router.callback_query(F.data == "a:products")
 async def products_root(cq: CallbackQuery, db: Database):
+    await remember_admin_prev_target(db, "admin_shop", cq.from_user.id, "a:products")
     if not await is_shop_admin(db, cq.from_user.id):
         await cq.answer("Нет доступа", show_alert=True)
         return
