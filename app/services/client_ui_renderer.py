@@ -30,6 +30,7 @@ from app.repositories.orders_repo import OrdersRepo
 from app.repositories.products_repo import ProductsRepo
 from app.repositories.shops_repo import ShopsRepo
 from app.services.chat_ui import PAGE_SIZE, build_chat_screen_kb, build_chat_screen_text, calc_total_pages
+from app.services.notification_center import build_client_center_payload, build_client_messages_payload
 
 
 async def _render_main() -> tuple[str, InlineKeyboardMarkup | None]:
@@ -182,6 +183,17 @@ async def render_client_screen(db: Database, state: FSMContext) -> tuple[str, In
         text = build_chat_screen_text(order_id, messages, False, business_type)
         kb = build_chat_screen_kb(order_id, page, total_pages, "c", kb_chat_nav_rows(order_id))
         return text, kb
+
+    if screen == "notif_center":
+        if not user_id:
+            return await _render_main()
+        return await build_client_center_payload(db, int(user_id))
+
+    if screen == "notif_messages":
+        if not user_id:
+            return await _render_main()
+        page = int(payload.get("page") or 1)
+        return await build_client_messages_payload(db, int(user_id), page)
 
     if screen == "cabinet":
         if not user_id:

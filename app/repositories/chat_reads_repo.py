@@ -111,7 +111,7 @@ class ChatReadsRepo:
         viewer_user_id: int,
         limit: int,
         offset: int,
-    ) -> Sequence[int]:
+    ) -> Sequence[dict]:
         async with self.db.conn() as conn:
             cur = await conn.execute(
                 """
@@ -131,7 +131,10 @@ class ChatReadsRepo:
                 (viewer_role, viewer_user_id, viewer_user_id, limit, offset),
             )
             rows = await cur.fetchall()
-            return [int(row["order_id"]) for row in rows]
+            return [
+                {"order_id": int(row["order_id"]), "unread_count": int(row["cnt"])}
+                for row in rows
+            ]
 
     async def get_total_unread_count(self, viewer_role: str, viewer_user_id: int) -> int:
         async with self.db.conn() as conn:
@@ -145,6 +148,28 @@ class ChatReadsRepo:
                     AND r.viewer_user_id = ?
                 WHERE m.sender_user_id != ?
                   AND m.id > COALESCE(r.last_read_message_id, 0)
+                """,
+                (viewer_role, viewer_user_id, viewer_user_id),
+            )
+            row = await cur.fetchone()
+            return int(row["cnt"]) if row else 0
+
+    async def count_unread_orders(self, viewer_role: str, viewer_user_id: int) -> int:
+        async with self.db.conn() as conn:
+            cur = await conn.execute(
+                """
+                SELECT COUNT(*) as cnt
+                FROM (
+                    SELECT m.order_id
+                    FROM order_chat_messages m
+                    LEFT JOIN order_chat_reads r
+                        ON r.order_id = m.order_id
+                        AND r.viewer_role = ?
+                        AND r.viewer_user_id = ?
+                    WHERE m.sender_user_id != ?
+                      AND m.id > COALESCE(r.last_read_message_id, 0)
+                    GROUP BY m.order_id
+                )
                 """,
                 (viewer_role, viewer_user_id, viewer_user_id),
             )

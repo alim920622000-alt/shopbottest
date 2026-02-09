@@ -85,14 +85,14 @@ class OrderSeenRepo:
         viewer_user_id: int,
         limit: int,
         offset: int,
-    ) -> Sequence[int]:
+    ) -> Sequence[dict]:
         business_type = self._business_type(viewer_role)
         if not business_type:
             return []
         async with self.db.conn() as conn:
             cur = await conn.execute(
                 """
-                SELECT o.id
+                SELECT o.id, o.created_at
                 FROM orders o
                 JOIN shops s ON s.id = o.shop_id
                 JOIN shop_admins sa ON sa.shop_id = o.shop_id AND sa.user_id = ?
@@ -111,7 +111,10 @@ class OrderSeenRepo:
                 (viewer_user_id, business_type, viewer_role, viewer_user_id, limit, offset),
             )
             rows = await cur.fetchall()
-            return [int(row["id"]) for row in rows]
+            return [
+                {"id": int(row["id"]), "created_at": row["created_at"]}
+                for row in rows
+            ]
 
     def _business_type(self, viewer_role: str) -> str | None:
         if viewer_role == "admin_shop":

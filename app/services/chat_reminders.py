@@ -9,7 +9,10 @@ from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from app.db.database import Database
+from aiogram.fsm.storage.base import BaseStorage
+
 from app.repositories.chat_reminders_repo import ChatRemindersRepo, ChatReminder
+from app.services.notification_center import show_notification_center_for_user
 
 logger = logging.getLogger(__name__)
 
@@ -85,14 +88,15 @@ async def cancel_chat_reminder(
     await repo.cancel_pending(order_id, recipient_user_id, recipient_kind)
 
 
-async def _send_reminder(bot: Bot, reminder: ChatReminder) -> bool:
-    text = (
-        f"Новое сообщение по заказу #{reminder.order_id}\n"
-        f"{_normalize_preview(reminder.last_message_preview)}"
-    )
-    reply_markup = _build_reminder_keyboard(reminder.order_id, reminder.recipient_kind)
+async def _send_reminder(bot: Bot, db: Database, reminder: ChatReminder, storage: BaseStorage) -> bool:
     try:
-        await bot.send_message(reminder.recipient_user_id, text, reply_markup=reply_markup)
+        await show_notification_center_for_user(
+            bot=bot,
+            db=db,
+            bot_kind=reminder.recipient_kind,
+            user_id=reminder.recipient_user_id,
+            storage=storage,
+        )
         return True
     except (TelegramBadRequest, TelegramForbiddenError):
         return False
@@ -102,6 +106,7 @@ async def run_chat_reminder_worker(
     bot: Bot,
     db: Database,
     bot_kind: str,
+    storage: BaseStorage,
     poll_interval: int = 25,
 ) -> None:
     repo = ChatRemindersRepo(db)
@@ -110,7 +115,7 @@ async def run_chat_reminder_worker(
             now = datetime.utcnow()
             reminders = await repo.list_due(bot_kind, now)
             for reminder in reminders:
-                sent = await _send_reminder(bot, reminder)
+                sent = await _send_reminder(bot, db, reminder, storage)
                 if sent:
                     await repo.mark_sent(reminder.id)
                 else:

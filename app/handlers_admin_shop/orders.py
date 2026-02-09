@@ -11,6 +11,7 @@ from app.repositories.orders_repo import OrdersRepo
 from app.repositories.order_seen_repo import OrderSeenRepo
 from app.services.chat_reminders import is_chat_reminder_text
 from app.services.screen import clear_state_keep_screen, show_main_menu, show_screen
+from app.services.notification_center import remember_admin_prev_target
 
 router = Router()
 
@@ -47,8 +48,43 @@ def kb_order_card(order_id: int) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
 
+async def build_order_card_payload(db: Database, order_id: int) -> tuple[str, InlineKeyboardMarkup, bool]:
+    orders = OrdersRepo(db)
+    o = await orders.get_order(order_id)
+    if not o:
+        return "Заказ не найден.", kb_back_admin(), False
+    items = await orders.get_order_items(order_id)
+    comment = (o.get("comment") or "").strip()
+    comment_line = comment or "— не добавлен —"
+    lines = [
+        f"Заказ #{o['id']}",
+        f"Статус: {o['status']}",
+        f"Сумма: {o['total_amount']}",
+        f"Комментарий: {comment_line}",
+        "",
+        "Состав:",
+    ]
+    for it in items:
+        lines.append(f"- {it['name']} x{it['quantity']} = {it['price_at_moment']}")
+    return "\n".join(lines), kb_order_card(order_id), True
+
+
+async def render_order_card_by_id(cq: CallbackQuery, db: Database, state: FSMContext, order_id: int) -> None:
+    text, kb, _ = await build_order_card_payload(db, order_id)
+    await show_screen(
+        bot=cq.bot,
+        chat_id=cq.from_user.id,
+        state=state,
+        db=db,
+        bot_kind="admin_shop",
+        text=text,
+        reply_markup=kb,
+    )
+
+
 @router.callback_query(F.data == "a:home")
 async def admin_home(cq: CallbackQuery, db: Database, state: FSMContext):
+    await remember_admin_prev_target(state, "a:home")
     if is_chat_reminder_text(cq.message.text if cq.message else None):
         # Напоминание удаляем и показываем домашний экран через screen.py.
         await clear_state_keep_screen(state, db, "admin_shop", cq.from_user.id)
@@ -69,7 +105,8 @@ async def admin_home(cq: CallbackQuery, db: Database, state: FSMContext):
 
 
 @router.callback_query(F.data == "a:orders")
-async def list_orders(cq: CallbackQuery, db: Database):
+async def list_orders(cq: CallbackQuery, db: Database, state: FSMContext):
+    await remember_admin_prev_target(state, "a:orders")
     shop_ids = await get_admin_shop_ids(db, cq.from_user.id)
     if not shop_ids:
         await safe_edit_text(cq.message, "Нет доступа.", reply_markup=kb_back_admin())
@@ -98,43 +135,9 @@ async def list_orders(cq: CallbackQuery, db: Database):
 @router.callback_query(F.data.startswith("a:order:"))
 async def order_card(cq: CallbackQuery, db: Database, state: FSMContext):
     order_id = int(cq.data.split(":")[2])
+    await remember_admin_prev_target(state, f"a:order:{order_id}")
 
-    orders = OrdersRepo(db)
-    o = await orders.get_order(order_id)
-    if not o:
-        if is_chat_reminder_text(cq.message.text if cq.message else None):
-            # Напоминание удаляем и рисуем экран через screen.py.
-            await clear_state_keep_screen(state, db, "admin_shop", cq.from_user.id)
-            await safe_delete_cq_message(cq)
-            await show_screen(
-                bot=cq.bot,
-                chat_id=cq.from_user.id,
-                state=state,
-                db=db,
-                bot_kind="admin_shop",
-                text="Заказ не найден.",
-                reply_markup=kb_back_admin(),
-            )
-        else:
-            await safe_edit_text(cq.message, "Заказ не найден.", reply_markup=kb_back_admin())
-        await cq.answer()
-        return
-
-    items = await orders.get_order_items(order_id)
-    comment = (o.get("comment") or "").strip()
-    comment_line = comment or "— не добавлен —"
-    lines = [
-        f"Заказ #{o['id']}",
-        f"Статус: {o['status']}",
-        f"Сумма: {o['total_amount']}",
-        f"Комментарий: {comment_line}",
-        "",
-        "Состав:",
-    ]
-    for it in items:
-        lines.append(f"- {it['name']} x{it['quantity']} = {it['price_at_moment']}")
-
-    text = "\n".join(lines)
+    text, kb, found = await build_order_card_payload(db, order_id)
     if is_chat_reminder_text(cq.message.text if cq.message else None):
         # Напоминание удаляем и показываем карточку заказа заново.
         await clear_state_keep_screen(state, db, "admin_shop", cq.from_user.id)
@@ -146,11 +149,12 @@ async def order_card(cq: CallbackQuery, db: Database, state: FSMContext):
             db=db,
             bot_kind="admin_shop",
             text=text,
-            reply_markup=kb_order_card(order_id),
+            reply_markup=kb,
         )
     else:
-        await safe_edit_text(cq.message, text, reply_markup=kb_order_card(order_id))
-    await OrderSeenRepo(db).mark_order_seen(order_id, "admin_shop", cq.from_user.id)
+        await safe_edit_text(cq.message, text, reply_markup=kb)
+    if found:
+        await OrderSeenRepo(db).mark_order_seen(order_id, "admin_shop", cq.from_user.id)
     await cq.answer()
 
 

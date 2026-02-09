@@ -8,6 +8,7 @@ from app.handlers_admin_restaurant.utils import get_admin_restaurant_ids
 from app.repositories.orders_repo import OrdersRepo
 from app.repositories.order_seen_repo import OrderSeenRepo
 from app.services.chat_reminders import is_chat_reminder_text
+from app.services.notification_center import remember_admin_prev_target
 from app.services.screen import clear_state_keep_screen, show_screen
 from app.utils.tg_safe import safe_delete_cq_message
 
@@ -77,13 +78,28 @@ async def build_order_card_payload(db: Database, order_id: int) -> tuple[str, In
     return "\n".join(lines), kb_order_card(order_id)
 
 
+async def render_order_card_by_id(cq: CallbackQuery, db: Database, state: FSMContext, order_id: int) -> None:
+    text, kb = await build_order_card_payload(db, order_id)
+    await show_screen(
+        bot=cq.bot,
+        chat_id=cq.from_user.id,
+        state=state,
+        db=db,
+        bot_kind="admin_restaurant",
+        text=text,
+        reply_markup=kb,
+    )
+    await OrderSeenRepo(db).mark_order_seen(order_id, "admin_restaurant", cq.from_user.id)
+
+
 async def render_order_card(cq: CallbackQuery, db: Database, order_id: int):
     text, kb = await build_order_card_payload(db, order_id)
     await cq.message.edit_text(text, reply_markup=kb)
 
 
 @router.callback_query(F.data == "r:orders")
-async def list_orders(cq: CallbackQuery, db: Database):
+async def list_orders(cq: CallbackQuery, db: Database, state: FSMContext):
+    await remember_admin_prev_target(state, "r:orders")
     ids = await get_admin_restaurant_ids(db, cq.from_user.id)
     if not ids:
         await cq.message.edit_text(
@@ -122,6 +138,7 @@ async def list_orders(cq: CallbackQuery, db: Database):
 @router.callback_query(F.data.startswith("r:order:"))
 async def order_card(cq: CallbackQuery, db: Database, state: FSMContext):
     order_id = int(cq.data.split(":")[2])
+    await remember_admin_prev_target(state, f"r:order:{order_id}")
     if is_chat_reminder_text(cq.message.text if cq.message else None):
         # Напоминание удаляем и показываем карточку через screen.py.
         await clear_state_keep_screen(state, db, "admin_restaurant", cq.from_user.id)

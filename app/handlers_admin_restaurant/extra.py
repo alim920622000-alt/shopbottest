@@ -24,6 +24,7 @@ from app.services.chat_ui import (
 from app.services.chat_reminders import cancel_chat_reminder, schedule_chat_reminder, is_chat_reminder_text
 from app.services.screen import clear_state_keep_screen, show_main_menu, set_screen_message_id, show_screen
 from app.services.chat_screen_controller import ChatScreenController
+from app.services.notification_center import remember_admin_prev_target
 from app.utils.tg_safe import safe_delete_cq_message
 from app.ui.nav import kb_nav
 
@@ -302,6 +303,7 @@ async def chat_list(cq: CallbackQuery, db: Database, state: FSMContext):
         await cq.answer("Нет доступа", show_alert=True)
         return
     await clear_state_keep_screen(state, db, "admin_restaurant", cq.message.chat.id)
+    await remember_admin_prev_target(state, "r:chat")
     ids = await get_admin_restaurant_ids(db, cq.from_user.id)
     if not ids:
         await cq.message.edit_text("Нет доступа.", reply_markup=kb_back_home())
@@ -335,12 +337,11 @@ async def render_chat(cq: CallbackQuery, db: Database, order_id: int, page: int)
     await cq.message.edit_text(text, reply_markup=kb)
 
 
-@router.callback_query(F.data.startswith("r:chat:"))
-async def open_chat(cq: CallbackQuery, state: FSMContext, db: Database):
+async def open_chat_by_order_id(cq: CallbackQuery, state: FSMContext, db: Database, order_id: int) -> None:
     if not await is_restaurant_admin(db, cq.from_user.id):
         await cq.answer("Нет доступа", show_alert=True)
         return
-    order_id = int(cq.data.split(":")[2])
+    await remember_admin_prev_target(state, f"r:chat:{order_id}")
     orders = OrdersRepo(db)
     order = await orders.get_order(order_id)
     ids = await get_admin_restaurant_ids(db, cq.from_user.id)
@@ -387,6 +388,12 @@ async def open_chat(cq: CallbackQuery, state: FSMContext, db: Database):
     if max_id:
         await ChatReadsRepo(db).set_last_read_message_id(order_id, "admin_restaurant", cq.from_user.id, max_id)
     await cq.answer()
+
+
+@router.callback_query(F.data.startswith("r:chat:"))
+async def open_chat(cq: CallbackQuery, state: FSMContext, db: Database):
+    order_id = int(cq.data.split(":")[2])
+    await open_chat_by_order_id(cq, state, db, order_id)
 
 
 @router.callback_query(F.data.startswith("r:chatp:"))

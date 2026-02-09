@@ -9,6 +9,7 @@ from app.handlers_admin_restaurant.extra import router as extra_router
 from app.db.database import Database, DBConfig
 from app.handlers_admin_restaurant.start import router as start_router
 from app.handlers_admin_restaurant.orders import router as orders_router
+from app.handlers_admin_restaurant.notifications import router as notifications_router
 from app.handlers_admin_restaurant.fallback import router as fallback_router
 from app.services.chat_reminders import run_chat_reminder_worker
 
@@ -30,9 +31,10 @@ async def main():
     dp.include_router(orders_router)
     dp.include_router(products_router)
     dp.include_router(extra_router)
+    dp.include_router(notifications_router)
     dp.include_router(fallback_router)
 
-    asyncio.create_task(run_chat_reminder_worker(bot, db, "admin_restaurant"))
+    asyncio.create_task(run_chat_reminder_worker(bot, db, "admin_restaurant", dp.storage))
     await dp.start_polling(bot)
 
 

@@ -7,6 +7,7 @@ from app.db.database import Database
 from app.handlers_admin_shop.utils import is_shop_admin
 from app.services.screen import clear_state_keep_screen
 from app.services.chat_screen_controller import ChatScreenController
+from app.services.notification_center import remember_admin_prev_target
 
 router = Router()
 
@@ -29,6 +30,7 @@ async def start_cmd(message: Message, db: Database, state: FSMContext):
         return
 
     await clear_state_keep_screen(state, db, "admin_shop", message.chat.id)
+    await remember_admin_prev_target(state, "a:home")
     controller = ChatScreenController(
         bot=message.bot,
         chat_id=message.chat.id,
@@ -46,6 +48,7 @@ async def start_cmd(message: Message, db: Database, state: FSMContext):
 async def home(cq, db: Database, state: FSMContext):
     # Быстрый возврат в главное меню
     await clear_state_keep_screen(state, db, "admin_shop", cq.message.chat.id)
+    await remember_admin_prev_target(state, "a:home")
     controller = ChatScreenController(
         bot=cq.bot,
         chat_id=cq.message.chat.id,

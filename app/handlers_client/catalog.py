@@ -906,7 +906,7 @@ async def _create_order_for_shop(cq: CallbackQuery, db: Database, state: FSMCont
 
     # 2) уведомляем админов точки, но не ломаем оформление заказа при ошибках
     try:
-        await notify_admins_new_order(db, order_id=order_id, shop_id=shop_id)
+        await notify_admins_new_order(db, order_id=order_id, shop_id=shop_id, storage=state.storage)
     except Exception:
         logger.warning("Не удалось отправить уведомление админам по заказу %s", order_id, exc_info=True)
 

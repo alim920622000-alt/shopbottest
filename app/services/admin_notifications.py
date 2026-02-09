@@ -2,13 +2,14 @@ import logging
 import os
 
 from aiogram import Bot
+from aiogram.fsm.storage.base import BaseStorage
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 from app.db.database import Database
 from app.repositories.admins_repo import AdminsRepo
-from app.repositories.client_profiles_repo import ClientProfilesRepo
 from app.repositories.orders_repo import OrdersRepo
 from app.repositories.shops_repo import ShopsRepo
+from app.services.notification_center import show_notification_center_for_user
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +27,12 @@ def _build_admin_keyboard(order_id: int, business_type: str) -> InlineKeyboardMa
     )
 
 
-async def notify_admins_new_order(db: Database, order_id: int, shop_id: int) -> None:
+async def notify_admins_new_order(
+    db: Database,
+    order_id: int,
+    shop_id: int,
+    storage: BaseStorage,
+) -> None:
     # Определяем тип точки, чтобы выбрать правильный админ-бот и callbacks.
     shops = ShopsRepo(db)
     shop = await shops.get(shop_id)
@@ -49,36 +55,19 @@ async def notify_admins_new_order(db: Database, order_id: int, shop_id: int) -> 
     if not admin_ids:
         return
 
-    orders = OrdersRepo(db)
-    order = await orders.get_order(order_id)
-    items = await orders.get_order_items(order_id)
-
-    lines = [f"🔔 Новый заказ #{order_id}"]
-    if order and order.get("total_amount") is not None:
-        lines.append(f"Сумма: {order['total_amount']}")
-    if items:
-        total_qty = sum(int(i["quantity"]) for i in items)
-        lines.append(f"Кол-во позиций: {total_qty}")
-
-    if order and order.get("client_user_id"):
-        profiles = ClientProfilesRepo(db)
-        profile = await profiles.get(int(order["client_user_id"]))
-        if profile:
-            if (profile.get("full_name") or "").strip():
-                lines.append(f"Клиент: {profile['full_name']}")
-            if (profile.get("phone") or "").strip():
-                lines.append(f"Телефон: {profile['phone']}")
-            if (profile.get("address") or "").strip():
-                lines.append(f"Адрес: {profile['address']}")
-
-    text = "\n".join(lines)
-    reply_markup = _build_admin_keyboard(order_id, business_type)
+    bot_kind = "admin_shop" if business_type == "shop" else "admin_restaurant"
 
     bot = Bot(token=token)
     try:
         for uid in admin_ids:
             try:
-                await bot.send_message(uid, text, reply_markup=reply_markup)
+                await show_notification_center_for_user(
+                    bot=bot,
+                    db=db,
+                    bot_kind=bot_kind,
+                    user_id=uid,
+                    storage=storage,
+                )
             except Exception:
                 logger.warning(
                     "Не удалось отправить уведомление админу %s по заказу %s",

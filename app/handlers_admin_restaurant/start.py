@@ -8,6 +8,7 @@ from app.handlers_admin_restaurant.utils import is_restaurant_admin
 from app.services.screen import clear_state_keep_screen, show_main_menu
 from app.services.chat_screen_controller import ChatScreenController
 from app.services.chat_reminders import is_chat_reminder_text
+from app.services.notification_center import remember_admin_prev_target
 from app.utils.tg_safe import safe_delete_cq_message
 
 router = Router()
@@ -30,6 +31,7 @@ async def start_cmd(message: Message, db: Database, state: FSMContext):
         await message.answer("Нет доступа. Ваш user_id не назначен админом ресторана.")
         return
     await clear_state_keep_screen(state, db, "admin_restaurant", message.chat.id)
+    await remember_admin_prev_target(state, "r:home")
     controller = ChatScreenController(
         bot=message.bot,
         chat_id=message.chat.id,
@@ -46,6 +48,7 @@ async def start_cmd(message: Message, db: Database, state: FSMContext):
 @router.callback_query(F.data == "r:home")
 async def home(cq: CallbackQuery, db: Database, state: FSMContext):
     await clear_state_keep_screen(state, db, "admin_restaurant", cq.message.chat.id)
+    await remember_admin_prev_target(state, "r:home")
     if is_chat_reminder_text(cq.message.text if cq.message else None):
         # Для напоминания удаляем сообщение и показываем главный экран через screen.py.
         await safe_delete_cq_message(cq)
