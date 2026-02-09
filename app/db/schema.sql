@@ -162,6 +162,7 @@ CREATE TABLE IF NOT EXISTS ui_screens (
     bot_kind TEXT NOT NULL,
     chat_id INTEGER NOT NULL,
     screen_message_id INTEGER,
+    screen_kind TEXT,
     updated_at TEXT,
     PRIMARY KEY (bot_kind, chat_id)
 );

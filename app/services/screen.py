@@ -9,6 +9,7 @@ from app.db.database import Database
 from app.repositories.ui_screen_repo import UiScreenRepo
 
 SCREEN_MESSAGE_ID_KEY = "screen_message_id"
+SCREEN_KIND_KEY = "screen_kind"
 
 
 async def get_screen_message_id(
@@ -34,14 +35,15 @@ async def set_screen_message_id(
     bot_kind: str,
     chat_id: int,
     message_id: int,
+    screen_kind: str = "screen",
 ) -> None:
     await state.update_data({SCREEN_MESSAGE_ID_KEY: message_id})
     repo = UiScreenRepo(db)
-    await repo.set(bot_kind, chat_id, message_id)
+    await repo.set(bot_kind, chat_id, message_id, screen_kind)
 
 
 async def clear_screen_message_id(state: FSMContext, db: Database, bot_kind: str, chat_id: int) -> None:
-    await state.update_data({SCREEN_MESSAGE_ID_KEY: None})
+    await state.update_data({SCREEN_MESSAGE_ID_KEY: None, SCREEN_KIND_KEY: None})
     repo = UiScreenRepo(db)
     await repo.clear(bot_kind, chat_id)
 
@@ -78,6 +80,7 @@ async def show_screen(
     bot_kind: str,
     text: str,
     reply_markup: InlineKeyboardMarkup | None,
+    screen_kind: str = "screen",
 ) -> int:
     screen_message_id = await get_screen_message_id(state, db, bot_kind, chat_id)
     if screen_message_id:
@@ -89,7 +92,7 @@ async def show_screen(
             pass
 
     message = await bot.send_message(chat_id=chat_id, text=text, reply_markup=reply_markup)
-    await set_screen_message_id(state, db, bot_kind, chat_id, message.message_id)
+    await set_screen_message_id(state, db, bot_kind, chat_id, message.message_id, screen_kind)
     return message.message_id
 
 

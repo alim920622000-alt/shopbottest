@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from datetime import datetime
+import asyncio
 from math import ceil
 
 from aiogram import Bot
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.base import StorageKey, BaseStorage
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
@@ -15,6 +17,7 @@ from app.repositories.admin_nav_repo import AdminNavRepo
 from app.services.client_ui_state import remember_client_screen
 from app.services.chat_screen_controller import ChatScreenController
 from app.services.screen import show_screen
+from app.repositories.ui_screen_repo import UiScreenRepo
 
 PAGE_SIZE = 6
 NOTIF_PREV_SCREEN_KEY = "notif_prev_ui_screen"
@@ -22,6 +25,60 @@ NOTIF_PREV_PAYLOAD_KEY = "notif_prev_ui_payload"
 NOTIF_SCREEN_KEY = "notif_screen"
 NOTIF_SRC_ORDERS = "notif_orders"
 NOTIF_SRC_MSGS = "notif_msgs"
+
+_ADMIN_SCREEN_LOCKS: dict[tuple[str, int], asyncio.Lock] = {}
+
+
+def get_admin_screen_lock(bot_kind: str, user_id: int) -> asyncio.Lock:
+    key = (bot_kind, user_id)
+    if key not in _ADMIN_SCREEN_LOCKS:
+        _ADMIN_SCREEN_LOCKS[key] = asyncio.Lock()
+    return _ADMIN_SCREEN_LOCKS[key]
+
+
+async def _safe_delete_message(bot: Bot, chat_id: int, message_id: int) -> None:
+    try:
+        await bot.delete_message(chat_id=chat_id, message_id=message_id)
+    except Exception:
+        # Безопасно игнорируем ошибки удаления.
+        return
+
+
+async def _try_edit_message(
+    bot: Bot,
+    chat_id: int,
+    message_id: int,
+    text: str,
+    reply_markup: InlineKeyboardMarkup | None,
+) -> bool:
+    try:
+        await bot.edit_message_text(
+            chat_id=chat_id,
+            message_id=message_id,
+            text=text,
+            reply_markup=reply_markup,
+        )
+        return True
+    except TelegramBadRequest as exc:
+        if "message is not modified" in str(exc):
+            return True
+        return False
+    except Exception:
+        return False
+
+
+async def ensure_admin_screen_state(
+    db: Database,
+    bot_kind: str,
+    user_id: int,
+    fallback_message_id: int | None = None,
+) -> None:
+    repo = UiScreenRepo(db)
+    screen_message_id, _ = await repo.get_info(bot_kind, user_id)
+    if not screen_message_id and fallback_message_id:
+        screen_message_id = fallback_message_id
+    if screen_message_id:
+        await repo.set(bot_kind, user_id, screen_message_id, "screen")
 
 
 def _calc_total_pages(total: int, page_size: int = PAGE_SIZE) -> int:
@@ -253,15 +310,14 @@ async def show_notification_center(
         )
         await controller.refresh()
         return
-
-    role = bot_kind
-    await state.update_data(user_id=user_id)
-    await state.update_data({NOTIF_SCREEN_KEY: "center"})
-    text, kb = await build_admin_center_payload(db, role, user_id)
-    if bot_kind == "admin_shop":
-        await show_screen(bot, user_id, state, db, "admin_shop", text, kb)
-    else:
-        await show_screen(bot, user_id, state, db, "admin_restaurant", text, kb)
+    # Для админов центр уведомлений управляется отдельно, без FSM.
+    await show_notification_center_for_user(
+        bot=bot,
+        db=db,
+        bot_kind=bot_kind,
+        user_id=user_id,
+        storage=state.storage,
+    )
 
 
 async def show_notification_center_for_user(
@@ -271,8 +327,25 @@ async def show_notification_center_for_user(
     user_id: int,
     storage: BaseStorage,
 ) -> None:
-    state = FSMContext(
-        storage=storage,
-        key=StorageKey(bot_id=bot.id, chat_id=user_id, user_id=user_id),
-    )
-    await show_notification_center(bot, db, bot_kind, state, user_id, store_prev=True)
+    if bot_kind == "client":
+        state = FSMContext(
+            storage=storage,
+            key=StorageKey(bot_id=bot.id, chat_id=user_id, user_id=user_id),
+        )
+        await show_notification_center(bot, db, bot_kind, state, user_id, store_prev=True)
+        return
+
+    lock = get_admin_screen_lock(bot_kind, user_id)
+    async with lock:
+        repo = UiScreenRepo(db)
+        screen_message_id, screen_kind = await repo.get_info(bot_kind, user_id)
+        text, kb = await build_admin_center_payload(db, bot_kind, user_id)
+        if screen_kind == "notif_center" and screen_message_id:
+            updated = await _try_edit_message(bot, user_id, screen_message_id, text, kb)
+            if updated:
+                await repo.set(bot_kind, user_id, screen_message_id, "notif_center")
+                return
+        if screen_message_id:
+            await _safe_delete_message(bot, user_id, screen_message_id)
+        message = await bot.send_message(chat_id=user_id, text=text, reply_markup=kb)
+        await repo.set(bot_kind, user_id, message.message_id, "notif_center")

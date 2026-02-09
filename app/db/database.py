@@ -88,6 +88,9 @@ class Database:
         # orders: комментарий клиента
         await add_column("orders", "comment", "comment TEXT DEFAULT ''")
 
+        # ui_screens: тип текущего экрана
+        await add_column("ui_screens", "screen_kind", "screen_kind TEXT")
+
         await connection.execute(
             """
             CREATE TABLE IF NOT EXISTS client_profiles (
@@ -192,6 +195,7 @@ class Database:
                 bot_kind TEXT NOT NULL,
                 chat_id INTEGER NOT NULL,
                 screen_message_id INTEGER,
+                screen_kind TEXT,
                 updated_at TEXT,
                 PRIMARY KEY (bot_kind, chat_id)
             )
