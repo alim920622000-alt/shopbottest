@@ -356,7 +356,19 @@ async def open_chat(cq: CallbackQuery, state: FSMContext, db: Database):
         bot_kind="client",
     )
     await controller.refresh()
-    await ChatReadsRepo(db).set_last_read_at(order_id, "client", cq.from_user.id)
+    async with db.conn() as conn:
+        cur = await conn.execute(
+            """
+            SELECT MAX(id) as max_id
+            FROM order_chat_messages
+            WHERE order_id=?
+            """,
+            (order_id,),
+        )
+        row = await cur.fetchone()
+        max_id = int(row["max_id"]) if row and row["max_id"] is not None else 0
+    if max_id:
+        await ChatReadsRepo(db).set_last_read_message_id(order_id, "client", cq.from_user.id, max_id)
     await cq.answer()
 
 

@@ -22,6 +22,19 @@ class ChatReadsRepo:
             row = await cur.fetchone()
             return str(row["last_read_at"]) if row else None
 
+    async def get_last_read_message_id(self, order_id: int, viewer_role: str, viewer_user_id: int) -> int | None:
+        async with self.db.conn() as conn:
+            cur = await conn.execute(
+                """
+                SELECT last_read_message_id
+                FROM order_chat_reads
+                WHERE order_id=? AND viewer_role=? AND viewer_user_id=?
+                """,
+                (order_id, viewer_role, viewer_user_id),
+            )
+            row = await cur.fetchone()
+            return int(row["last_read_message_id"]) if row else None
+
     async def set_last_read_at(
         self,
         order_id: int,
@@ -52,27 +65,43 @@ class ChatReadsRepo:
                 )
             await conn.commit()
 
-    async def get_unread_count_for_order(self, order_id: int, viewer_role: str, viewer_user_id: int) -> int:
-        last_read_at = await self.get_last_read_at(order_id, viewer_role, viewer_user_id)
+    async def set_last_read_message_id(
+        self,
+        order_id: int,
+        viewer_role: str,
+        viewer_user_id: int,
+        message_id: int,
+    ) -> None:
         async with self.db.conn() as conn:
-            if last_read_at:
-                cur = await conn.execute(
-                    """
-                    SELECT COUNT(*) as cnt
-                    FROM order_chat_messages
-                    WHERE order_id=? AND sender_user_id != ? AND created_at > ?
-                    """,
-                    (order_id, viewer_user_id, last_read_at),
+            await conn.execute(
+                """
+                INSERT INTO order_chat_reads(
+                    order_id,
+                    viewer_role,
+                    viewer_user_id,
+                    last_read_message_id,
+                    last_read_at
                 )
-            else:
-                cur = await conn.execute(
-                    """
-                    SELECT COUNT(*) as cnt
-                    FROM order_chat_messages
-                    WHERE order_id=? AND sender_user_id != ?
-                    """,
-                    (order_id, viewer_user_id),
-                )
+                VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(order_id, viewer_role, viewer_user_id) DO UPDATE SET
+                    last_read_message_id=MAX(order_chat_reads.last_read_message_id, excluded.last_read_message_id)
+                """,
+                (order_id, viewer_role, viewer_user_id, message_id),
+            )
+            await conn.commit()
+
+    async def get_unread_count_for_order(self, order_id: int, viewer_role: str, viewer_user_id: int) -> int:
+        last_read_message_id = await self.get_last_read_message_id(order_id, viewer_role, viewer_user_id)
+        last_read_message_id = last_read_message_id or 0
+        async with self.db.conn() as conn:
+            cur = await conn.execute(
+                """
+                SELECT COUNT(*) as cnt
+                FROM order_chat_messages
+                WHERE order_id=? AND sender_user_id != ? AND id > ?
+                """,
+                (order_id, viewer_user_id, last_read_message_id),
+            )
             row = await cur.fetchone()
             return int(row["cnt"]) if row else 0
 
@@ -93,7 +122,7 @@ class ChatReadsRepo:
                     AND r.viewer_role = ?
                     AND r.viewer_user_id = ?
                 WHERE m.sender_user_id != ?
-                  AND (r.last_read_at IS NULL OR m.created_at > r.last_read_at)
+                  AND m.id > COALESCE(r.last_read_message_id, 0)
                 GROUP BY m.order_id
                 HAVING cnt > 0
                 ORDER BY m.order_id DESC
@@ -115,7 +144,7 @@ class ChatReadsRepo:
                     AND r.viewer_role = ?
                     AND r.viewer_user_id = ?
                 WHERE m.sender_user_id != ?
-                  AND (r.last_read_at IS NULL OR m.created_at > r.last_read_at)
+                  AND m.id > COALESCE(r.last_read_message_id, 0)
                 """,
                 (viewer_role, viewer_user_id, viewer_user_id),
             )
