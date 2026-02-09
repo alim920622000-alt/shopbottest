@@ -14,6 +14,7 @@ from app.handlers_client.kb import kb_client_main, kb_orders_list, kb_chat_order
 from app.repositories.orders_repo import OrdersRepo
 from app.repositories.shops_repo import ShopsRepo
 from app.repositories.chat_repo import ChatRepo
+from app.repositories.chat_reads_repo import ChatReadsRepo
 from app.repositories.admins_repo import AdminsRepo
 from app.services.admin_notifications import notify_admins_order_canceled
 from app.services.chat_ui import (
@@ -355,6 +356,7 @@ async def open_chat(cq: CallbackQuery, state: FSMContext, db: Database):
         bot_kind="client",
     )
     await controller.refresh()
+    await ChatReadsRepo(db).set_last_read_at(order_id, "client", cq.from_user.id)
     await cq.answer()
 
 

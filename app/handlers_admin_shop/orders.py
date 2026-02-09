@@ -8,6 +8,7 @@ from aiogram.fsm.context import FSMContext
 from app.db.database import Database
 from app.handlers_admin_shop.utils import get_admin_shop_ids
 from app.repositories.orders_repo import OrdersRepo
+from app.repositories.order_seen_repo import OrderSeenRepo
 from app.services.chat_reminders import is_chat_reminder_text
 from app.services.screen import clear_state_keep_screen, show_main_menu, show_screen
 
@@ -149,6 +150,7 @@ async def order_card(cq: CallbackQuery, db: Database, state: FSMContext):
         )
     else:
         await safe_edit_text(cq.message, text, reply_markup=kb_order_card(order_id))
+    await OrderSeenRepo(db).mark_order_seen(order_id, "admin_shop", cq.from_user.id)
     await cq.answer()
 
 

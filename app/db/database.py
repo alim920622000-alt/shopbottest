@@ -148,6 +148,30 @@ class Database:
         )
         await connection.execute(
             """
+            CREATE TABLE IF NOT EXISTS order_chat_reads (
+                order_id INTEGER NOT NULL,
+                viewer_role TEXT NOT NULL,
+                viewer_user_id INTEGER NOT NULL,
+                last_read_at DATETIME NOT NULL,
+                PRIMARY KEY (order_id, viewer_role, viewer_user_id),
+                FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+            )
+            """
+        )
+        await connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS order_seen (
+                order_id INTEGER NOT NULL,
+                viewer_role TEXT NOT NULL,
+                viewer_user_id INTEGER NOT NULL,
+                seen_at DATETIME NOT NULL,
+                PRIMARY KEY (order_id, viewer_role, viewer_user_id),
+                FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+            )
+            """
+        )
+        await connection.execute(
+            """
             CREATE TABLE IF NOT EXISTS chat_message_reminders (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 order_id INTEGER NOT NULL,
@@ -195,6 +219,8 @@ class Database:
         await connection.execute("CREATE INDEX IF NOT EXISTS idx_promotions_shop ON promotions(shop_id);")
         await connection.execute("CREATE INDEX IF NOT EXISTS idx_promo_items_promo ON promotion_items(promo_id);")
         await connection.execute("CREATE INDEX IF NOT EXISTS idx_chat_order ON order_chat_messages(order_id, created_at);")
+        await connection.execute("CREATE INDEX IF NOT EXISTS idx_chat_reads_viewer ON order_chat_reads(viewer_role, viewer_user_id);")
+        await connection.execute("CREATE INDEX IF NOT EXISTS idx_order_seen_viewer ON order_seen(viewer_role, viewer_user_id);")
         await connection.execute(
             "CREATE INDEX IF NOT EXISTS idx_chat_reminders_due ON chat_message_reminders(recipient_kind, status, scheduled_at);"
         )

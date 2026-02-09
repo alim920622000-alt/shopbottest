@@ -6,6 +6,7 @@ from app.handlers_admin_restaurant.start import kb_admin_main  # добавь и
 from app.db.database import Database
 from app.handlers_admin_restaurant.utils import get_admin_restaurant_ids
 from app.repositories.orders_repo import OrdersRepo
+from app.repositories.order_seen_repo import OrderSeenRepo
 from app.services.chat_reminders import is_chat_reminder_text
 from app.services.screen import clear_state_keep_screen, show_screen
 from app.utils.tg_safe import safe_delete_cq_message
@@ -137,6 +138,7 @@ async def order_card(cq: CallbackQuery, db: Database, state: FSMContext):
         )
     else:
         await render_order_card(cq, db, order_id)
+    await OrderSeenRepo(db).mark_order_seen(order_id, "admin_restaurant", cq.from_user.id)
     await cq.answer()
 
 

@@ -8,6 +8,7 @@ from aiogram.fsm.state import StatesGroup, State
 from app.db.database import Database
 from app.handlers_admin_shop.utils import get_admin_shop_ids, is_shop_admin
 from app.repositories.chat_repo import ChatRepo
+from app.repositories.chat_reads_repo import ChatReadsRepo
 from app.repositories.orders_repo import OrdersRepo
 from app.handlers_admin_shop.start import kb_admin_main
 from app.ui.nav import kb_nav
@@ -133,6 +134,7 @@ async def open_chat(cq: CallbackQuery, state: FSMContext, db: Database):
         await state.update_data(chat_message_id=cq.message.message_id)
         await set_screen_message_id(state, db, "admin_shop", cq.message.chat.id, cq.message.message_id)
         await render_chat(cq, db, order_id, page=10**9)
+    await ChatReadsRepo(db).set_last_read_at(order_id, "admin_shop", cq.from_user.id)
     await cq.answer()
 
 

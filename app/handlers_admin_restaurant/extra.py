@@ -14,6 +14,7 @@ from app.repositories.promotions_repo import PromotionsRepo
 from app.repositories.categories_repo import CategoriesRepo
 from app.repositories.products_repo import ProductsRepo
 from app.repositories.chat_repo import ChatRepo
+from app.repositories.chat_reads_repo import ChatReadsRepo
 from app.services.chat_ui import (
     PAGE_SIZE,
     build_chat_screen_kb,
@@ -372,6 +373,7 @@ async def open_chat(cq: CallbackQuery, state: FSMContext, db: Database):
         await state.update_data(chat_message_id=cq.message.message_id)
         await set_screen_message_id(state, db, "admin_restaurant", cq.message.chat.id, cq.message.message_id)
         await render_chat(cq, db, order_id, page=10**9)
+    await ChatReadsRepo(db).set_last_read_at(order_id, "admin_restaurant", cq.from_user.id)
     await cq.answer()
 
 
