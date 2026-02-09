@@ -59,23 +59,35 @@ class ChatReadsRepo:
         limit: int,
         offset: int,
     ) -> Sequence[dict]:
+        access_join, access_where, access_params = self._build_access_filter(viewer_role, viewer_user_id)
         async with self.db.conn() as conn:
             cur = await conn.execute(
-                """
+                f"""
                 SELECT m.order_id, COUNT(*) as cnt
                 FROM order_chat_messages m
                 LEFT JOIN order_chat_reads r
                     ON r.order_id = m.order_id
                     AND r.viewer_role = ?
                     AND r.viewer_user_id = ?
+                -- фильтры доступа: не показываем чужие чаты
+                {access_join}
                 WHERE NOT (m.sender_role = ? AND m.sender_user_id = ?)
                   AND m.created_at > COALESCE(r.last_read_at, '1970-01-01')
+                  {access_where}
                 GROUP BY m.order_id
                 HAVING cnt > 0
                 ORDER BY m.order_id DESC
                 LIMIT ? OFFSET ?
                 """,
-                (viewer_role, viewer_user_id, viewer_role, viewer_user_id, limit, offset),
+                (
+                    viewer_role,
+                    viewer_user_id,
+                    viewer_role,
+                    viewer_user_id,
+                    *access_params,
+                    limit,
+                    offset,
+                ),
             )
             rows = await cur.fetchall()
             return [
@@ -84,27 +96,32 @@ class ChatReadsRepo:
             ]
 
     async def get_total_unread_count(self, viewer_role: str, viewer_user_id: int) -> int:
+        access_join, access_where, access_params = self._build_access_filter(viewer_role, viewer_user_id)
         async with self.db.conn() as conn:
             cur = await conn.execute(
-                """
+                f"""
                 SELECT COUNT(*) as cnt
                 FROM order_chat_messages m
                 LEFT JOIN order_chat_reads r
                     ON r.order_id = m.order_id
                     AND r.viewer_role = ?
                     AND r.viewer_user_id = ?
+                -- фильтры доступа: не показываем чужие чаты
+                {access_join}
                 WHERE NOT (m.sender_role = ? AND m.sender_user_id = ?)
                   AND m.created_at > COALESCE(r.last_read_at, '1970-01-01')
+                  {access_where}
                 """,
-                (viewer_role, viewer_user_id, viewer_role, viewer_user_id),
+                (viewer_role, viewer_user_id, viewer_role, viewer_user_id, *access_params),
             )
             row = await cur.fetchone()
             return int(row["cnt"]) if row else 0
 
     async def count_unread_orders(self, viewer_role: str, viewer_user_id: int) -> int:
+        access_join, access_where, access_params = self._build_access_filter(viewer_role, viewer_user_id)
         async with self.db.conn() as conn:
             cur = await conn.execute(
-                """
+                f"""
                 SELECT COUNT(*) as cnt
                 FROM (
                     SELECT m.order_id
@@ -113,12 +130,34 @@ class ChatReadsRepo:
                         ON r.order_id = m.order_id
                         AND r.viewer_role = ?
                         AND r.viewer_user_id = ?
+                    -- фильтры доступа: не показываем чужие чаты
+                    {access_join}
                     WHERE NOT (m.sender_role = ? AND m.sender_user_id = ?)
                       AND m.created_at > COALESCE(r.last_read_at, '1970-01-01')
+                      {access_where}
                     GROUP BY m.order_id
                 )
                 """,
-                (viewer_role, viewer_user_id, viewer_role, viewer_user_id),
+                (viewer_role, viewer_user_id, viewer_role, viewer_user_id, *access_params),
             )
             row = await cur.fetchone()
             return int(row["cnt"]) if row else 0
+
+    def _build_access_filter(self, viewer_role: str, viewer_user_id: int) -> tuple[str, str, list]:
+        # Фильтры доступа, чтобы не показывать чужие чаты в центре уведомлений.
+        if viewer_role == "client":
+            return (
+                "JOIN orders o ON o.id = m.order_id",
+                "AND o.client_user_id = ?",
+                [viewer_user_id],
+            )
+        if viewer_role in {"admin_shop", "admin_restaurant"}:
+            business_type = "shop" if viewer_role == "admin_shop" else "restaurant"
+            return (
+                "JOIN orders o ON o.id = m.order_id "
+                "JOIN shops s ON s.id = o.shop_id "
+                "JOIN shop_admins sa ON sa.shop_id = s.id",
+                "AND sa.user_id = ? AND s.business_type = ?",
+                [viewer_user_id, business_type],
+            )
+        return ("", "", [])
