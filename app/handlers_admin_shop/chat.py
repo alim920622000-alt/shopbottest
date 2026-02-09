@@ -135,19 +135,7 @@ async def open_chat_by_order_id(cq: CallbackQuery, state: FSMContext, db: Databa
         await state.update_data(chat_message_id=cq.message.message_id)
         await set_screen_message_id(state, db, "admin_shop", cq.message.chat.id, cq.message.message_id)
         await render_chat(cq, db, order_id, page=10**9)
-    async with db.conn() as conn:
-        cur = await conn.execute(
-            """
-            SELECT MAX(id) as max_id
-            FROM order_chat_messages
-            WHERE order_id=?
-            """,
-            (order_id,),
-        )
-        row = await cur.fetchone()
-        max_id = int(row["max_id"]) if row and row["max_id"] is not None else 0
-    if max_id:
-        await ChatReadsRepo(db).set_last_read_message_id(order_id, "admin_shop", cq.from_user.id, max_id)
+    await ChatReadsRepo(db).mark_read(order_id, "admin_shop", cq.from_user.id)
     await cq.answer()
 
 

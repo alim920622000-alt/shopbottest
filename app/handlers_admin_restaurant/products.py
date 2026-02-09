@@ -442,7 +442,7 @@ async def list_categories(cq: CallbackQuery, db: Database):
 
     restaurant_id = ids[0]  # MVP: первый ресторан админа
     cats = CategoriesRepo(db)
-    categories = await cats.list_for_shop(restaurant_id, active_only=True)
+    categories = await cats.list_for_business_type("restaurant", active_only=True)
 
     if not categories:
         await cq.message.edit_text(

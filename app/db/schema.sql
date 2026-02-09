@@ -131,7 +131,6 @@ CREATE TABLE IF NOT EXISTS order_chat_reads (
     order_id INTEGER NOT NULL,
     viewer_role TEXT NOT NULL,
     viewer_user_id INTEGER NOT NULL,
-    last_read_message_id INTEGER NOT NULL DEFAULT 0,
     last_read_at DATETIME NOT NULL,
     PRIMARY KEY (order_id, viewer_role, viewer_user_id),
     FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
