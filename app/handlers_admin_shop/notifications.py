@@ -10,11 +10,13 @@ from app.handlers_admin_shop.chat import list_chats as render_chats, open_chat_b
 from app.handlers_admin_shop.products import products_root as render_products
 from app.handlers_admin_shop.start import kb_admin_main
 from app.repositories.admin_nav_repo import AdminNavRepo
+from app.repositories.notif_center_repo import NotifCenterRepo
 from app.services.notification_center import (
     build_admin_center_payload,
     build_admin_orders_payload,
     build_admin_messages_payload,
     NOTIF_SCREEN_KEY,
+    get_notif_center_lock,
 )
 from app.services.screen import show_main_menu, show_screen
 
@@ -24,7 +26,10 @@ router = Router()
 async def _render_center(cq: CallbackQuery, db: Database, state: FSMContext) -> None:
     text, kb = await build_admin_center_payload(db, "admin_shop", cq.from_user.id)
     await state.update_data({NOTIF_SCREEN_KEY: "center"})
-    await show_screen(cq.bot, cq.from_user.id, state, db, "admin_shop", text, kb)
+    lock = get_notif_center_lock("admin_shop", cq.from_user.id)
+    async with lock:
+        message_id = await show_screen(cq.bot, cq.from_user.id, state, db, "admin_shop", text, kb)
+        await NotifCenterRepo(db).set_message_id("admin_shop", cq.from_user.id, message_id)
 
 
 async def _render_orders(cq: CallbackQuery, db: Database, state: FSMContext, page: int) -> None:
@@ -79,6 +84,16 @@ async def notif_back(cq: CallbackQuery, db: Database, state: FSMContext) -> None
 
 @router.callback_query(F.data == "a:notif:return")
 async def notif_return(cq: CallbackQuery, db: Database, state: FSMContext) -> None:
+    lock = get_notif_center_lock("admin_shop", cq.from_user.id)
+    async with lock:
+        repo = NotifCenterRepo(db)
+        message_id = await repo.get_message_id("admin_shop", cq.from_user.id)
+        if message_id:
+            try:
+                await cq.bot.delete_message(chat_id=cq.from_user.id, message_id=message_id)
+            except Exception:
+                pass
+        await repo.clear("admin_shop", cq.from_user.id)
     target = await AdminNavRepo(db).get_prev_target("admin_shop", cq.from_user.id)
     await state.update_data({NOTIF_SCREEN_KEY: None})
     if not target or target == "a:home":
