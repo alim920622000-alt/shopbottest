@@ -18,7 +18,7 @@ from app.services.notification_center import (
     NOTIF_SCREEN_KEY,
     get_notif_center_lock,
 )
-from app.services.screen import show_main_menu, show_screen
+from app.services.screen import get_screen_message_id, show_main_menu, show_screen
 
 router = Router()
 
@@ -35,13 +35,15 @@ async def _render_center(cq: CallbackQuery, db: Database, state: FSMContext) -> 
 async def _render_orders(cq: CallbackQuery, db: Database, state: FSMContext, page: int) -> None:
     text, kb = await build_admin_orders_payload(db, "admin_restaurant", cq.from_user.id, page)
     await state.update_data({NOTIF_SCREEN_KEY: "orders"})
-    await show_screen(cq.bot, cq.from_user.id, state, db, "admin_restaurant", text, kb)
+    message_id = await show_screen(cq.bot, cq.from_user.id, state, db, "admin_restaurant", text, kb)
+    await NotifCenterRepo(db).set_message_id("admin_restaurant", cq.from_user.id, message_id)
 
 
 async def _render_messages(cq: CallbackQuery, db: Database, state: FSMContext, page: int) -> None:
     text, kb = await build_admin_messages_payload(db, "admin_restaurant", cq.from_user.id, page)
     await state.update_data({NOTIF_SCREEN_KEY: "messages"})
-    await show_screen(cq.bot, cq.from_user.id, state, db, "admin_restaurant", text, kb)
+    message_id = await show_screen(cq.bot, cq.from_user.id, state, db, "admin_restaurant", text, kb)
+    await NotifCenterRepo(db).set_message_id("admin_restaurant", cq.from_user.id, message_id)
 
 
 @router.callback_query(F.data == "r:notif")
@@ -88,9 +90,11 @@ async def notif_return(cq: CallbackQuery, db: Database, state: FSMContext) -> No
     async with lock:
         repo = NotifCenterRepo(db)
         message_id = await repo.get_message_id("admin_restaurant", cq.from_user.id)
-        if message_id:
+        screen_message_id = await get_screen_message_id(state, db, "admin_restaurant", cq.from_user.id)
+        message_id_to_delete = screen_message_id or message_id
+        if message_id_to_delete:
             try:
-                await cq.bot.delete_message(chat_id=cq.from_user.id, message_id=message_id)
+                await cq.bot.delete_message(chat_id=cq.from_user.id, message_id=message_id_to_delete)
             except Exception:
                 pass
         await repo.clear("admin_restaurant", cq.from_user.id)
