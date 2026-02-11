@@ -13,6 +13,7 @@ from app.repositories.products_repo import ProductsRepo
 from app.services.search_utils import normalize_text, build_keywords
 from app.services.screen import clear_state_keep_screen
 from app.services.notification_center import remember_admin_prev_target
+from app.services.screen import show_screen
 
 router = Router()
 class ProductFSM(StatesGroup):
@@ -434,11 +435,19 @@ async def edit_desc_apply(message: Message, state: FSMContext, db: Database):
 
 
 @router.callback_query(F.data == "r:cats")
-async def list_categories(cq: CallbackQuery, db: Database):
+async def list_categories(cq: CallbackQuery, db: Database, state: FSMContext):
     await remember_admin_prev_target(db, "admin_restaurant", cq.from_user.id, "r:cats")
     ids = await get_admin_restaurant_ids(db, cq.from_user.id)
     if not ids:
-        await cq.message.edit_text("Нет доступа.", reply_markup=nav("r:home", "r:back:main"))
+        await show_screen(
+            cq.bot,
+            cq.from_user.id,
+            state,
+            db,
+            "admin_restaurant",
+            "Нет доступа.",
+            nav("r:home", "r:back:main"),
+        )
         await cq.answer()
         return
 
@@ -447,14 +456,27 @@ async def list_categories(cq: CallbackQuery, db: Database):
     categories = await cats.list_for_shop(restaurant_id, active_only=True)
 
     if not categories:
-        await cq.message.edit_text(
+        await show_screen(
+            cq.bot,
+            cq.from_user.id,
+            state,
+            db,
+            "admin_restaurant",
             "В ресторане пока нет категорий (создаёт суперадмин).",
-            reply_markup=nav("r:home", "r:back:main")
+            nav("r:home", "r:back:main"),
         )
         await cq.answer()
         return
 
-    await cq.message.edit_text("Выберите категорию:", reply_markup=kb_categories(categories, restaurant_id))
+    await show_screen(
+        cq.bot,
+        cq.from_user.id,
+        state,
+        db,
+        "admin_restaurant",
+        "Выберите категорию:",
+        kb_categories(categories, restaurant_id),
+    )
     await cq.answer()
 
 

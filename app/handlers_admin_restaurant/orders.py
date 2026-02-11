@@ -110,8 +110,13 @@ async def list_orders(cq: CallbackQuery, db: Database, state: FSMContext):
     await remember_admin_prev_target(db, "admin_restaurant", cq.from_user.id, "r:orders")
     ids = await get_admin_restaurant_ids(db, cq.from_user.id)
     if not ids:
-        await cq.message.edit_text(
-            "Нет доступа.",
+        await show_screen(
+            bot=cq.bot,
+            chat_id=cq.from_user.id,
+            state=state,
+            db=db,
+            bot_kind="admin_restaurant",
+            text="Нет доступа.",
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
                 InlineKeyboardButton(text="🏠 Главная", callback_data="r:home"),
                 InlineKeyboardButton(text="🔙 Назад", callback_data="r:back:main"),
@@ -125,8 +130,13 @@ async def list_orders(cq: CallbackQuery, db: Database, state: FSMContext):
     orders = OrdersRepo(db)
     rows = await orders.list_current_for_shop(shop_id=restaurant_id, statuses=CURRENT)
     if not rows:
-        await cq.message.edit_text(
-            f"Текущих заказов нет (restaurant_id={restaurant_id}).",
+        await show_screen(
+            bot=cq.bot,
+            chat_id=cq.from_user.id,
+            state=state,
+            db=db,
+            bot_kind="admin_restaurant",
+            text=f"Текущих заказов нет (restaurant_id={restaurant_id}).",
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
                 InlineKeyboardButton(text="🏠 Главная", callback_data="r:home"),
                 InlineKeyboardButton(text="🔙 Назад", callback_data="r:back:main"),
@@ -136,8 +146,13 @@ async def list_orders(cq: CallbackQuery, db: Database, state: FSMContext):
         return
 
     order_ids = [int(r["id"]) for r in rows]
-    await cq.message.edit_text(
-        f"Текущие заказы (restaurant_id={restaurant_id}):",
+    await show_screen(
+        bot=cq.bot,
+        chat_id=cq.from_user.id,
+        state=state,
+        db=db,
+        bot_kind="admin_restaurant",
+        text=f"Текущие заказы (restaurant_id={restaurant_id}):",
         reply_markup=kb_orders_list(order_ids),
     )
     await cq.answer()

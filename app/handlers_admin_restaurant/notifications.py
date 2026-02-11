@@ -18,7 +18,7 @@ from app.services.notification_center import (
     NOTIF_SCREEN_KEY,
     get_notif_center_lock,
 )
-from app.services.screen import show_main_menu, show_screen, get_screen_message_id
+from app.services.screen import show_main_menu, show_screen
 
 router = Router()
 
@@ -92,24 +92,7 @@ async def notif_back(cq: CallbackQuery, db: Database, state: FSMContext) -> None
 async def notif_return(cq: CallbackQuery, db: Database, state: FSMContext) -> None:
     lock = get_notif_center_lock("admin_restaurant", cq.from_user.id)
     async with lock:
-        # Получаем актуальный текущий экран
-        screen_message_id = await get_screen_message_id(state, db, "admin_restaurant", cq.from_user.id)
-        
-        # Получаем сохраненный message_id из NotifCenterRepo
         repo = NotifCenterRepo(db)
-        repo_message_id = await repo.get_message_id("admin_restaurant", cq.from_user.id)
-        
-        # Приоритетно удаляем актуальный экран, если он есть
-        message_to_delete = screen_message_id or repo_message_id
-        
-        if message_to_delete:
-            try:
-                await cq.bot.delete_message(chat_id=cq.from_user.id, message_id=message_to_delete)
-            except Exception:
-                # Игнорируем ошибки удаления
-                pass
-        
-        # Очищаем состояние центра уведомлений
         await repo.clear("admin_restaurant", cq.from_user.id)
     
     target = await AdminNavRepo(db).get_prev_target("admin_restaurant", cq.from_user.id)
@@ -131,7 +114,7 @@ async def notif_return(cq: CallbackQuery, db: Database, state: FSMContext) -> No
         await cq.answer()
         return
     if target == "r:cats":
-        await render_categories(cq, db)
+        await render_categories(cq, db, state)
         await cq.answer()
         return
     if target.startswith("r:order:"):

@@ -13,7 +13,7 @@ from app.repositories.shops_repo import ShopsRepo
 from app.services.search_service import SearchService
 from app.services.search_utils import normalize_text
 from app.config import get_settings
-from app.services.screen import clear_state_keep_screen, show_main_menu
+from app.services.screen import clear_state_keep_screen, show_main_menu, show_screen
 from app.repositories.categories_repo import CategoriesRepo
 from app.services.notification_center import remember_admin_prev_target
 
@@ -119,7 +119,7 @@ async def _get_shop_id_for_admin(db: Database, user_id: int) -> int | None:
 
 
 @router.callback_query(F.data == "a:products")
-async def products_root(cq: CallbackQuery, db: Database):
+async def products_root(cq: CallbackQuery, db: Database, state: FSMContext):
     await remember_admin_prev_target(db, "admin_shop", cq.from_user.id, "a:products")
     if not await is_shop_admin(db, cq.from_user.id):
         await cq.answer("Нет доступа", show_alert=True)
@@ -127,14 +127,14 @@ async def products_root(cq: CallbackQuery, db: Database):
 
     shop_id = await _get_shop_id_for_admin(db, cq.from_user.id)
     if not shop_id:
-        await cq.message.edit_text("Нет привязанного магазина.", reply_markup=kb_home())
+        await show_screen(cq.bot, cq.from_user.id, state, db, "admin_shop", "Нет привязанного магазина.", kb_home())
         await cq.answer()
         return
 
     async with db.conn() as conn:
         shop = await ShopsRepo(db).get(shop_id)
         if not shop:
-            await cq.message.edit_text("Магазин не найден.", reply_markup=kb_home())
+            await show_screen(cq.bot, cq.from_user.id, state, db, "admin_shop", "Магазин не найден.", kb_home())
             await cq.answer()
             return
 
@@ -152,14 +152,19 @@ async def products_root(cq: CallbackQuery, db: Database):
             buttons.append([InlineKeyboardButton(text="➕ Добавить категорию", callback_data="a:paddcat")])
         buttons.append([InlineKeyboardButton(text="🏠 Главная", callback_data="a:home")])
 
-        await cq.message.edit_text(
+        await show_screen(
+            cq.bot,
+            cq.from_user.id,
+            state,
+            db,
+            "admin_shop",
             text,
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons),
+            InlineKeyboardMarkup(inline_keyboard=buttons),
         )
         await cq.answer()
         return
 
-    await cq.message.edit_text("🧺 Категории:", reply_markup=kb_categories(cats, cq.from_user.id))
+    await show_screen(cq.bot, cq.from_user.id, state, db, "admin_shop", "🧺 Категории:", kb_categories(cats, cq.from_user.id))
     await cq.answer()
 
 
