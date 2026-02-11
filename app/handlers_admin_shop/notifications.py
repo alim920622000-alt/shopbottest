@@ -1,16 +1,21 @@
 from __future__ import annotations
 
 from aiogram import Router, F
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import CallbackQuery
 from aiogram.fsm.context import FSMContext
 
 from app.db.database import Database
-from app.handlers_admin_shop.orders import list_orders as render_orders, render_order_card_by_id
+from app.handlers_admin_shop.orders import (
+    list_orders as render_orders,
+    build_order_card_payload,
+)
 from app.handlers_admin_shop.chat import list_chats as render_chats, open_chat_by_order_id
 from app.handlers_admin_shop.products import products_root as render_products
 from app.handlers_admin_shop.start import kb_admin_main
 from app.repositories.admin_nav_repo import AdminNavRepo
 from app.repositories.notif_center_repo import NotifCenterRepo
+from app.repositories.order_seen_repo import OrderSeenRepo
 from app.services.notification_center import (
     build_admin_center_payload,
     build_admin_orders_payload,
@@ -18,9 +23,44 @@ from app.services.notification_center import (
     NOTIF_SCREEN_KEY,
     get_notif_center_lock,
 )
-from app.services.screen import show_main_menu, show_screen, get_screen_message_id
+from app.services.screen import get_screen_message_id, safe_edit_text, set_screen_message_id
 
 router = Router()
+
+
+async def _edit_current_screen(
+    cq: CallbackQuery,
+    db: Database,
+    state: FSMContext,
+    text: str,
+    role: str,
+    reply_markup,
+) -> int:
+    current_screen_id = await get_screen_message_id(state, db, role, cq.from_user.id)
+    callback_message_id = cq.message.message_id if cq.message else None
+    target_message_id = current_screen_id or callback_message_id
+
+    if target_message_id is None:
+        message = await cq.bot.send_message(chat_id=cq.from_user.id, text=text, reply_markup=reply_markup)
+        await set_screen_message_id(state, db, role, cq.from_user.id, message.message_id)
+        return message.message_id
+
+    try:
+        if callback_message_id and callback_message_id == target_message_id and cq.message is not None:
+            await safe_edit_text(cq, text, reply_markup=reply_markup)
+        else:
+            await cq.bot.edit_message_text(
+                chat_id=cq.from_user.id,
+                message_id=target_message_id,
+                text=text,
+                reply_markup=reply_markup,
+            )
+    except TelegramBadRequest as exc:
+        if "message is not modified" not in str(exc).lower():
+            raise
+
+    await set_screen_message_id(state, db, role, cq.from_user.id, target_message_id)
+    return target_message_id
 
 
 async def _render_center(cq: CallbackQuery, db: Database, state: FSMContext) -> None:
@@ -28,7 +68,7 @@ async def _render_center(cq: CallbackQuery, db: Database, state: FSMContext) -> 
     await state.update_data({NOTIF_SCREEN_KEY: "center"})
     lock = get_notif_center_lock("admin_shop", cq.from_user.id)
     async with lock:
-        message_id = await show_screen(cq.bot, cq.from_user.id, state, db, "admin_shop", text, kb)
+        message_id = await _edit_current_screen(cq, db, state, text, "admin_shop", kb)
         await NotifCenterRepo(db).set_message_id("admin_shop", cq.from_user.id, message_id)
 
 
@@ -37,7 +77,7 @@ async def _render_orders(cq: CallbackQuery, db: Database, state: FSMContext, pag
     await state.update_data({NOTIF_SCREEN_KEY: "orders"})
     lock = get_notif_center_lock("admin_shop", cq.from_user.id)
     async with lock:
-        message_id = await show_screen(cq.bot, cq.from_user.id, state, db, "admin_shop", text, kb)
+        message_id = await _edit_current_screen(cq, db, state, text, "admin_shop", kb)
         await NotifCenterRepo(db).set_message_id("admin_shop", cq.from_user.id, message_id)
 
 
@@ -46,7 +86,7 @@ async def _render_messages(cq: CallbackQuery, db: Database, state: FSMContext, p
     await state.update_data({NOTIF_SCREEN_KEY: "messages"})
     lock = get_notif_center_lock("admin_shop", cq.from_user.id)
     async with lock:
-        message_id = await show_screen(cq.bot, cq.from_user.id, state, db, "admin_shop", text, kb)
+        message_id = await _edit_current_screen(cq, db, state, text, "admin_shop", kb)
         await NotifCenterRepo(db).set_message_id("admin_shop", cq.from_user.id, message_id)
 
 
@@ -92,69 +132,61 @@ async def notif_back(cq: CallbackQuery, db: Database, state: FSMContext) -> None
 async def notif_return(cq: CallbackQuery, db: Database, state: FSMContext) -> None:
     lock = get_notif_center_lock("admin_shop", cq.from_user.id)
     async with lock:
-        # Получаем актуальный текущий экран
-        screen_message_id = await get_screen_message_id(state, db, "admin_shop", cq.from_user.id)
-        
-        # Получаем сохраненный message_id из NotifCenterRepo
-        repo = NotifCenterRepo(db)
-        repo_message_id = await repo.get_message_id("admin_shop", cq.from_user.id)
-        
-        # Приоритетно удаляем актуальный экран, если он есть
-        message_to_delete = screen_message_id or repo_message_id
-        
-        if message_to_delete:
-            try:
-                await cq.bot.delete_message(chat_id=cq.from_user.id, message_id=message_to_delete)
-            except Exception:
-                # Игнорируем ошибки удаления
-                pass
-        
-        # Очищаем состояние центра уведомлений
-        await repo.clear("admin_shop", cq.from_user.id)
-    
-    target = await AdminNavRepo(db).get_prev_target("admin_shop", cq.from_user.id)
-    await state.update_data({NOTIF_SCREEN_KEY: None})
-    if not target or target == "a:home":
-        await show_main_menu(
-            cq.bot,
-            cq.from_user.id,
-            state,
+        target = await AdminNavRepo(db).get_prev_target("admin_shop", cq.from_user.id)
+        await state.update_data({NOTIF_SCREEN_KEY: None})
+
+        if not target or target == "a:home":
+            message_id = await _edit_current_screen(
+                cq,
+                db,
+                state,
+                "Админ-меню магазина:",
+                "admin_shop",
+                kb_admin_main(),
+            )
+            await NotifCenterRepo(db).set_message_id("admin_shop", cq.from_user.id, message_id)
+            await cq.answer()
+            return
+
+        if target == "a:orders":
+            await render_orders(cq, db, state)
+            await cq.answer()
+            return
+
+        if target == "a:products":
+            await render_products(cq, db)
+            await cq.answer()
+            return
+
+        if target.startswith("a:order:"):
+            order_id = int(target.split(":")[2])
+            text, kb, found = await build_order_card_payload(db, order_id, "a:orders")
+            message_id = await _edit_current_screen(cq, db, state, text, "admin_shop", kb)
+            await NotifCenterRepo(db).set_message_id("admin_shop", cq.from_user.id, message_id)
+            if found:
+                await OrderSeenRepo(db).mark_order_seen(order_id, "admin_shop", cq.from_user.id)
+            await cq.answer()
+            return
+
+        if target == "a:chat":
+            await render_chats(cq, db, state)
+            await cq.answer()
+            return
+
+        if target.startswith("a:chat:"):
+            order_id = int(target.split(":")[2])
+            await open_chat_by_order_id(cq, state, db, order_id, "a:chat")
+            await cq.answer()
+            return
+
+        message_id = await _edit_current_screen(
+            cq,
             db,
-            "admin_shop",
+            state,
             "Админ-меню магазина:",
+            "admin_shop",
             kb_admin_main(),
         )
-        await cq.answer()
-        return
-    if target == "a:orders":
-        await render_orders(cq, db, state)
-        await cq.answer()
-        return
-    if target == "a:products":
-        await render_products(cq, db)
-        await cq.answer()
-        return
-    if target.startswith("a:order:"):
-        order_id = int(target.split(":")[2])
-        await render_order_card_by_id(cq, db, state, order_id)
-        await cq.answer()
-        return
-    if target == "a:chat":
-        await render_chats(cq, db, state)
-        await cq.answer()
-        return
-    if target.startswith("a:chat:"):
-        order_id = int(target.split(":")[2])
-        await open_chat_by_order_id(cq, state, db, order_id, "a:chat")
-        await cq.answer()
-        return
-    await show_main_menu(
-        cq.bot,
-        cq.from_user.id,
-        state,
-        db,
-        "admin_shop",
-        "Админ-меню магазина:",
-        kb_admin_main(),
-    )
+        await NotifCenterRepo(db).set_message_id("admin_shop", cq.from_user.id, message_id)
+
     await cq.answer()
