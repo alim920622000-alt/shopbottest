@@ -276,15 +276,18 @@ async def show_notification_center(
         await controller.refresh()
         return
 
-    role = bot_kind
+    kind = "admin_shop" if bot_kind == "admin_shop" else "admin_restaurant"
     await state.update_data(user_id=user_id)
     await state.update_data({NOTIF_SCREEN_KEY: "center"})
-    text, kb = await build_admin_center_payload(db, role, user_id)
-    lock = get_notif_center_lock(bot_kind, user_id)
+    text, kb = await build_admin_center_payload(db, kind, user_id)
+    lock = get_notif_center_lock(kind, user_id)
     async with lock:
         repo = NotifCenterRepo(db)
-        message_id = await repo.get_message_id(bot_kind, user_id)
-        screen_message_id = await get_screen_message_id(state, db, bot_kind, user_id)
+        message_id = await repo.get_message_id(kind, user_id)
+        # Получаем текущий экранный message_id
+        screen_message_id = await get_screen_message_id(state, db, kind, user_id)
+        
+        # Редактируем ТОЛЬКО если центр уведомлений и есть текущий экран
         if message_id and message_id == screen_message_id:
             try:
                 await bot.edit_message_text(
@@ -293,26 +296,26 @@ async def show_notification_center(
                     message_id=message_id,
                     reply_markup=kb,
                 )
-                await repo.set_message_id(bot_kind, user_id, message_id)
+                await repo.set_message_id(kind, user_id, message_id)
                 return
             except TelegramBadRequest as exc:
                 if _is_message_not_modified(exc):
-                    await repo.set_message_id(bot_kind, user_id, message_id)
+                    await repo.set_message_id(kind, user_id, message_id)
                     return
                 if not _is_edit_missing_error(exc):
                     raise
-        elif message_id:
+        
+        # Если message_id существует, но не является текущим экраном - пытаемся удалить старый центр
+        if message_id and message_id != screen_message_id:
             try:
                 await bot.delete_message(chat_id=user_id, message_id=message_id)
-            except TelegramBadRequest:
-                pass
             except Exception:
+                # Игнорируем ошибки удаления старого центра
                 pass
-        if bot_kind == "admin_shop":
-            message_id = await show_screen(bot, user_id, state, db, "admin_shop", text, kb)
-        else:
-            message_id = await show_screen(bot, user_id, state, db, "admin_restaurant", text, kb)
-        await repo.set_message_id(bot_kind, user_id, message_id)
+        
+        # Создаем новый экран центра уведомлений
+        new_message_id = await show_screen(bot, user_id, state, db, kind, text, kb)
+        await repo.set_message_id(kind, user_id, new_message_id)
 
 
 async def show_notification_center_for_user(
