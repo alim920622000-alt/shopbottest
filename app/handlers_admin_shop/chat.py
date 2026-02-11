@@ -65,18 +65,42 @@ async def list_chats(cq: CallbackQuery, db: Database, state: FSMContext):
     await remember_admin_prev_target(db, "admin_shop", cq.from_user.id, "a:chat")
     shop_ids = await get_admin_shop_ids(db, cq.from_user.id)
     if not shop_ids:
-        await cq.message.edit_text("Нет доступа.", reply_markup=kb_admin_main())
+        await show_screen(
+            bot=cq.bot,
+            chat_id=cq.from_user.id,
+            state=state,
+            db=db,
+            bot_kind="admin_shop",
+            text="Нет доступа.",
+            reply_markup=kb_admin_main(),
+        )
         await cq.answer()
         return
 
     chat = ChatRepo(db)
     order_ids = await chat.list_order_ids_with_chat(shop_id=shop_ids[0])
     if not order_ids:
-        await cq.message.edit_text("Активных чатов нет.", reply_markup=kb_admin_main())
+        await show_screen(
+            bot=cq.bot,
+            chat_id=cq.from_user.id,
+            state=state,
+            db=db,
+            bot_kind="admin_shop",
+            text="Активных чатов нет.",
+            reply_markup=kb_admin_main(),
+        )
         await cq.answer()
         return
 
-    await cq.message.edit_text("Чаты по заказам:", reply_markup=kb_chat_list(order_ids))
+    await show_screen(
+        bot=cq.bot,
+        chat_id=cq.from_user.id,
+        state=state,
+        db=db,
+        bot_kind="admin_shop",
+        text="Чаты по заказам:",
+        reply_markup=kb_chat_list(order_ids),
+    )
     await cq.answer()
 
 

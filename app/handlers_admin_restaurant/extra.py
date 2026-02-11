@@ -307,16 +307,40 @@ async def chat_list(cq: CallbackQuery, db: Database, state: FSMContext):
     await remember_admin_prev_target(db, "admin_restaurant", cq.from_user.id, "r:chat")
     ids = await get_admin_restaurant_ids(db, cq.from_user.id)
     if not ids:
-        await cq.message.edit_text("Нет доступа.", reply_markup=kb_back_home())
+        await show_screen(
+            bot=cq.bot,
+            chat_id=cq.from_user.id,
+            state=state,
+            db=db,
+            bot_kind="admin_restaurant",
+            text="Нет доступа.",
+            reply_markup=kb_back_home(),
+        )
         await cq.answer()
         return
     chat = ChatRepo(db)
     order_ids = await chat.list_order_ids_with_chat(shop_id=ids[0])
     if not order_ids:
-        await cq.message.edit_text("Активных чатов нет.", reply_markup=kb_admin_main())
+        await show_screen(
+            bot=cq.bot,
+            chat_id=cq.from_user.id,
+            state=state,
+            db=db,
+            bot_kind="admin_restaurant",
+            text="Активных чатов нет.",
+            reply_markup=kb_admin_main(),
+        )
         await cq.answer()
         return
-    await cq.message.edit_text("Чаты по заказам:", reply_markup=kb_chat_list(order_ids))
+    await show_screen(
+        bot=cq.bot,
+        chat_id=cq.from_user.id,
+        state=state,
+        db=db,
+        bot_kind="admin_restaurant",
+        text="Чаты по заказам:",
+        reply_markup=kb_chat_list(order_ids),
+    )
     await cq.answer()
 
 

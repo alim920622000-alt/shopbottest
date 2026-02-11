@@ -117,7 +117,15 @@ async def list_orders(cq: CallbackQuery, db: Database, state: FSMContext):
     await remember_admin_prev_target(db, "admin_shop", cq.from_user.id, "a:orders")
     shop_ids = await get_admin_shop_ids(db, cq.from_user.id)
     if not shop_ids:
-        await safe_edit_text(cq.message, "Нет доступа.", reply_markup=kb_back_admin())
+        await show_screen(
+            bot=cq.bot,
+            chat_id=cq.from_user.id,
+            state=state,
+            db=db,
+            bot_kind="admin_shop",
+            text="Нет доступа.",
+            reply_markup=kb_back_admin(),
+        )
         await cq.answer()
         return
 
@@ -127,16 +135,28 @@ async def list_orders(cq: CallbackQuery, db: Database, state: FSMContext):
     orders = OrdersRepo(db)
     rows = await orders.list_current_for_shop(shop_id=shop_id, statuses=["new", "preparing", "ready"])
     if not rows:
-        await safe_edit_text(
-            cq.message,
-            f"Текущие заказы (shop_id={shop_id}):",
-            reply_markup=kb_orders_list(order_ids),
+        await show_screen(
+            bot=cq.bot,
+            chat_id=cq.from_user.id,
+            state=state,
+            db=db,
+            bot_kind="admin_shop",
+            text=f"Текущие заказы (shop_id={shop_id}):",
+            reply_markup=kb_orders_list([]),
         )
         await cq.answer()
         return
 
     order_ids = [int(r["id"]) for r in rows]
-    await cq.message.edit_text(f"Текущие заказы (shop_id={shop_id}):", reply_markup=kb_orders_list(order_ids))
+    await show_screen(
+        bot=cq.bot,
+        chat_id=cq.from_user.id,
+        state=state,
+        db=db,
+        bot_kind="admin_shop",
+        text=f"Текущие заказы (shop_id={shop_id}):",
+        reply_markup=kb_orders_list(order_ids),
+    )
     await cq.answer()
 
 

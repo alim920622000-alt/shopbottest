@@ -5,7 +5,6 @@ from datetime import datetime
 from math import ceil
 
 from aiogram import Bot
-from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.base import StorageKey, BaseStorage
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
@@ -17,7 +16,7 @@ from app.repositories.admin_nav_repo import AdminNavRepo
 from app.repositories.notif_center_repo import NotifCenterRepo
 from app.services.client_ui_state import remember_client_screen
 from app.services.chat_screen_controller import ChatScreenController
-from app.services.screen import show_screen, get_screen_message_id
+from app.services.screen import show_screen
 
 PAGE_SIZE = 6
 NOTIF_PREV_SCREEN_KEY = "notif_prev_ui_screen"
@@ -35,15 +34,6 @@ def get_notif_center_lock(bot_kind: str, chat_id: int) -> asyncio.Lock:
         lock = asyncio.Lock()
         _notif_center_locks[key] = lock
     return lock
-
-
-def _is_edit_missing_error(exc: TelegramBadRequest) -> bool:
-    error_text = str(exc).lower()
-    return "message to edit not found" in error_text or "message can't be edited" in error_text
-
-
-def _is_message_not_modified(exc: TelegramBadRequest) -> bool:
-    return "message is not modified" in str(exc).lower()
 
 
 def _calc_total_pages(total: int, page_size: int = PAGE_SIZE) -> int:
@@ -276,44 +266,13 @@ async def show_notification_center(
         await controller.refresh()
         return
 
-    kind = "admin_shop" if bot_kind == "admin_shop" else "admin_restaurant"
+    kind = bot_kind if bot_kind in {"admin_shop", "admin_restaurant"} else "admin_restaurant"
     await state.update_data(user_id=user_id)
     await state.update_data({NOTIF_SCREEN_KEY: "center"})
     text, kb = await build_admin_center_payload(db, kind, user_id)
     lock = get_notif_center_lock(kind, user_id)
     async with lock:
         repo = NotifCenterRepo(db)
-        message_id = await repo.get_message_id(kind, user_id)
-        # Получаем текущий экранный message_id
-        screen_message_id = await get_screen_message_id(state, db, kind, user_id)
-        
-        # Редактируем ТОЛЬКО если центр уведомлений и есть текущий экран
-        if message_id and message_id == screen_message_id:
-            try:
-                await bot.edit_message_text(
-                    text=text,
-                    chat_id=user_id,
-                    message_id=message_id,
-                    reply_markup=kb,
-                )
-                await repo.set_message_id(kind, user_id, message_id)
-                return
-            except TelegramBadRequest as exc:
-                if _is_message_not_modified(exc):
-                    await repo.set_message_id(kind, user_id, message_id)
-                    return
-                if not _is_edit_missing_error(exc):
-                    raise
-        
-        # Если message_id существует, но не является текущим экраном - пытаемся удалить старый центр
-        if message_id and message_id != screen_message_id:
-            try:
-                await bot.delete_message(chat_id=user_id, message_id=message_id)
-            except Exception:
-                # Игнорируем ошибки удаления старого центра
-                pass
-        
-        # Создаем новый экран центра уведомлений
         new_message_id = await show_screen(bot, user_id, state, db, kind, text, kb)
         await repo.set_message_id(kind, user_id, new_message_id)
 
