@@ -16,6 +16,7 @@ from app.config import get_settings
 from app.services.screen import clear_state_keep_screen, show_main_menu
 from app.repositories.categories_repo import CategoriesRepo
 from app.services.notification_center import remember_admin_prev_target
+from app.services.pagination import build_pager_row, normalize_page, slice_page
 
 
 def is_superadmin(user_id: int) -> bool:
@@ -62,15 +63,20 @@ def kb_home() -> InlineKeyboardMarkup:
     ])
 
 
-def kb_categories(cats: list[dict], user_id: int) -> InlineKeyboardMarkup:
+def kb_categories(cats: list[dict], user_id: int, page: int = 0) -> InlineKeyboardMarkup:
     kb = []
-    for c in cats:
+    page_items, total_pages = slice_page(cats, page, 8)
+    page = normalize_page(page, total_pages)
+    for c in page_items:
         status = "✅" if int(c["is_active"]) == 1 else "⛔"
         kb.append([InlineKeyboardButton(
             text=f"{status} {c['name']}",
             callback_data=f"a:pcat:{c['id']}"
         )])
 
+    pager_row = build_pager_row("a:cats", page, total_pages)
+    if pager_row:
+        kb.append(pager_row)
     kb.append([InlineKeyboardButton(text="🔎 Поиск по товарам", callback_data="a:psearch")])
     if is_superadmin(user_id):
         kb.append([InlineKeyboardButton(text="➕ Добавить категорию", callback_data="a:paddcat")])
@@ -78,15 +84,20 @@ def kb_categories(cats: list[dict], user_id: int) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
 
-def kb_products(cat_id: int, items: list[dict]) -> InlineKeyboardMarkup:
+def kb_products(cat_id: int, items: list[dict], page: int = 0) -> InlineKeyboardMarkup:
     kb = []
-    for p in items:
+    page_items, total_pages = slice_page(items, page, 8)
+    page = normalize_page(page, total_pages)
+    for p in page_items:
         status = "✅" if int(p["is_active"]) == 1 else "⛔"
         kb.append([InlineKeyboardButton(
             text=f"{status} {p['name']} — {p['price']}",
             callback_data=f"a:pprod:{cat_id}:{p['id']}"
         )])
 
+    pager_row = build_pager_row("a:cat_items", page, total_pages, extra=f":{cat_id}")
+    if pager_row:
+        kb.append(pager_row)
     kb.append([InlineKeyboardButton(text="➕ Добавить товар", callback_data=f"a:paddprod:{cat_id}")])
     kb.append([InlineKeyboardButton(text="📥 Массовое добавление", callback_data=f"a:bulk:{cat_id}")])
     kb.append([
@@ -107,13 +118,18 @@ def kb_product_card(cat_id: int, product_id: int, is_active: int) -> InlineKeybo
     ])
 
 
-def kb_search_results(items: list[dict]) -> InlineKeyboardMarkup:
+def kb_search_results(items: list[dict], page: int = 0) -> InlineKeyboardMarkup:
     kb = []
-    for p in items:
+    page_items, total_pages = slice_page(items, page, 8)
+    page = normalize_page(page, total_pages)
+    for p in page_items:
         kb.append([InlineKeyboardButton(
             text=f"{p['name']} — {p['price']}",
             callback_data=f"a:pprod:{p['category_id']}:{p['id']}"
         )])
+    pager_row = build_pager_row("a:search", page, total_pages)
+    if pager_row:
+        kb.append(pager_row)
     kb.append([InlineKeyboardButton(text="🔙 Назад", callback_data="a:products")])
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
@@ -181,7 +197,7 @@ async def products_root(cq: CallbackQuery, db: Database):
         await cq.answer()
         return
 
-    await cq.message.edit_text("🧺 Категории:", reply_markup=kb_categories(cats, cq.from_user.id))
+    await cq.message.edit_text("🧺 Категории:", reply_markup=kb_categories(cats, cq.from_user.id, page=0))
     await cq.answer()
 
 
@@ -273,6 +289,49 @@ async def add_category_save(message: Message, state: FSMContext, db: Database):
     )
 
 
+
+
+@router.callback_query(F.data.startswith("a:cats:p:"))
+async def products_categories_page(cq: CallbackQuery, db: Database):
+    if not await is_shop_admin(db, cq.from_user.id):
+        await cq.answer("Нет доступа", show_alert=True)
+        return
+    page = int(cq.data.rsplit(":", 1)[1])
+    shop_id = await _get_shop_id_for_admin(db, cq.from_user.id)
+    if not shop_id:
+        await cq.message.edit_text("Нет привязанного магазина.", reply_markup=kb_home())
+        await cq.answer()
+        return
+    shop = await ShopsRepo(db).get(shop_id)
+    if not shop:
+        await cq.message.edit_text("Магазин не найден.", reply_markup=kb_home())
+        await cq.answer()
+        return
+    cats = await CategoriesRepo(db).list_for_business_type(shop["business_type"], active_only=True)
+    await cq.message.edit_text("🧺 Категории:", reply_markup=kb_categories(cats, cq.from_user.id, page=page))
+    await cq.answer()
+
+
+@router.callback_query(F.data.startswith("a:cat_items:"))
+async def products_items_page(cq: CallbackQuery, db: Database):
+    if not await is_shop_admin(db, cq.from_user.id):
+        await cq.answer("Нет доступа", show_alert=True)
+        return
+    parts = cq.data.split(":")
+    if len(parts) < 5 or parts[3] != "p":
+        await cq.answer()
+        return
+    cat_id = int(parts[2])
+    page = int(parts[4])
+    shop_id = await _get_shop_id_for_admin(db, cq.from_user.id)
+    if not shop_id:
+        await cq.message.edit_text("Нет привязанного магазина.", reply_markup=kb_home())
+        await cq.answer()
+        return
+    items = await ProductsRepo(db).list_by_category_any(shop_id=shop_id, category_id=cat_id)
+    await cq.message.edit_text(f"🧺 Товары в категории #{cat_id}:", reply_markup=kb_products(cat_id, items, page=page))
+    await cq.answer()
+
 @router.callback_query(F.data.startswith("a:pcat:"))
 async def open_category(cq: CallbackQuery, db: Database):
     if not await is_shop_admin(db, cq.from_user.id):
@@ -286,12 +345,13 @@ async def open_category(cq: CallbackQuery, db: Database):
         return
 
     cat_id = int(cq.data.split(":")[2])
+    page = 0
 
     repo = ProductsRepo(db)
     items = await repo.list_by_category_any(shop_id=shop_id, category_id=cat_id)
 
     title = f"🧺 Товары в категории #{cat_id}:"
-    await cq.message.edit_text(title, reply_markup=kb_products(cat_id, items))
+    await cq.message.edit_text(title, reply_markup=kb_products(cat_id, items, page=page))
     await cq.answer()
 
 
@@ -302,6 +362,7 @@ async def add_product_prompt(cq: CallbackQuery, state: FSMContext, db: Database)
         return
 
     cat_id = int(cq.data.split(":")[2])
+    page = 0
     await state.set_state(ProductStates.add_product)
     await state.update_data(category_id=cat_id)
     await cq.message.edit_text(
@@ -468,8 +529,25 @@ async def search_products(message: Message, state: FSMContext, db: Database):
         return
 
     products = [r.product for r in results]
-    await message.answer("Результаты поиска:", reply_markup=kb_search_results(products))
+    await state.update_data(search_results=products)
+    await message.answer("Результаты поиска:", reply_markup=kb_search_results(products, page=0))
 
+
+
+
+@router.callback_query(F.data.startswith("a:search:p:"))
+async def search_products_page(cq: CallbackQuery, state: FSMContext, db: Database):
+    if not await is_shop_admin(db, cq.from_user.id):
+        await cq.answer("Нет доступа", show_alert=True)
+        return
+    page = int(cq.data.rsplit(":", 1)[1])
+    data = await state.get_data()
+    products = data.get("search_results") or []
+    if not products:
+        await cq.answer("Список поиска пуст", show_alert=True)
+        return
+    await cq.message.edit_text("Результаты поиска:", reply_markup=kb_search_results(products, page=page))
+    await cq.answer()
 
 @router.callback_query(F.data.startswith("a:bulk:"))
 async def bulk_import_prompt(cq: CallbackQuery, state: FSMContext, db: Database):

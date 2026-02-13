@@ -25,6 +25,7 @@ from app.services.screen import clear_state_keep_screen, set_screen_message_id, 
 from app.services.chat_screen_controller import ChatScreenController
 from app.services.order_chat_access import can_access_order_chat
 from app.utils.tg_safe import safe_delete_cq_message
+from app.services.pagination import build_pager_row, normalize_page, slice_page
 
 router = Router()
 
@@ -33,10 +34,15 @@ class AdminShopChatStates(StatesGroup):
     active = State()
 
 
-def kb_chat_list(order_ids: list[int]) -> InlineKeyboardMarkup:
+def kb_chat_list(order_ids: list[int], page: int = 0) -> InlineKeyboardMarkup:
     kb = []
-    for oid in order_ids:
+    page_items, total_pages = slice_page(order_ids, page, 8)
+    page = normalize_page(page, total_pages)
+    for oid in page_items:
         kb.append([InlineKeyboardButton(text=f"Заказ #{oid}", callback_data=f"a:chat:{oid}")])
+    pager_row = build_pager_row("a:chats", page, total_pages)
+    if pager_row:
+        kb.append(pager_row)
     kb.append([InlineKeyboardButton(text="🏠 Главная", callback_data="a:home")])
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
@@ -78,9 +84,31 @@ async def list_chats(cq: CallbackQuery, db: Database, state: FSMContext):
         await cq.answer()
         return
 
-    await cq.message.edit_text("Чаты по заказам:", reply_markup=kb_chat_list(order_ids))
+    await cq.message.edit_text("Чаты по заказам:", reply_markup=kb_chat_list(order_ids, page=0))
     await cq.answer()
 
+
+
+
+@router.callback_query(F.data.startswith("a:chats:p:"))
+async def list_chats_page(cq: CallbackQuery, db: Database, state: FSMContext):
+    if not await is_shop_admin(db, cq.from_user.id):
+        await cq.answer("Нет доступа", show_alert=True)
+        return
+    page = int(cq.data.rsplit(":", 1)[1])
+    shop_ids = await get_admin_shop_ids(db, cq.from_user.id)
+    if not shop_ids:
+        await cq.message.edit_text("Нет доступа.", reply_markup=kb_admin_main())
+        await cq.answer()
+        return
+    chat = ChatRepo(db)
+    order_ids = await chat.list_order_ids_with_chat(shop_id=shop_ids[0])
+    if not order_ids:
+        await cq.message.edit_text("Активных чатов нет.", reply_markup=kb_admin_main())
+        await cq.answer()
+        return
+    await cq.message.edit_text("Чаты по заказам:", reply_markup=kb_chat_list(order_ids, page=page))
+    await cq.answer()
 
 async def build_chat_payload(
     db: Database,

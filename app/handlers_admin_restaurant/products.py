@@ -14,6 +14,7 @@ from app.repositories.products_repo import ProductsRepo
 from app.services.search_utils import normalize_text, build_keywords
 from app.services.screen import clear_state_keep_screen
 from app.services.notification_center import remember_admin_prev_target
+from app.services.pagination import build_pager_row, normalize_page, slice_page
 
 router = Router()
 class ProductFSM(StatesGroup):
@@ -46,13 +47,18 @@ def kb_cancel() -> InlineKeyboardMarkup:
     ])
 
 
-def kb_categories(categories: list[dict], restaurant_id: int, user_id: int) -> InlineKeyboardMarkup:
+def kb_categories(categories: list[dict], restaurant_id: int, user_id: int, page: int = 0) -> InlineKeyboardMarkup:
     kb = []
-    for c in categories:
+    page_items, total_pages = slice_page(categories, page, 8)
+    page = normalize_page(page, total_pages)
+    for c in page_items:
         kb.append([InlineKeyboardButton(
             text=c["name"],
             callback_data=f"r:cat:{restaurant_id}:{c['id']}"
         )])
+    pager_row = build_pager_row("r:cats", page, total_pages)
+    if pager_row:
+        kb.append(pager_row)
     if is_superadmin(user_id):
         kb.append([InlineKeyboardButton(text="➕ Добавить категорию", callback_data="r:addcat")])
     
@@ -79,15 +85,20 @@ def parse_triple_name(text: str) -> tuple[str, str, str] | None:
     return None
 
 
-def kb_products(products: list[dict], restaurant_id: int, category_id: int) -> InlineKeyboardMarkup:
+def kb_products(products: list[dict], restaurant_id: int, category_id: int, page: int = 0) -> InlineKeyboardMarkup:
     kb = []
-    for p in products:
+    page_items, total_pages = slice_page(products, page, 8)
+    page = normalize_page(page, total_pages)
+    for p in page_items:
         status = "✅" if int(p.get("is_active", 1)) == 1 else "⛔"
         kb.append([InlineKeyboardButton(
             text=f"{status} {p['name']} — {p['price']}",
             callback_data=f"r:prod:{restaurant_id}:{category_id}:{p['id']}"
         )])
 
+    pager_row = build_pager_row("r:cat_items", page, total_pages, extra=f":{category_id}")
+    if pager_row:
+        kb.append(pager_row)
     kb.append([InlineKeyboardButton(
         text="➕ Добавить позицию",
         callback_data=f"r:add:{restaurant_id}:{category_id}"
@@ -133,7 +144,7 @@ async def render_products_list(message, db: Database, restaurant_id: int, catego
     try:
         await message.edit_text(
             "Позиции в категории:",
-            reply_markup=kb_products(products, restaurant_id, category_id),
+            reply_markup=kb_products(products, restaurant_id, category_id, page=page),
         )
     except TelegramBadRequest as e:
         # Telegram ругается, если текст и клавиатура не изменились
@@ -483,7 +494,7 @@ async def list_categories(cq: CallbackQuery, db: Database):
         await cq.answer()
         return
 
-    await cq.message.edit_text("Выберите категорию:", reply_markup=kb_categories(categories, restaurant_id, cq.from_user.id))
+    await cq.message.edit_text("Выберите категорию:", reply_markup=kb_categories(categories, restaurant_id, cq.from_user.id, page=0))
     await cq.answer()
 
 
@@ -542,19 +553,56 @@ async def add_category_save(message: Message, state: FSMContext, db: Database):
     await message.answer("Категория добавлена ✅\nОткройте «Меню → Категории» заново.")
 
 
+
+
+@router.callback_query(F.data.startswith("r:cats:p:"))
+async def list_categories_page(cq: CallbackQuery, db: Database):
+    ids = await get_admin_restaurant_ids(db, cq.from_user.id)
+    if not ids:
+        await cq.message.edit_text("Нет доступа.", reply_markup=nav("r:home", "r:back:main"))
+        await cq.answer()
+        return
+    page = int(cq.data.rsplit(":", 1)[1])
+    restaurant_id = ids[0]
+    categories = await CategoriesRepo(db).list_for_business_type("restaurant", active_only=True)
+    await cq.message.edit_text("Выберите категорию:", reply_markup=kb_categories(categories, restaurant_id, cq.from_user.id, page=page))
+    await cq.answer()
+
+
+@router.callback_query(F.data.startswith("r:cat_items:"))
+async def list_category_items_page(cq: CallbackQuery, db: Database):
+    parts = cq.data.split(":")
+    if len(parts) < 5 or parts[3] != "p":
+        await cq.answer()
+        return
+    ids = await get_admin_restaurant_ids(db, cq.from_user.id)
+    if not ids:
+        await cq.message.edit_text("Нет доступа.", reply_markup=nav("r:home", "r:back:main"))
+        await cq.answer()
+        return
+    page = int(parts[4])
+    restaurant_id = ids[0]
+    category_id = int(parts[2])
+    products = await ProductsRepo(db).list_by_category(category_id, active_only=False)
+    await cq.message.edit_text("Позиции в категории:", reply_markup=kb_products(products, restaurant_id, category_id, page=page))
+    await cq.answer()
+
 @router.callback_query(F.data.startswith("r:cat:"))
 async def open_category(cq: CallbackQuery, db: Database):
-    # r:cat:{restaurant_id}:{category_id}
-    _, _, restaurant_id_str, category_id_str = cq.data.split(":", 3)
-    restaurant_id = int(restaurant_id_str)
-    category_id = int(category_id_str)
+    # r:cat:{restaurant_id}:{category_id}[:p:{page}]
+    parts = cq.data.split(":")
+    restaurant_id = int(parts[2])
+    category_id = int(parts[3])
+    page = 0
+    if len(parts) >= 6 and parts[4] == "p":
+        page = int(parts[5])
 
     prod = ProductsRepo(db)
     products = await prod.list_by_category(category_id, active_only=False)
 
     await cq.message.edit_text(
         "Позиции в категории:",
-        reply_markup=kb_products(products, restaurant_id, category_id)
+        reply_markup=kb_products(products, restaurant_id, category_id, page=page)
     )
     await cq.answer()
 

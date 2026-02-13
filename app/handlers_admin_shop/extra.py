@@ -13,6 +13,7 @@ from app.repositories.promotions_repo import PromotionsRepo
 from app.repositories.categories_repo import CategoriesRepo
 from app.repositories.products_repo import ProductsRepo
 from app.services.screen import clear_state_keep_screen, show_main_menu
+from app.services.pagination import build_pager_row, normalize_page, slice_page
 
 router = Router()
 
@@ -38,29 +39,50 @@ async def _guard_admin(db: Database, user_id: int) -> bool:
    # await cq.message.edit_text("Админ-меню магазина:", reply_markup=kb_admin_main())
     #await cq.answer()
 
-@router.callback_query(F.data == "a:history")
-async def history(cq: CallbackQuery, db: Database):
-    if not await _guard_admin(db, cq.from_user.id):
-        await cq.answer("Нет доступа", show_alert=True)
-        return
+async def _render_history(cq: CallbackQuery, db: Database, page: int) -> None:
     shop_ids = await get_admin_shop_ids(db, cq.from_user.id)
     if not shop_ids:
         await cq.message.edit_text("Нет доступа.", reply_markup=kb_back_home())
-        await cq.answer()
         return
 
     orders = OrdersRepo(db)
     rows = await orders.list_history_for_shop(shop_ids[0], statuses=DONE_STATUSES)
     if not rows:
         await cq.message.edit_text("История заказов пуста.", reply_markup=kb_back_home())
-        await cq.answer()
         return
 
+    page_rows, total_pages = slice_page(rows, page, 8)
+    page = normalize_page(page, total_pages)
     kb = []
-    for o in rows:
+    for o in page_rows:
         kb.append([InlineKeyboardButton(text=f"Заказ #{o['id']} ({o['status']})", callback_data=f"a:order:{o['id']}")])
+    pager_row = build_pager_row("a:orders_history", page, total_pages, extra=":all")
+    if pager_row:
+        kb.append(pager_row)
     kb.append([InlineKeyboardButton(text="🏠 Главная", callback_data="a:home")])
     await cq.message.edit_text("🕓 История заказов:", reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
+
+
+@router.callback_query(F.data == "a:history")
+async def history(cq: CallbackQuery, db: Database):
+    if not await _guard_admin(db, cq.from_user.id):
+        await cq.answer("Нет доступа", show_alert=True)
+        return
+    await _render_history(cq, db, page=0)
+    await cq.answer()
+
+
+@router.callback_query(F.data.startswith("a:orders_history:"))
+async def history_page(cq: CallbackQuery, db: Database):
+    parts = cq.data.split(":")
+    if len(parts) < 5 or parts[3] != "p":
+        await cq.answer()
+        return
+    if not await _guard_admin(db, cq.from_user.id):
+        await cq.answer("Нет доступа", show_alert=True)
+        return
+    page = int(parts[4])
+    await _render_history(cq, db, page=page)
     await cq.answer()
 
 @router.callback_query(F.data == "a:promos")
