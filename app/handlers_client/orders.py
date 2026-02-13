@@ -11,6 +11,7 @@ from aiogram.fsm.state import StatesGroup, State
 from app.config import CANCEL_WINDOW_MINUTES
 from app.db.database import Database
 from app.handlers_client.kb import kb_client_main, kb_orders_list, kb_chat_orders, kb_back
+from app.services.pagination import normalize_page, slice_page
 from app.repositories.orders_repo import OrdersRepo
 from app.repositories.shops_repo import ShopsRepo
 from app.repositories.chat_repo import ChatRepo
@@ -182,20 +183,51 @@ def make_chat_render_fn(db: Database, state: FSMContext, locale: str):
     return render
 
 
-@router.callback_query(F.data == "c:orders")
-async def list_orders(cq: CallbackQuery, db: Database, state: FSMContext, locale: str = "ru"):
-    await clear_state_keep_screen(state, db, "client", cq.from_user.id)
-    await state.update_data(user_id=cq.from_user.id)
-    await remember_client_screen(state, "orders", {})
+async def _render_orders_page(cq: CallbackQuery, db: Database, state: FSMContext, locale: str, page: int) -> None:
     orders = OrdersRepo(db)
     rows = await orders.list_for_client(cq.from_user.id)
     if not rows:
         await cq.message.edit_text(t(locale, "orders.empty"), reply_markup=kb_client_main(locale))
-        await cq.answer()
         return
-
     order_ids = [int(r["id"]) for r in rows]
-    await cq.message.edit_text(t(locale, "orders.title"), reply_markup=kb_orders_list(locale, order_ids))
+    _, total_pages = slice_page(order_ids, page, 8)
+    page = normalize_page(page, total_pages)
+    await remember_client_screen(state, "orders", {"page": page})
+    await cq.message.edit_text(
+        t(locale, "orders.title"),
+        reply_markup=kb_orders_list(locale, order_ids, page=page, prefix="c:orders"),
+    )
+
+
+async def _render_history_page(cq: CallbackQuery, db: Database, state: FSMContext, locale: str, page: int) -> None:
+    orders = OrdersRepo(db)
+    rows = await orders.list_for_client(cq.from_user.id, statuses=DONE_STATUSES)
+    if not rows:
+        await cq.message.edit_text(t(locale, "orders.history.empty"), reply_markup=kb_back(locale, "order_menu"))
+        return
+    order_ids = [int(r["id"]) for r in rows]
+    _, total_pages = slice_page(order_ids, page, 8)
+    page = normalize_page(page, total_pages)
+    await remember_client_screen(state, "history", {"page": page})
+    await cq.message.edit_text(
+        t(locale, "orders.history.title"),
+        reply_markup=kb_orders_list(locale, order_ids, back_target="order_menu", page=page, prefix="c:orders_history", extra=":all"),
+    )
+
+
+@router.callback_query(F.data == "c:orders")
+async def list_orders(cq: CallbackQuery, db: Database, state: FSMContext, locale: str = "ru"):
+    await clear_state_keep_screen(state, db, "client", cq.from_user.id)
+    await state.update_data(user_id=cq.from_user.id)
+    await _render_orders_page(cq, db, state, locale, page=0)
+    await cq.answer()
+
+
+@router.callback_query(F.data.startswith("c:orders:p:"))
+async def list_orders_page(cq: CallbackQuery, db: Database, state: FSMContext, locale: str = "ru"):
+    await state.update_data(user_id=cq.from_user.id)
+    page = int(cq.data.rsplit(":", 1)[1])
+    await _render_orders_page(cq, db, state, locale, page=page)
     await cq.answer()
 
 
@@ -203,16 +235,19 @@ async def list_orders(cq: CallbackQuery, db: Database, state: FSMContext, locale
 async def list_history(cq: CallbackQuery, db: Database, state: FSMContext, locale: str = "ru"):
     await clear_state_keep_screen(state, db, "client", cq.from_user.id)
     await state.update_data(user_id=cq.from_user.id)
-    await remember_client_screen(state, "history", {})
-    orders = OrdersRepo(db)
-    rows = await orders.list_for_client(cq.from_user.id, statuses=DONE_STATUSES)
-    if not rows:
-        await cq.message.edit_text(t(locale, "orders.history.empty"), reply_markup=kb_back(locale, "order_menu"))
+    await _render_history_page(cq, db, state, locale, page=0)
+    await cq.answer()
+
+
+@router.callback_query(F.data.startswith("c:orders_history:"))
+async def list_history_page(cq: CallbackQuery, db: Database, state: FSMContext, locale: str = "ru"):
+    parts = cq.data.split(":")
+    if len(parts) < 5 or parts[3] != "p":
         await cq.answer()
         return
-
-    order_ids = [int(r["id"]) for r in rows]
-    await cq.message.edit_text(t(locale, "orders.history.title"), reply_markup=kb_orders_list(locale, order_ids, back_target="order_menu"))
+    page = int(parts[4])
+    await state.update_data(user_id=cq.from_user.id)
+    await _render_history_page(cq, db, state, locale, page=page)
     await cq.answer()
 
 
@@ -303,7 +338,7 @@ async def cancel_order(cq: CallbackQuery, db: Database, state: FSMContext, local
 async def chat_list(cq: CallbackQuery, db: Database, state: FSMContext, locale: str = "ru"):
     await clear_state_keep_screen(state, db, "client", cq.from_user.id)
     await state.update_data(user_id=cq.from_user.id)
-    await remember_client_screen(state, "chat_list", {})
+    await remember_client_screen(state, "chat_list", {"page": 0})
     chats = ChatRepo(db)
     order_ids = await chats.list_order_ids_with_chat(user_id=cq.from_user.id)
     if not order_ids:
@@ -311,9 +346,27 @@ async def chat_list(cq: CallbackQuery, db: Database, state: FSMContext, locale: 
         await cq.answer()
         return
 
-    await cq.message.edit_text(t(locale, "chat.list_title"), reply_markup=kb_chat_orders(locale, order_ids, "c"))
+    await cq.message.edit_text(t(locale, "chat.list_title"), reply_markup=kb_chat_orders(locale, order_ids, "c", page=0))
     await cq.answer()
 
+
+
+
+@router.callback_query(F.data.startswith("c:chats:p:"))
+async def chat_list_page(cq: CallbackQuery, db: Database, state: FSMContext, locale: str = "ru"):
+    await state.update_data(user_id=cq.from_user.id)
+    page = int(cq.data.rsplit(":", 1)[1])
+    chats = ChatRepo(db)
+    order_ids = await chats.list_order_ids_with_chat(user_id=cq.from_user.id)
+    if not order_ids:
+        await cq.message.edit_text(t(locale, "chat.none"), reply_markup=kb_client_main(locale))
+        await cq.answer()
+        return
+    _, total_pages = slice_page(order_ids, page, 8)
+    page = normalize_page(page, total_pages)
+    await remember_client_screen(state, "chat_list", {"page": page})
+    await cq.message.edit_text(t(locale, "chat.list_title"), reply_markup=kb_chat_orders(locale, order_ids, "c", page=page))
+    await cq.answer()
 
 async def render_chat(
     cq: CallbackQuery,

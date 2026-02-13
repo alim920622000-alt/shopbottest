@@ -227,7 +227,7 @@ async def pick_shop(cq: CallbackQuery, db: Database, state: FSMContext, locale: 
     await cq.answer()
 
 
-async def show_categories(message: Message, db: Database, kind: str, shop_id: int, locale: str = "ru"):
+async def show_categories(message: Message, db: Database, kind: str, shop_id: int, locale: str = "ru", page: int = 0):
     logger.warning("DEBUG show_categories locale=%r kind=%r shop_id=%r", locale, kind, shop_id)
     cats = CategoriesRepo(db)
     categories = await cats.list_for_shop(shop_id, active_only=True)
@@ -242,16 +242,36 @@ async def show_categories(message: Message, db: Database, kind: str, shop_id: in
     )
     await message.edit_text(
         title,
-        reply_markup=kb_categories_list(locale, categories, kind, shop_id),
+        reply_markup=kb_categories_list(locale, categories, kind, shop_id, page=page),
     )
 
 
+
+
+@router.callback_query(F.data.startswith("c:cats:"))
+async def categories_page(cq: CallbackQuery, db: Database, state: FSMContext, locale: str = "ru"):
+    parts = cq.data.split(":")
+    if len(parts) < 5 or parts[3] != "p":
+        await cq.answer()
+        return
+    shop_id = int(parts[2])
+    page = int(parts[4])
+    data = await state.get_data()
+    kind = data.get("last_kind") or "shop"
+    await state.update_data(last_view={"name": "categories", "kind": kind, "shop_id": shop_id})
+    await remember_client_screen(state, "categories", {"kind": kind, "shop_id": shop_id, "page": page})
+    await show_categories(cq.message, db, kind, shop_id, locale=locale, page=page)
+    await cq.answer()
+
 @router.callback_query(F.data.startswith("c:cat:"))
 async def open_category(cq: CallbackQuery, db: Database, state: FSMContext, locale: str = "ru"):
-    # c:cat:{shop_id}:{category_id}
-    _, _, shop_id_str, category_id_str = cq.data.split(":", 3)
-    shop_id = int(shop_id_str)
-    category_id = int(category_id_str)
+    # c:cat:{shop_id}:{category_id}[:p:{page}]
+    parts = cq.data.split(":")
+    shop_id = int(parts[2])
+    category_id = int(parts[3])
+    page = 0
+    if len(parts) >= 6 and parts[4] == "p":
+        page = int(parts[5])
 
     await show_category_products(
         cq.message,
@@ -260,6 +280,7 @@ async def open_category(cq: CallbackQuery, db: Database, state: FSMContext, loca
         shop_id,
         category_id,
         locale=locale,
+        page=page,
     )
     await cq.answer()
 
@@ -271,6 +292,7 @@ async def show_category_products(
     shop_id: int,
     category_id: int,
     locale: str = "ru",
+    page: int = 0,
 ):
     prod = ProductsRepo(db)
     products = await prod.list_by_category_for_shop(shop_id, category_id, active_only=True)
@@ -292,15 +314,29 @@ async def show_category_products(
     await remember_client_screen(
         state,
         "products",
-        {"shop_id": shop_id, "category_id": category_id, "kind": kind},
+        {"shop_id": shop_id, "category_id": category_id, "kind": kind, "page": page},
     )
-    products_kb = kb_products_list_shop(locale, products, shop_id, category_id) if kind == "shop" else kb_products_list(locale, products, shop_id, category_id)
+    products_kb = kb_products_list_shop(locale, products, shop_id, category_id, page=page) if kind == "shop" else kb_products_list(locale, products, shop_id, category_id, page=page)
 
     await message.edit_text(
         t(locale, "products.list_title"),
         reply_markup=products_kb
     )
 
+
+
+
+@router.callback_query(F.data.startswith("c:items:"))
+async def category_items_page(cq: CallbackQuery, db: Database, state: FSMContext, locale: str = "ru"):
+    parts = cq.data.split(":")
+    if len(parts) < 6 or parts[4] != "p":
+        await cq.answer()
+        return
+    shop_id = int(parts[2])
+    category_id = int(parts[3])
+    page = int(parts[5])
+    await show_category_products(cq.message, db, state, shop_id, category_id, locale=locale, page=page)
+    await cq.answer()
 
 @router.callback_query(F.data.startswith("c:prod:"))
 async def open_product(cq: CallbackQuery, db: Database, state: FSMContext, locale: str = "ru"):
@@ -579,6 +615,7 @@ async def render_cart(
     business_type: str | None = None,
     back_target: str | None = None,
     locale: str = "ru",
+    page: int = 0,
 ):
     cart = CartRepo(db)
     items = await cart.list_items(user_id, business_type=business_type)
@@ -703,10 +740,12 @@ async def search_input(message: Message, state: FSMContext, db: Database, locale
         return
 
     products = [r.product for r in results]
+    category_id = int(products[0]["category_id"])
+    await state.update_data(search_results=products, search_shop_id=shop_id, search_kind=kind, search_category_id=category_id)
     reply_markup = (
-        kb_products_list_shop(locale, products, shop_id, products[0]["category_id"])
+        kb_products_list_shop(locale, products, shop_id, category_id, page=0)
         if kind == "shop"
-        else kb_products_list(locale, products, shop_id, products[0]["category_id"])
+        else kb_products_list(locale, products, shop_id, category_id, page=0)
     )
     await message.answer(
         t(locale, "search.results_title"),

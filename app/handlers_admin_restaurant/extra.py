@@ -28,6 +28,7 @@ from app.services.order_chat_access import can_access_order_chat
 from app.services.notification_center import remember_admin_prev_target, parse_notif_context, NOTIF_SRC_MSGS
 from app.utils.tg_safe import safe_delete_cq_message
 from app.ui.nav import kb_nav
+from app.services.pagination import build_pager_row, normalize_page, slice_page
 
 router = Router()
 
@@ -49,27 +50,48 @@ def kb_back_home() -> InlineKeyboardMarkup:
     ])
 
 
-@router.callback_query(F.data == "r:history")
-async def history(cq: CallbackQuery, db: Database):
-    if not await is_restaurant_admin(db, cq.from_user.id):
-        await cq.answer("Нет доступа", show_alert=True)
-        return
+async def _render_history(cq: CallbackQuery, db: Database, page: int) -> None:
     ids = await get_admin_restaurant_ids(db, cq.from_user.id)
     if not ids:
         await cq.message.edit_text("Нет доступа.", reply_markup=kb_back_home())
-        await cq.answer()
         return
     orders = OrdersRepo(db)
     rows = await orders.list_history_for_shop(ids[0], statuses=DONE_STATUSES)
     if not rows:
         await cq.message.edit_text("История заказов пуста.", reply_markup=kb_back_home())
-        await cq.answer()
         return
+    page_rows, total_pages = slice_page(rows, page, 8)
+    page = normalize_page(page, total_pages)
     kb = []
-    for o in rows:
+    for o in page_rows:
         kb.append([InlineKeyboardButton(text=f"Заказ #{o['id']} ({o['status']})", callback_data=f"r:order:{o['id']}")])
+    pager_row = build_pager_row("r:orders_history", page, total_pages, extra=":all")
+    if pager_row:
+        kb.append(pager_row)
     kb.append([InlineKeyboardButton(text="🏠 Главная", callback_data="r:home")])
     await cq.message.edit_text("🕓 История заказов:", reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
+
+
+@router.callback_query(F.data == "r:history")
+async def history(cq: CallbackQuery, db: Database):
+    if not await is_restaurant_admin(db, cq.from_user.id):
+        await cq.answer("Нет доступа", show_alert=True)
+        return
+    await _render_history(cq, db, page=0)
+    await cq.answer()
+
+
+@router.callback_query(F.data.startswith("r:orders_history:"))
+async def history_page(cq: CallbackQuery, db: Database):
+    parts = cq.data.split(":")
+    if len(parts) < 5 or parts[3] != "p":
+        await cq.answer()
+        return
+    if not await is_restaurant_admin(db, cq.from_user.id):
+        await cq.answer("Нет доступа", show_alert=True)
+        return
+    page = int(parts[4])
+    await _render_history(cq, db, page=page)
     await cq.answer()
 
 
@@ -275,10 +297,15 @@ async def promo_add_item(cq: CallbackQuery, db: Database):
     ]))
 
 
-def kb_chat_list(order_ids: list[int]) -> InlineKeyboardMarkup:
+def kb_chat_list(order_ids: list[int], page: int = 0) -> InlineKeyboardMarkup:
     kb = []
-    for oid in order_ids:
+    page_items, total_pages = slice_page(order_ids, page, 8)
+    page = normalize_page(page, total_pages)
+    for oid in page_items:
         kb.append([InlineKeyboardButton(text=f"Заказ #{oid}", callback_data=f"r:chat:{oid}")])
+    pager_row = build_pager_row("r:chats", page, total_pages)
+    if pager_row:
+        kb.append(pager_row)
     kb.append([InlineKeyboardButton(text="🏠 Главная", callback_data="r:home")])
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
@@ -317,9 +344,31 @@ async def chat_list(cq: CallbackQuery, db: Database, state: FSMContext):
         await cq.message.edit_text("Активных чатов нет.", reply_markup=kb_admin_main())
         await cq.answer()
         return
-    await cq.message.edit_text("Чаты по заказам:", reply_markup=kb_chat_list(order_ids))
+    await cq.message.edit_text("Чаты по заказам:", reply_markup=kb_chat_list(order_ids, page=0))
     await cq.answer()
 
+
+
+
+@router.callback_query(F.data.startswith("r:chats:p:"))
+async def chat_list_page(cq: CallbackQuery, db: Database):
+    if not await is_restaurant_admin(db, cq.from_user.id):
+        await cq.answer("Нет доступа", show_alert=True)
+        return
+    page = int(cq.data.rsplit(":", 1)[1])
+    ids = await get_admin_restaurant_ids(db, cq.from_user.id)
+    if not ids:
+        await cq.message.edit_text("Нет доступа.", reply_markup=kb_back_home())
+        await cq.answer()
+        return
+    chat = ChatRepo(db)
+    order_ids = await chat.list_order_ids_with_chat(shop_id=ids[0])
+    if not order_ids:
+        await cq.message.edit_text("Активных чатов нет.", reply_markup=kb_admin_main())
+        await cq.answer()
+        return
+    await cq.message.edit_text("Чаты по заказам:", reply_markup=kb_chat_list(order_ids, page=page))
+    await cq.answer()
 
 async def build_chat_payload(
     db: Database,

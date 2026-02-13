@@ -33,6 +33,7 @@ from app.repositories.products_repo import ProductsRepo
 from app.repositories.shops_repo import ShopsRepo
 from app.services.chat_ui import PAGE_SIZE, build_chat_screen_kb, build_chat_screen_text, calc_total_pages
 from app.services.notification_center import build_client_center_payload, build_client_messages_payload
+from app.services.pagination import normalize_page, slice_page
 from app.services.order_chat_access import can_access_order_chat, CLOSED_STATUSES
 
 
@@ -68,7 +69,10 @@ async def render_client_screen(db: Database, state: FSMContext) -> tuple[str, In
         if not categories:
             return t(locale, "categories.empty"), kb_back(locale, f"{kind}_list")
         title = t(locale, "categories.shop_title") if kind == "shop" else t(locale, "categories.restaurant_title")
-        return title, kb_categories_list(locale, categories, kind, shop_id)
+        page = int(payload.get("page") or 0)
+        _, total_pages = slice_page(categories, page, 8)
+        page = normalize_page(page, total_pages)
+        return title, kb_categories_list(locale, categories, kind, shop_id, page=page)
 
     if screen == "products":
         shop_id = int(payload.get("shop_id") or 0)
@@ -78,7 +82,10 @@ async def render_client_screen(db: Database, state: FSMContext) -> tuple[str, In
         if not products:
             back_target = f"categories:{kind}:{shop_id}"
             return t(locale, "products.empty"), kb_back(locale, back_target)
-        kb = kb_products_list_shop(locale, products, shop_id, category_id) if kind == "shop" else kb_products_list(locale, products, shop_id, category_id)
+        page = int(payload.get("page") or 0)
+        _, total_pages = slice_page(products, page, 8)
+        page = normalize_page(page, total_pages)
+        kb = kb_products_list_shop(locale, products, shop_id, category_id, page=page) if kind == "shop" else kb_products_list(locale, products, shop_id, category_id, page=page)
         return t(locale, "products.list_title"), kb
 
     if screen == "product_card":
@@ -137,7 +144,12 @@ async def render_client_screen(db: Database, state: FSMContext) -> tuple[str, In
         order_ids = [int(r["id"]) for r in rows]
         title = t(locale, "orders.history.title") if screen == "history" else t(locale, "orders.title")
         back_target = "order_menu" if screen == "history" else "main"
-        return title, kb_orders_list(locale, order_ids, back_target=back_target)
+        page = int(payload.get("page") or 0)
+        _, total_pages = slice_page(order_ids, page, 8)
+        page = normalize_page(page, total_pages)
+        prefix = "c:orders_history" if screen == "history" else "c:orders"
+        extra = ":all" if screen == "history" else ""
+        return title, kb_orders_list(locale, order_ids, back_target=back_target, page=page, prefix=prefix, extra=extra)
 
     if screen == "order_card":
         order_id = int(payload.get("order_id") or 0)
@@ -171,7 +183,10 @@ async def render_client_screen(db: Database, state: FSMContext) -> tuple[str, In
         order_ids = await ChatRepo(db).list_order_ids_with_chat(user_id=int(user_id))
         if not order_ids:
             return t(locale, "chat.none"), kb_client_main(locale)
-        return t(locale, "chat.list_title"), kb_chat_orders(locale, order_ids, "c")
+        page = int(payload.get("page") or 0)
+        _, total_pages = slice_page(order_ids, page, 8)
+        page = normalize_page(page, total_pages)
+        return t(locale, "chat.list_title"), kb_chat_orders(locale, order_ids, "c", page=page)
 
     if screen == "chat":
         order_id = int(payload.get("order_id") or data.get("chat_order_id") or 0)

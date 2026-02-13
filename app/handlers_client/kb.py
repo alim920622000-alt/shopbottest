@@ -1,6 +1,7 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 from app.i18n.client.translator import t
+from app.services.pagination import PAGE_SIZE_DEFAULT, build_pager_row, normalize_page, slice_page
 
 def _pick_category_name(cat: dict, locale: str) -> str:
     if locale == "uz":
@@ -53,11 +54,17 @@ def kb_shops_list(locale: str, items: list[dict], kind: str) -> InlineKeyboardMa
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
 
-def kb_categories_list(locale: str, categories: list[dict], kind: str, shop_id: int) -> InlineKeyboardMarkup:
+def kb_categories_list(locale: str, categories: list[dict], kind: str, shop_id: int, page: int = 0, page_size: int = PAGE_SIZE_DEFAULT) -> InlineKeyboardMarkup:
     kb = []
-    for c in categories:
+    page_items, total_pages = slice_page(categories, page, page_size)
+    page = normalize_page(page, total_pages)
+    for c in page_items:
         title = _pick_category_name(c, locale)
         kb.append([InlineKeyboardButton(text=title, callback_data=f"c:cat:{shop_id}:{c['id']}")])
+
+    pager_row = build_pager_row("c:cats", page, total_pages, extra=f":{shop_id}")
+    if pager_row:
+        kb.append(pager_row)
 
     kb.append([InlineKeyboardButton(text=t(locale, "search.search"), callback_data=f"c:search:{kind}:{shop_id}")])
     kb.append([InlineKeyboardButton(text=t(locale, "search.at_search"), callback_data=f"c:at_search:{kind}:{shop_id}")])
@@ -69,10 +76,15 @@ def kb_categories_list(locale: str, categories: list[dict], kind: str, shop_id: 
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
 
-def kb_products_list(locale: str, products: list[dict], shop_id: int, category_id: int) -> InlineKeyboardMarkup:
+def kb_products_list(locale: str, products: list[dict], shop_id: int, category_id: int, page: int = 0, page_size: int = PAGE_SIZE_DEFAULT) -> InlineKeyboardMarkup:
     kb = []
-    for p in products:
+    page_items, total_pages = slice_page(products, page, page_size)
+    page = normalize_page(page, total_pages)
+    for p in page_items:
         kb.append([InlineKeyboardButton(text=f"{p['name']} — {p['price']}", callback_data=f"c:prod:{p['id']}")])
+    pager_row = build_pager_row("c:items", page, total_pages, extra=f":{shop_id}:{category_id}")
+    if pager_row:
+        kb.append(pager_row)
     kb.append([
         InlineKeyboardButton(text=t(locale, "nav.home_alt"), callback_data="c:home"),
         InlineKeyboardButton(text=t(locale, "order_menu.cart"), callback_data=f"c:cart:auto:products:{shop_id}:{category_id}"),
@@ -81,13 +93,18 @@ def kb_products_list(locale: str, products: list[dict], shop_id: int, category_i
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
 
-def kb_products_list_shop(locale: str, products: list[dict], shop_id: int, category_id: int) -> InlineKeyboardMarkup:
+def kb_products_list_shop(locale: str, products: list[dict], shop_id: int, category_id: int, page: int = 0, page_size: int = PAGE_SIZE_DEFAULT) -> InlineKeyboardMarkup:
     kb = []
-    for p in products:
+    page_items, total_pages = slice_page(products, page, page_size)
+    page = normalize_page(page, total_pages)
+    for p in page_items:
         sku = (p.get("sku") or "").strip().upper()
         if not sku:
             continue
         kb.append([InlineKeyboardButton(text=f"{p['name']} — {p['price']}", callback_data=f"c:prodsku:{shop_id}:{sku}")])
+    pager_row = build_pager_row("c:items", page, total_pages, extra=f":{shop_id}:{category_id}")
+    if pager_row:
+        kb.append(pager_row)
     kb.append([
         InlineKeyboardButton(text=t(locale, "nav.home_alt"), callback_data="c:home"),
         InlineKeyboardButton(text=t(locale, "order_menu.cart"), callback_data=f"c:cart:auto:products:{shop_id}:{category_id}"),
@@ -219,18 +236,28 @@ def kb_cart_menu(locale: str) -> InlineKeyboardMarkup:
     ])
 
 
-def kb_chat_orders(locale: str, order_ids: list[int], prefix: str) -> InlineKeyboardMarkup:
+def kb_chat_orders(locale: str, order_ids: list[int], prefix: str, page: int = 0, page_size: int = PAGE_SIZE_DEFAULT) -> InlineKeyboardMarkup:
     kb = []
-    for oid in order_ids:
+    page_items, total_pages = slice_page(order_ids, page, page_size)
+    page = normalize_page(page, total_pages)
+    for oid in page_items:
         kb.append([InlineKeyboardButton(text=t(locale, "orders.item_tpl", order_id=oid), callback_data=f"{prefix}:chat:{oid}")])
+    pager_row = build_pager_row(f"{prefix}:chats", page, total_pages)
+    if pager_row:
+        kb.append(pager_row)
     kb.append([InlineKeyboardButton(text=t(locale, "nav.back"), callback_data="c:back:main")])
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
 
-def kb_orders_list(locale: str, order_ids: list[int], back_target: str = "main") -> InlineKeyboardMarkup:
+def kb_orders_list(locale: str, order_ids: list[int], back_target: str = "main", page: int = 0, page_size: int = PAGE_SIZE_DEFAULT, prefix: str = "c:orders", extra: str = "") -> InlineKeyboardMarkup:
     kb = []
-    for oid in order_ids:
+    page_items, total_pages = slice_page(order_ids, page, page_size)
+    page = normalize_page(page, total_pages)
+    for oid in page_items:
         kb.append([InlineKeyboardButton(text=t(locale, "orders.item_tpl", order_id=oid), callback_data=f"c:order:{oid}")])
+    pager_row = build_pager_row(prefix, page, total_pages, extra=extra)
+    if pager_row:
+        kb.append(pager_row)
     kb.append([InlineKeyboardButton(text=t(locale, "nav.back"), callback_data=f"c:back:{back_target}")])
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
