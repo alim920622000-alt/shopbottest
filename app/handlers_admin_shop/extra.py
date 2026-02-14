@@ -13,6 +13,7 @@ from app.repositories.promotions_repo import PromotionsRepo
 from app.repositories.categories_repo import CategoriesRepo
 from app.repositories.products_repo import ProductsRepo
 from app.services.screen import clear_state_keep_screen, show_main_menu
+from app.services.pagination import calc_page, pager_row
 
 router = Router()
 
@@ -38,8 +39,18 @@ async def _guard_admin(db: Database, user_id: int) -> bool:
    # await cq.message.edit_text("Админ-меню магазина:", reply_markup=kb_admin_main())
     #await cq.answer()
 
+@router.callback_query(F.data.startswith("a:history:p:"))
+async def history_page(cq: CallbackQuery, db: Database):
+    page = int(cq.data.split(":")[-1])
+    await history_render(cq, db, page)
+
+
 @router.callback_query(F.data == "a:history")
 async def history(cq: CallbackQuery, db: Database):
+    await history_render(cq, db, 0)
+
+
+async def history_render(cq: CallbackQuery, db: Database, page: int):
     if not await _guard_admin(db, cq.from_user.id):
         await cq.answer("Нет доступа", show_alert=True)
         return
@@ -50,16 +61,24 @@ async def history(cq: CallbackQuery, db: Database):
         return
 
     orders = OrdersRepo(db)
-    rows = await orders.list_history_for_shop(shop_ids[0], statuses=DONE_STATUSES)
-    if not rows:
+    total = await orders.count_for_shop(shop_ids[0], DONE_STATUSES)
+    if total <= 0:
         await cq.message.edit_text("История заказов пуста.", reply_markup=kb_back_home())
         await cq.answer()
         return
 
+    pi = calc_page(total=total, page=page, page_size=8)
+    rows = await orders.list_current_for_shop_page(shop_ids[0], DONE_STATUSES, limit=pi.limit, offset=pi.offset)
     kb = []
     for o in rows:
         kb.append([InlineKeyboardButton(text=f"Заказ #{o['id']} ({o['status']})", callback_data=f"a:order:{o['id']}")])
-    kb.append([InlineKeyboardButton(text="🏠 Главная", callback_data="a:home")])
+    pager = pager_row("a:history", pi.page, pi.total_pages)
+    if pager:
+        kb.append(pager)
+    kb.append([
+        InlineKeyboardButton(text="🏠 Главная", callback_data="a:home"),
+        InlineKeyboardButton(text="🔙 Назад", callback_data="a:back:main"),
+    ])
     await cq.message.edit_text("🕓 История заказов:", reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
     await cq.answer()
 

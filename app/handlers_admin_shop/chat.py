@@ -25,6 +25,7 @@ from app.services.screen import clear_state_keep_screen, set_screen_message_id, 
 from app.services.chat_screen_controller import ChatScreenController
 from app.services.order_chat_access import can_access_order_chat
 from app.utils.tg_safe import safe_delete_cq_message
+from app.services.pagination import calc_page, pager_row
 
 router = Router()
 
@@ -37,7 +38,6 @@ def kb_chat_list(order_ids: list[int]) -> InlineKeyboardMarkup:
     kb = []
     for oid in order_ids:
         kb.append([InlineKeyboardButton(text=f"Заказ #{oid}", callback_data=f"a:chat:{oid}")])
-    kb.append([InlineKeyboardButton(text="🏠 Главная", callback_data="a:home")])
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
 
@@ -57,8 +57,18 @@ def make_chat_render_fn(db: Database, state: FSMContext):
     return render
 
 
+@router.callback_query(F.data.startswith("a:chat:p:"))
+async def list_chats_page(cq: CallbackQuery, db: Database, state: FSMContext):
+    page = int(cq.data.split(":")[-1])
+    await list_chats_render(cq, db, state, page)
+
+
 @router.callback_query(F.data == "a:chat")
 async def list_chats(cq: CallbackQuery, db: Database, state: FSMContext):
+    await list_chats_render(cq, db, state, 0)
+
+
+async def list_chats_render(cq: CallbackQuery, db: Database, state: FSMContext, page: int):
     if not await is_shop_admin(db, cq.from_user.id):
         await cq.answer("Нет доступа", show_alert=True)
         return
@@ -72,13 +82,23 @@ async def list_chats(cq: CallbackQuery, db: Database, state: FSMContext):
         return
 
     chat = ChatRepo(db)
-    order_ids = await chat.list_order_ids_with_chat(shop_id=shop_ids[0])
-    if not order_ids:
+    total = await chat.count_order_ids_with_chat(shop_id=shop_ids[0])
+    if total <= 0:
         await cq.message.edit_text("Активных чатов нет.", reply_markup=kb_admin_main())
         await cq.answer()
         return
 
-    await cq.message.edit_text("Чаты по заказам:", reply_markup=kb_chat_list(order_ids))
+    pi = calc_page(total=total, page=page, page_size=8)
+    order_ids = await chat.list_order_ids_with_chat_page(shop_id=shop_ids[0], limit=pi.limit, offset=pi.offset)
+    kb = kb_chat_list(order_ids)
+    pager = pager_row("a:chat", pi.page, pi.total_pages)
+    if pager:
+        kb.inline_keyboard.append(pager)
+    kb.inline_keyboard.append([
+        InlineKeyboardButton(text="🏠 Главная", callback_data="a:home"),
+        InlineKeyboardButton(text="🔙 Назад", callback_data="a:back:main"),
+    ])
+    await cq.message.edit_text("Чаты по заказам:", reply_markup=kb)
     await cq.answer()
 
 

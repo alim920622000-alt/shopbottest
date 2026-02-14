@@ -73,6 +73,74 @@ class OrdersRepo:
     async def list_history_for_shop(self, shop_id: int, statuses: Sequence[str]) -> Sequence[dict]:
         return await self.list_current_for_shop(shop_id, statuses)
 
+
+    async def count_for_shop(self, shop_id: int, statuses: Sequence[str]) -> int:
+        placeholders = ",".join(["?"] * len(statuses))
+        q = f"""SELECT COUNT(*) AS cnt FROM orders
+                WHERE shop_id=? AND status IN ({placeholders})"""
+        params = [shop_id, *statuses]
+        async with self.db.conn() as conn:
+            cur = await conn.execute(q, params)
+            row = await cur.fetchone()
+            return int(row["cnt"]) if row else 0
+
+    async def list_current_for_shop_page(
+        self,
+        shop_id: int,
+        statuses: Sequence[str],
+        *,
+        limit: int,
+        offset: int,
+    ) -> Sequence[dict]:
+        placeholders = ",".join(["?"] * len(statuses))
+        q = f"""SELECT * FROM orders
+                WHERE shop_id=? AND status IN ({placeholders})
+                ORDER BY created_at DESC
+                LIMIT ? OFFSET ?"""
+        params = [shop_id, *statuses, limit, offset]
+        async with self.db.conn() as conn:
+            cur = await conn.execute(q, params)
+            rows = await cur.fetchall()
+            return [dict(r) for r in rows]
+
+    async def count_for_client(self, client_user_id: int, statuses: Sequence[str] | None = None) -> int:
+        q = "SELECT COUNT(*) AS cnt FROM orders WHERE client_user_id=?"
+        params: list = [client_user_id]
+        if statuses:
+            placeholders = ",".join(["?"] * len(statuses))
+            q += f" AND status IN ({placeholders})"
+            params.extend(statuses)
+        async with self.db.conn() as conn:
+            cur = await conn.execute(q, params)
+            row = await cur.fetchone()
+            return int(row["cnt"]) if row else 0
+
+    async def list_for_client_page(
+        self,
+        client_user_id: int,
+        statuses: Sequence[str] | None = None,
+        *,
+        limit: int,
+        offset: int,
+    ) -> Sequence[dict]:
+        q = """
+            SELECT o.*, s.name AS shop_name, s.business_type
+            FROM orders o
+            JOIN shops s ON s.id = o.shop_id
+            WHERE o.client_user_id=?
+        """
+        params: list = [client_user_id]
+        if statuses:
+            placeholders = ",".join(["?"] * len(statuses))
+            q += f" AND o.status IN ({placeholders})"
+            params.extend(statuses)
+        q += " ORDER BY o.created_at DESC LIMIT ? OFFSET ?"
+        params.extend([limit, offset])
+        async with self.db.conn() as conn:
+            cur = await conn.execute(q, params)
+            rows = await cur.fetchall()
+            return [dict(r) for r in rows]
+
     async def get_order(self, order_id: int) -> Optional[dict]:
         async with self.db.conn() as conn:
             cur = await conn.execute("SELECT * FROM orders WHERE id=?", (order_id,))

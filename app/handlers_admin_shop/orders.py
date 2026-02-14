@@ -13,6 +13,9 @@ from app.services.chat_reminders import is_chat_reminder_text
 from app.services.order_chat_access import can_access_order_chat
 from app.services.screen import clear_state_keep_screen, show_main_menu, show_screen
 from app.services.notification_center import remember_admin_prev_target, parse_notif_context, NOTIF_SRC_ORDERS
+from app.services.pagination import calc_page, pager_row
+
+PAGE_SIZE = 8
 
 router = Router()
 
@@ -36,11 +39,6 @@ def kb_orders_list(order_ids: list[int]) -> InlineKeyboardMarkup:
     kb = []
     for oid in order_ids:
         kb.append([InlineKeyboardButton(text=f"Заказ #{oid}", callback_data=f"a:order:{oid}")])
-
-    kb.append([
-        InlineKeyboardButton(text="🏠 Главная", callback_data="a:home"),
-        InlineKeyboardButton(text="🔙 Назад", callback_data="a:back:main"),
-    ])
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
 
@@ -125,8 +123,18 @@ async def admin_home(cq: CallbackQuery, db: Database, state: FSMContext):
     await cq.answer()
 
 
+@router.callback_query(F.data.startswith("a:orders:p:"))
+async def list_orders_page(cq: CallbackQuery, db: Database, state: FSMContext):
+    page = int(cq.data.split(":")[-1])
+    await list_orders_render(cq, db, state, page)
+
+
 @router.callback_query(F.data == "a:orders")
 async def list_orders(cq: CallbackQuery, db: Database, state: FSMContext):
+    await list_orders_render(cq, db, state, 0)
+
+
+async def list_orders_render(cq: CallbackQuery, db: Database, state: FSMContext, page: int):
     await remember_admin_prev_target(db, "admin_shop", cq.from_user.id, "a:orders")
     shop_ids = await get_admin_shop_ids(db, cq.from_user.id)
     if not shop_ids:
@@ -134,22 +142,27 @@ async def list_orders(cq: CallbackQuery, db: Database, state: FSMContext):
         await cq.answer()
         return
 
-    # MVP: показываем заказы первого магазина админа
     shop_id = shop_ids[0]
-
     orders = OrdersRepo(db)
-    rows = await orders.list_current_for_shop(shop_id=shop_id, statuses=["new", "preparing", "ready"])
-    if not rows:
-        await safe_edit_text(
-            cq.message,
-            f"Текущие заказы (shop_id={shop_id}):",
-            reply_markup=kb_orders_list(order_ids),
-        )
+    statuses = ["new", "preparing", "ready"]
+    total = await orders.count_for_shop(shop_id, statuses)
+    if total <= 0:
+        await safe_edit_text(cq.message, f"Текущих заказов нет (shop_id={shop_id}).", reply_markup=kb_back_admin())
         await cq.answer()
         return
 
+    pi = calc_page(total=total, page=page, page_size=PAGE_SIZE)
+    rows = await orders.list_current_for_shop_page(shop_id=shop_id, statuses=statuses, limit=pi.limit, offset=pi.offset)
     order_ids = [int(r["id"]) for r in rows]
-    await cq.message.edit_text(f"Текущие заказы (shop_id={shop_id}):", reply_markup=kb_orders_list(order_ids))
+    kb = kb_orders_list(order_ids)
+    pager = pager_row("a:orders", pi.page, pi.total_pages)
+    if pager:
+        kb.inline_keyboard.append(pager)
+    kb.inline_keyboard.append([
+        InlineKeyboardButton(text="🏠 Главная", callback_data="a:home"),
+        InlineKeyboardButton(text="🔙 Назад", callback_data="a:back:main"),
+    ])
+    await cq.message.edit_text(f"Текущие заказы (shop_id={shop_id}):", reply_markup=kb)
     await cq.answer()
 
 

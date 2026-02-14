@@ -28,6 +28,7 @@ from app.services.order_chat_access import can_access_order_chat
 from app.services.notification_center import remember_admin_prev_target, parse_notif_context, NOTIF_SRC_MSGS
 from app.utils.tg_safe import safe_delete_cq_message
 from app.ui.nav import kb_nav
+from app.services.pagination import calc_page, pager_row
 
 router = Router()
 
@@ -49,8 +50,18 @@ def kb_back_home() -> InlineKeyboardMarkup:
     ])
 
 
+@router.callback_query(F.data.startswith("r:history:p:"))
+async def history_page(cq: CallbackQuery, db: Database):
+    page = int(cq.data.split(":")[-1])
+    await history_render(cq, db, page)
+
+
 @router.callback_query(F.data == "r:history")
 async def history(cq: CallbackQuery, db: Database):
+    await history_render(cq, db, 0)
+
+
+async def history_render(cq: CallbackQuery, db: Database, page: int):
     if not await is_restaurant_admin(db, cq.from_user.id):
         await cq.answer("Нет доступа", show_alert=True)
         return
@@ -60,15 +71,23 @@ async def history(cq: CallbackQuery, db: Database):
         await cq.answer()
         return
     orders = OrdersRepo(db)
-    rows = await orders.list_history_for_shop(ids[0], statuses=DONE_STATUSES)
-    if not rows:
+    total = await orders.count_for_shop(ids[0], DONE_STATUSES)
+    if total <= 0:
         await cq.message.edit_text("История заказов пуста.", reply_markup=kb_back_home())
         await cq.answer()
         return
+    pi = calc_page(total=total, page=page, page_size=8)
+    rows = await orders.list_current_for_shop_page(ids[0], DONE_STATUSES, limit=pi.limit, offset=pi.offset)
     kb = []
     for o in rows:
         kb.append([InlineKeyboardButton(text=f"Заказ #{o['id']} ({o['status']})", callback_data=f"r:order:{o['id']}")])
-    kb.append([InlineKeyboardButton(text="🏠 Главная", callback_data="r:home")])
+    pager = pager_row("r:history", pi.page, pi.total_pages)
+    if pager:
+        kb.append(pager)
+    kb.append([
+        InlineKeyboardButton(text="🏠 Главная", callback_data="r:home"),
+        InlineKeyboardButton(text="🔙 Назад", callback_data="r:back:main"),
+    ])
     await cq.message.edit_text("🕓 История заказов:", reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
     await cq.answer()
 
@@ -299,8 +318,18 @@ def make_chat_render_fn(db: Database, state: FSMContext):
     return render
 
 
+@router.callback_query(F.data.startswith("r:chat:p:"))
+async def chat_list_page(cq: CallbackQuery, db: Database, state: FSMContext):
+    page = int(cq.data.split(":")[-1])
+    await chat_list_render(cq, db, state, page)
+
+
 @router.callback_query(F.data == "r:chat")
 async def chat_list(cq: CallbackQuery, db: Database, state: FSMContext):
+    await chat_list_render(cq, db, state, 0)
+
+
+async def chat_list_render(cq: CallbackQuery, db: Database, state: FSMContext, page: int):
     if not await is_restaurant_admin(db, cq.from_user.id):
         await cq.answer("Нет доступа", show_alert=True)
         return
@@ -312,12 +341,24 @@ async def chat_list(cq: CallbackQuery, db: Database, state: FSMContext):
         await cq.answer()
         return
     chat = ChatRepo(db)
-    order_ids = await chat.list_order_ids_with_chat(shop_id=ids[0])
-    if not order_ids:
+    total = await chat.count_order_ids_with_chat(shop_id=ids[0])
+    if total <= 0:
         await cq.message.edit_text("Активных чатов нет.", reply_markup=kb_admin_main())
         await cq.answer()
         return
-    await cq.message.edit_text("Чаты по заказам:", reply_markup=kb_chat_list(order_ids))
+    pi = calc_page(total=total, page=page, page_size=8)
+    order_ids = await chat.list_order_ids_with_chat_page(shop_id=ids[0], limit=pi.limit, offset=pi.offset)
+    kb = []
+    for oid in order_ids:
+        kb.append([InlineKeyboardButton(text=f"Заказ #{oid}", callback_data=f"r:chat:{oid}")])
+    pager = pager_row("r:chat", pi.page, pi.total_pages)
+    if pager:
+        kb.append(pager)
+    kb.append([
+        InlineKeyboardButton(text="🏠 Главная", callback_data="r:home"),
+        InlineKeyboardButton(text="🔙 Назад", callback_data="r:back:main"),
+    ])
+    await cq.message.edit_text("Чаты по заказам:", reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
     await cq.answer()
 
 

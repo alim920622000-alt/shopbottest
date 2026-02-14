@@ -50,6 +50,72 @@ class ChatRepo:
             row = await cur.fetchone()
             return int(row["cnt"]) if row else 0
 
+
+    async def count_order_ids_with_chat(self, user_id: int | None = None, shop_id: int | None = None) -> int:
+        if not user_id and not shop_id:
+            return 0
+        if user_id:
+            q = """
+                SELECT COUNT(*) AS cnt
+                FROM (
+                    SELECT DISTINCT o.id
+                    FROM orders o
+                    JOIN order_chat_messages m ON m.order_id = o.id
+                    WHERE o.client_user_id=?
+                ) x
+            """
+            params = (user_id,)
+        else:
+            q = """
+                SELECT COUNT(*) AS cnt
+                FROM (
+                    SELECT DISTINCT o.id
+                    FROM orders o
+                    JOIN order_chat_messages m ON m.order_id = o.id
+                    WHERE o.shop_id=?
+                ) x
+            """
+            params = (shop_id,)
+        async with self.db.conn() as conn:
+            cur = await conn.execute(q, params)
+            row = await cur.fetchone()
+            return int(row["cnt"]) if row else 0
+
+    async def list_order_ids_with_chat_page(
+        self,
+        *,
+        user_id: int | None = None,
+        shop_id: int | None = None,
+        limit: int,
+        offset: int,
+    ) -> list[int]:
+        if not user_id and not shop_id:
+            return []
+        if user_id:
+            q = """
+                SELECT DISTINCT o.id
+                FROM orders o
+                JOIN order_chat_messages m ON m.order_id = o.id
+                WHERE o.client_user_id=?
+                ORDER BY o.created_at DESC
+                LIMIT ? OFFSET ?
+            """
+            params = (user_id, limit, offset)
+        else:
+            q = """
+                SELECT DISTINCT o.id
+                FROM orders o
+                JOIN order_chat_messages m ON m.order_id = o.id
+                WHERE o.shop_id=?
+                ORDER BY o.created_at DESC
+                LIMIT ? OFFSET ?
+            """
+            params = (shop_id, limit, offset)
+        async with self.db.conn() as conn:
+            cur = await conn.execute(q, params)
+            rows = await cur.fetchall()
+            return [int(r["id"]) for r in rows]
+
     async def list_order_ids_with_chat(self, user_id: int | None = None, shop_id: int | None = None) -> list[int]:
         if not user_id and not shop_id:
             return []

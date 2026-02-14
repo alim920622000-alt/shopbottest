@@ -102,21 +102,6 @@ def kb_products(products: list[dict], restaurant_id: int, category_id: int) -> I
             text=f"{status} {p['name']} — {p['price']}",
             callback_data=f"r:prod:{restaurant_id}:{category_id}:{p['id']}"
         )])
-
-    kb.append([InlineKeyboardButton(
-        text="➕ Добавить позицию",
-        callback_data=f"r:add:{restaurant_id}:{category_id}"
-    )])
-    
-    kb.append([InlineKeyboardButton(
-        text="🔄 Обновить список",
-        callback_data=f"r:refresh:{restaurant_id}:{category_id}"
-    )])
-    
-    kb.append([
-        InlineKeyboardButton(text="🏠 Главная", callback_data="r:home"),
-        InlineKeyboardButton(text="🔙 Назад", callback_data=f"r:cats"),
-    ])
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
 
@@ -606,19 +591,46 @@ async def add_category_save(message: Message, state: FSMContext, db: Database):
 
 
 @router.callback_query(F.data.startswith("r:cat:"))
+async def open_category_page(cq: CallbackQuery, db: Database):
+    parts = cq.data.split(":")
+    if len(parts) != 6 or parts[4] != "p":
+        return
+    restaurant_id = int(parts[2])
+    category_id = int(parts[3])
+    page = int(parts[5])
+    await render_category_products(cq, db, restaurant_id, category_id, page)
+    await cq.answer()
+
+
+async def render_category_products(cq: CallbackQuery, db: Database, restaurant_id: int, category_id: int, page: int):
+    prod = ProductsRepo(db)
+    total = await prod.count_by_category_any(shop_id=restaurant_id, category_id=category_id)
+    pi = calc_page(total=total, page=page, page_size=PAGE_SIZE)
+    products = await prod.list_by_category_any_page(shop_id=restaurant_id, category_id=category_id, limit=pi.limit, offset=pi.offset)
+
+    kb = kb_products(products, restaurant_id, category_id)
+    pager = pager_row(f"r:cat:{restaurant_id}:{category_id}", pi.page, pi.total_pages)
+    if pager:
+        kb.inline_keyboard.append(pager)
+    kb.inline_keyboard.append([InlineKeyboardButton(text="➕ Добавить позицию", callback_data=f"r:add:{restaurant_id}:{category_id}")])
+    kb.inline_keyboard.append([InlineKeyboardButton(text="🔄 Обновить список", callback_data=f"r:refresh:{restaurant_id}:{category_id}")])
+    kb.inline_keyboard.append([
+        InlineKeyboardButton(text="🏠 Главная", callback_data="r:home"),
+        InlineKeyboardButton(text="🔙 Назад", callback_data="r:cats"),
+    ])
+
+    await cq.message.edit_text("Позиции в категории:", reply_markup=kb)
+
+@router.callback_query(F.data.startswith("r:cat:"))
 async def open_category(cq: CallbackQuery, db: Database):
     # r:cat:{restaurant_id}:{category_id}
+    if ":p:" in cq.data:
+        return
     _, _, restaurant_id_str, category_id_str = cq.data.split(":", 3)
     restaurant_id = int(restaurant_id_str)
     category_id = int(category_id_str)
 
-    prod = ProductsRepo(db)
-    products = await prod.list_by_category(category_id, active_only=False)
-
-    await cq.message.edit_text(
-        "Позиции в категории:",
-        reply_markup=kb_products(products, restaurant_id, category_id)
-    )
+    await render_category_products(cq, db, restaurant_id, category_id, 0)
     await cq.answer()
 
 

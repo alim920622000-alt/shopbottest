@@ -82,6 +82,98 @@ class CategoriesRepo:
             rows = await cur.fetchall()
             return [dict(r) for r in rows]
 
+
+    async def count_for_business_type(self, business_type: str, active_only: bool = True) -> int:
+        q = "SELECT COUNT(*) AS cnt FROM categories WHERE business_type=?"
+        params = [business_type]
+        if active_only:
+            q += " AND is_active=1"
+        async with self.db.conn() as conn:
+            cur = await conn.execute(q, params)
+            row = await cur.fetchone()
+            return int(row["cnt"]) if row else 0
+
+    async def list_for_business_type_page(
+        self,
+        business_type: str,
+        *,
+        limit: int,
+        offset: int,
+        active_only: bool = True,
+    ) -> Sequence[dict]:
+        q = "SELECT * FROM categories WHERE business_type=?"
+        params = [business_type]
+        if active_only:
+            q += " AND is_active=1"
+        q += " ORDER BY sort ASC, id ASC LIMIT ? OFFSET ?"
+        params.extend([limit, offset])
+        async with self.db.conn() as conn:
+            cur = await conn.execute(q, params)
+            rows = await cur.fetchall()
+            return [dict(r) for r in rows]
+
+    async def count_for_shop(self, shop_id: int, active_only: bool = True) -> int:
+        shop = await ShopsRepo(self.db).get(shop_id)
+        if not shop:
+            return 0
+        business_type = shop["business_type"]
+        q = """
+        SELECT COUNT(*) AS cnt
+        FROM categories c
+        WHERE c.business_type=?
+          AND EXISTS (
+            SELECT 1
+            FROM products p
+            WHERE p.shop_id=?
+              AND p.category_id=c.id
+          )
+        """
+        params = [business_type, shop_id]
+        if active_only:
+            q += " AND c.is_active=1"
+        async with self.db.conn() as conn:
+            cur = await conn.execute(q, params)
+            row = await cur.fetchone()
+            return int(row["cnt"]) if row else 0
+
+    async def list_for_shop_page(
+        self,
+        shop_id: int,
+        *,
+        limit: int,
+        offset: int,
+        active_only: bool = True,
+    ) -> Sequence[dict]:
+        shop = await ShopsRepo(self.db).get(shop_id)
+        if not shop:
+            return []
+
+        business_type = shop["business_type"]
+
+        q = """
+        SELECT c.*
+        FROM categories c
+        WHERE c.business_type=?
+          AND EXISTS (
+            SELECT 1
+            FROM products p
+            WHERE p.shop_id=?
+              AND p.category_id=c.id
+          )
+        """
+        params = [business_type, shop_id]
+
+        if active_only:
+            q += " AND c.is_active=1"
+
+        q += " ORDER BY c.sort ASC, c.id ASC LIMIT ? OFFSET ?"
+        params.extend([limit, offset])
+
+        async with self.db.conn() as conn:
+            cur = await conn.execute(q, params)
+            rows = await cur.fetchall()
+            return [dict(r) for r in rows]
+
     async def list_for_shop(self, shop_id: int, active_only: bool = True) -> Sequence[dict]:
         """
         Для клиентского UI: показываем только категории, где есть товары конкретного shop_id,

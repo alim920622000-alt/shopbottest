@@ -16,6 +16,9 @@ from app.config import get_settings
 from app.services.screen import clear_state_keep_screen, show_main_menu
 from app.repositories.categories_repo import CategoriesRepo
 from app.services.notification_center import remember_admin_prev_target
+from app.services.pagination import calc_page, pager_row
+
+PAGE_SIZE = 8
 
 
 def is_superadmin(user_id: int) -> bool:
@@ -70,11 +73,6 @@ def kb_categories(cats: list[dict], user_id: int) -> InlineKeyboardMarkup:
             text=f"{status} {c['name']}",
             callback_data=f"a:pcat:{c['id']}"
         )])
-
-    kb.append([InlineKeyboardButton(text="🔎 Поиск по товарам", callback_data="a:psearch")])
-    if is_superadmin(user_id):
-        kb.append([InlineKeyboardButton(text="➕ Добавить категорию", callback_data="a:paddcat")])
-    kb.append([InlineKeyboardButton(text="🏠 Главная", callback_data="a:home")])
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
 
@@ -86,13 +84,6 @@ def kb_products(cat_id: int, items: list[dict]) -> InlineKeyboardMarkup:
             text=f"{status} {p['name']} — {p['price']}",
             callback_data=f"a:pprod:{cat_id}:{p['id']}"
         )])
-
-    kb.append([InlineKeyboardButton(text="➕ Добавить товар", callback_data=f"a:paddprod:{cat_id}")])
-    kb.append([InlineKeyboardButton(text="📥 Массовое добавление", callback_data=f"a:bulk:{cat_id}")])
-    kb.append([
-        InlineKeyboardButton(text="🔙 Категории", callback_data="a:products"),
-        InlineKeyboardButton(text="🏠 Главная", callback_data="a:home"),
-    ])
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
 
@@ -140,8 +131,18 @@ async def _get_shop_id_for_admin(db: Database, user_id: int) -> int | None:
     return shop_ids[0] if shop_ids else None
 
 
+@router.callback_query(F.data.startswith("a:products:p:"))
+async def products_root_page(cq: CallbackQuery, db: Database):
+    page = int(cq.data.split(":")[-1])
+    await products_root_render(cq, db, page)
+
+
 @router.callback_query(F.data == "a:products")
 async def products_root(cq: CallbackQuery, db: Database):
+    await products_root_render(cq, db, 0)
+
+
+async def products_root_render(cq: CallbackQuery, db: Database, page: int):
     await remember_admin_prev_target(db, "admin_shop", cq.from_user.id, "a:products")
     if not await is_shop_admin(db, cq.from_user.id):
         await cq.answer("Нет доступа", show_alert=True)
@@ -153,17 +154,16 @@ async def products_root(cq: CallbackQuery, db: Database):
         await cq.answer()
         return
 
-    async with db.conn() as conn:
-        shop = await ShopsRepo(db).get(shop_id)
-        if not shop:
-            await cq.message.edit_text("Магазин не найден.", reply_markup=kb_home())
-            await cq.answer()
-            return
+    shop = await ShopsRepo(db).get(shop_id)
+    if not shop:
+        await cq.message.edit_text("Магазин не найден.", reply_markup=kb_home())
+        await cq.answer()
+        return
 
-    cats = await CategoriesRepo(db).list_for_business_type(shop["business_type"], active_only=True)
+    repo = CategoriesRepo(db)
+    total = await repo.count_for_business_type(shop["business_type"], active_only=True)
 
-
-    if not cats:
+    if total <= 0:
         is_root = is_superadmin(cq.from_user.id)
         text = "🧺 Продукты\n\nКатегорий пока нет."
         if is_root:
@@ -174,14 +174,24 @@ async def products_root(cq: CallbackQuery, db: Database):
             buttons.append([InlineKeyboardButton(text="➕ Добавить категорию", callback_data="a:paddcat")])
         buttons.append([InlineKeyboardButton(text="🏠 Главная", callback_data="a:home")])
 
-        await cq.message.edit_text(
-            text,
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons),
-        )
+        await cq.message.edit_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons))
         await cq.answer()
         return
 
-    await cq.message.edit_text("🧺 Категории:", reply_markup=kb_categories(cats, cq.from_user.id))
+    pi = calc_page(total=total, page=page, page_size=PAGE_SIZE)
+    cats = await repo.list_for_business_type_page(shop["business_type"], limit=pi.limit, offset=pi.offset, active_only=True)
+    kb = kb_categories(cats, cq.from_user.id)
+    pager = pager_row("a:products", pi.page, pi.total_pages)
+    if pager:
+        kb.inline_keyboard.append(pager)
+    kb.inline_keyboard.append([InlineKeyboardButton(text="🔎 Поиск по товарам", callback_data="a:psearch")])
+    if is_superadmin(cq.from_user.id):
+        kb.inline_keyboard.append([InlineKeyboardButton(text="➕ Добавить категорию", callback_data="a:paddcat")])
+    kb.inline_keyboard.append([
+        InlineKeyboardButton(text="🏠 Главная", callback_data="a:home"),
+        InlineKeyboardButton(text="🔙 Назад", callback_data="a:back:main"),
+    ])
+    await cq.message.edit_text("🧺 Категории:", reply_markup=kb)
     await cq.answer()
 
 
@@ -285,13 +295,29 @@ async def open_category(cq: CallbackQuery, db: Database):
         await cq.answer()
         return
 
-    cat_id = int(cq.data.split(":")[2])
+    parts = cq.data.split(":")
+    cat_id = int(parts[2])
+    page = 0
+    if len(parts) == 5 and parts[3] == "p":
+        page = int(parts[4])
 
     repo = ProductsRepo(db)
-    items = await repo.list_by_category_any(shop_id=shop_id, category_id=cat_id)
+    total = await repo.count_by_category_any(shop_id=shop_id, category_id=cat_id)
+    pi = calc_page(total=total, page=page, page_size=PAGE_SIZE)
+    items = await repo.list_by_category_any_page(shop_id=shop_id, category_id=cat_id, limit=pi.limit, offset=pi.offset)
 
     title = f"🧺 Товары в категории #{cat_id}:"
-    await cq.message.edit_text(title, reply_markup=kb_products(cat_id, items))
+    kb = kb_products(cat_id, items)
+    pager = pager_row(f"a:pcat:{cat_id}", pi.page, pi.total_pages)
+    if pager:
+        kb.inline_keyboard.append(pager)
+    kb.inline_keyboard.append([InlineKeyboardButton(text="➕ Добавить товар", callback_data=f"a:paddprod:{cat_id}")])
+    kb.inline_keyboard.append([InlineKeyboardButton(text="📥 Массовое добавление", callback_data=f"a:bulk:{cat_id}")])
+    kb.inline_keyboard.append([
+        InlineKeyboardButton(text="🔙 Категории", callback_data="a:products"),
+        InlineKeyboardButton(text="🏠 Главная", callback_data="a:home"),
+    ])
+    await cq.message.edit_text(title, reply_markup=kb)
     await cq.answer()
 
 

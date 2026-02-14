@@ -113,6 +113,90 @@ class ProductsRepo:
             await conn.execute(q, params)
             await conn.commit()
 
+
+    async def count_by_category(self, category_id: int, active_only: bool = True) -> int:
+        q = "SELECT COUNT(*) AS cnt FROM products WHERE category_id=?"
+        params = [category_id]
+        if active_only:
+            q += " AND is_active=1"
+        async with self.db.conn() as conn:
+            cur = await conn.execute(q, params)
+            row = await cur.fetchone()
+            return int(row["cnt"]) if row else 0
+
+    async def list_by_category_page(
+        self,
+        category_id: int,
+        *,
+        limit: int,
+        offset: int,
+        active_only: bool = True,
+    ) -> Sequence[dict]:
+        q = "SELECT * FROM products WHERE category_id=?"
+        params = [category_id]
+        if active_only:
+            q += " AND is_active=1"
+        q += " ORDER BY id DESC LIMIT ? OFFSET ?"
+        params.extend([limit, offset])
+        async with self.db.conn() as conn:
+            cur = await conn.execute(q, params)
+            rows = await cur.fetchall()
+            return [dict(r) for r in rows]
+
+    async def count_by_category_for_shop(self, shop_id: int, category_id: int, active_only: bool = True) -> int:
+        q = "SELECT COUNT(*) AS cnt FROM products WHERE shop_id=? AND category_id=?"
+        params = [shop_id, category_id]
+        if active_only:
+            q += " AND is_active=1"
+        async with self.db.conn() as conn:
+            cur = await conn.execute(q, params)
+            row = await cur.fetchone()
+            return int(row["cnt"]) if row else 0
+
+    async def list_by_category_for_shop_page(
+        self,
+        shop_id: int,
+        category_id: int,
+        *,
+        limit: int,
+        offset: int,
+        active_only: bool = True,
+    ) -> list[dict]:
+        q = """
+        SELECT *
+        FROM products
+        WHERE shop_id = ?
+          AND category_id = ?
+        """
+        params = [shop_id, category_id]
+
+        if active_only:
+            q += " AND is_active = 1"
+
+        q += " ORDER BY id ASC LIMIT ? OFFSET ?"
+        params.extend([limit, offset])
+
+        async with self.db.conn() as conn:
+            cur = await conn.execute(q, params)
+            rows = await cur.fetchall()
+            return [dict(r) for r in rows]
+
+    async def count_by_category_any(self, shop_id: int, category_id: int) -> int:
+        async with self.db.conn() as conn:
+            cur = await conn.execute(
+                "SELECT COUNT(*) AS cnt FROM products WHERE shop_id=? AND category_id=?",
+                (shop_id, category_id),
+            )
+            row = await cur.fetchone()
+            return int(row["cnt"]) if row else 0
+
+    async def list_by_category_any_page(self, shop_id: int, category_id: int, *, limit: int, offset: int) -> Sequence[dict]:
+        q = "SELECT * FROM products WHERE shop_id=? AND category_id=? ORDER BY id DESC LIMIT ? OFFSET ?"
+        async with self.db.conn() as conn:
+            cur = await conn.execute(q, (shop_id, category_id, limit, offset))
+            rows = await cur.fetchall()
+            return [dict(r) for r in rows]
+
     async def list_by_category(self, category_id: int, active_only: bool = True) -> Sequence[dict]:
         q = "SELECT * FROM products WHERE category_id=?"
         params = [category_id]

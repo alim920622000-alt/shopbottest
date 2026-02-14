@@ -26,6 +26,9 @@ from app.services.screen import (
 from app.services.client_ui_state import remember_client_screen
 from app.services.chat_reminders import is_chat_reminder_text
 from app.utils.tg_safe import safe_delete_cq_message
+from app.services.pagination import calc_page, pager_row
+
+PAGE_SIZE = 8
 from app.i18n.client.translator import t
 from app.handlers_client.kb import (
     kb_client_main,
@@ -139,20 +142,36 @@ async def open_product_from_inline_sku(message: Message, db: Database, state: FS
     )
 
 
+@router.callback_query(F.data.startswith("c:shops:p:"))
+async def list_shops_page(cq: CallbackQuery, db: Database, state: FSMContext, locale: str = "ru"):
+    page = int(cq.data.split(":")[-1])
+    await list_shops_render(cq, db, state, locale, page)
+
+
 @router.callback_query(F.data == "c:shops")
 async def list_shops(cq: CallbackQuery, db: Database, state: FSMContext, locale: str = "ru"):
-    repo = ShopsRepo(db)
-    items = await repo.list_active(business_type="shop")
+    await list_shops_render(cq, db, state, locale, 0)
 
-    if not items:
+
+async def list_shops_render(cq: CallbackQuery, db: Database, state: FSMContext, locale: str, page: int):
+    repo = ShopsRepo(db)
+    total = await repo.count_active(business_type="shop")
+
+    if total <= 0:
         await cq.message.edit_text(t(locale, "shops.empty"), reply_markup=kb_back(locale, "order_menu"))
         await cq.answer()
         return
 
+    pi = calc_page(total=total, page=page, page_size=PAGE_SIZE)
+    items = await repo.list_active_page(business_type="shop", limit=pi.limit, offset=pi.offset)
     await state.update_data(last_kind="shop", last_view={"name": "shops_list"})
     await state.update_data(user_id=cq.from_user.id)
     await remember_client_screen(state, "shops", {})
-    await cq.message.edit_text(t(locale, "shops.select"), reply_markup=kb_shops_list(locale, items, "shop"))
+    kb = kb_shops_list(locale, items, "shop")
+    pager = pager_row("c:shops", pi.page, pi.total_pages)
+    if pager:
+        kb.inline_keyboard.insert(len(kb.inline_keyboard)-1, pager)
+    await cq.message.edit_text(t(locale, "shops.select"), reply_markup=kb)
     await cq.answer()
 
 
@@ -193,20 +212,36 @@ async def cart_menu(cq: CallbackQuery, state: FSMContext, locale: str = "ru"):
     await cq.message.edit_text(t(locale, "cart.select"), reply_markup=kb_cart_menu(locale))
     await cq.answer()
 
+@router.callback_query(F.data.startswith("c:restaurants:p:"))
+async def list_restaurants_page(cq: CallbackQuery, db: Database, state: FSMContext, locale: str = "ru"):
+    page = int(cq.data.split(":")[-1])
+    await list_restaurants_render(cq, db, state, locale, page)
+
+
 @router.callback_query(F.data == "c:restaurants")
 async def list_restaurants(cq: CallbackQuery, db: Database, state: FSMContext, locale: str = "ru"):
-    repo = ShopsRepo(db)
-    items = await repo.list_active(business_type="restaurant")
+    await list_restaurants_render(cq, db, state, locale, 0)
 
-    if not items:
+
+async def list_restaurants_render(cq: CallbackQuery, db: Database, state: FSMContext, locale: str, page: int):
+    repo = ShopsRepo(db)
+    total = await repo.count_active(business_type="restaurant")
+
+    if total <= 0:
         await cq.message.edit_text(t(locale, "restaurants.empty"), reply_markup=kb_back(locale, "order_menu"))
         await cq.answer()
         return
 
+    pi = calc_page(total=total, page=page, page_size=PAGE_SIZE)
+    items = await repo.list_active_page(business_type="restaurant", limit=pi.limit, offset=pi.offset)
     await state.update_data(last_kind="restaurant", last_view={"name": "restaurants_list"})
     await state.update_data(user_id=cq.from_user.id)
     await remember_client_screen(state, "restaurants", {})
-    await cq.message.edit_text(t(locale, "restaurants.select"), reply_markup=kb_shops_list(locale, items, "restaurant"))
+    kb = kb_shops_list(locale, items, "restaurant")
+    pager = pager_row("c:restaurants", pi.page, pi.total_pages)
+    if pager:
+        kb.inline_keyboard.insert(len(kb.inline_keyboard)-1, pager)
+    await cq.message.edit_text(t(locale, "restaurants.select"), reply_markup=kb)
     await cq.answer()
 
 
@@ -223,35 +258,59 @@ async def pick_shop(cq: CallbackQuery, db: Database, state: FSMContext, locale: 
     )
     await remember_client_screen(state, "categories", {"kind": kind, "shop_id": shop_id})
 
-    await show_categories(cq.message, db, kind, shop_id, locale=locale)
+    await show_categories(cq.message, db, kind, shop_id, locale=locale, page=0)
     await cq.answer()
 
 
-async def show_categories(message: Message, db: Database, kind: str, shop_id: int, locale: str = "ru"):
+async def show_categories(message: Message, db: Database, kind: str, shop_id: int, locale: str = "ru", page: int = 0):
     logger.warning("DEBUG show_categories locale=%r kind=%r shop_id=%r", locale, kind, shop_id)
     cats = CategoriesRepo(db)
-    categories = await cats.list_for_shop(shop_id, active_only=True)
-    if not categories:
+    total = await cats.count_for_shop(shop_id, active_only=True)
+    if total <= 0:
         await message.edit_text(t(locale, "categories.empty"), reply_markup=kb_back(locale, f"{kind}_list"))
         return
+
+    pi = calc_page(total=total, page=page, page_size=PAGE_SIZE)
+    categories = await cats.list_for_shop_page(shop_id, limit=pi.limit, offset=pi.offset, active_only=True)
 
     title = (
         t(locale, "categories.shop_title")
         if kind == "shop"
         else t(locale, "categories.restaurant_title")
     )
-    await message.edit_text(
-        title,
-        reply_markup=kb_categories_list(locale, categories, kind, shop_id),
-    )
+    kb = kb_categories_list(locale, categories, kind, shop_id)
+    pager = pager_row(f"c:cats:{shop_id}", pi.page, pi.total_pages)
+    if pager:
+        kb.inline_keyboard.insert(len(kb.inline_keyboard)-1, pager)
+    await message.edit_text(title, reply_markup=kb)
 
+
+
+
+@router.callback_query(F.data.startswith("c:cats:"))
+async def categories_page(cq: CallbackQuery, db: Database, state: FSMContext, locale: str = "ru"):
+    parts = cq.data.split(":")
+    if len(parts) != 5 or parts[3] != "p":
+        return
+    shop_id = int(parts[2])
+    page = int(parts[4])
+    data = await state.get_data()
+    kind = data.get("last_kind")
+    if not kind:
+        shop = await ShopsRepo(db).get(shop_id)
+        kind = shop["business_type"] if shop else "shop"
+    await show_categories(cq.message, db, kind, shop_id, locale=locale, page=page)
+    await cq.answer()
 
 @router.callback_query(F.data.startswith("c:cat:"))
 async def open_category(cq: CallbackQuery, db: Database, state: FSMContext, locale: str = "ru"):
-    # c:cat:{shop_id}:{category_id}
-    _, _, shop_id_str, category_id_str = cq.data.split(":", 3)
-    shop_id = int(shop_id_str)
-    category_id = int(category_id_str)
+    # c:cat:{shop_id}:{category_id} или c:cat:{shop_id}:{category_id}:p:{page}
+    parts = cq.data.split(":")
+    shop_id = int(parts[2])
+    category_id = int(parts[3])
+    page = 0
+    if len(parts) == 6 and parts[4] == "p":
+        page = int(parts[5])
 
     await show_category_products(
         cq.message,
@@ -260,6 +319,7 @@ async def open_category(cq: CallbackQuery, db: Database, state: FSMContext, loca
         shop_id,
         category_id,
         locale=locale,
+        page=page,
     )
     await cq.answer()
 
@@ -271,11 +331,12 @@ async def show_category_products(
     shop_id: int,
     category_id: int,
     locale: str = "ru",
+    page: int = 0,
 ):
     prod = ProductsRepo(db)
-    products = await prod.list_by_category_for_shop(shop_id, category_id, active_only=True)
+    total = await prod.count_by_category_for_shop(shop_id, category_id, active_only=True)
 
-    if not products:
+    if total <= 0:
         data = await state.get_data()
         last_kind = data.get("last_kind")
         if not last_kind:
@@ -294,7 +355,12 @@ async def show_category_products(
         "products",
         {"shop_id": shop_id, "category_id": category_id, "kind": kind},
     )
+    pi = calc_page(total=total, page=page, page_size=PAGE_SIZE)
+    products = await prod.list_by_category_for_shop_page(shop_id, category_id, limit=pi.limit, offset=pi.offset, active_only=True)
     products_kb = kb_products_list_shop(locale, products, shop_id, category_id) if kind == "shop" else kb_products_list(locale, products, shop_id, category_id)
+    pager = pager_row(f"c:cat:{shop_id}:{category_id}", pi.page, pi.total_pages)
+    if pager:
+        products_kb.inline_keyboard.insert(len(products_kb.inline_keyboard)-1, pager)
 
     await message.edit_text(
         t(locale, "products.list_title"),
@@ -549,7 +615,7 @@ async def back(cq: CallbackQuery, db: Database, state: FSMContext, locale: str =
         if len(parts) >= 5:
             kind = parts[3]
             shop_id = int(parts[4])
-            await show_categories(cq.message, db, kind, shop_id, locale=locale)
+            await show_categories(cq.message, db, kind, shop_id, locale=locale, page=0)
             await cq.answer()
             return
 

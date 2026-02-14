@@ -33,6 +33,9 @@ from app.services.order_chat_access import can_access_order_chat, CLOSED_STATUSE
 from app.handlers_client.catalog import render_cart
 from app.i18n.client.translator import t
 from app.utils.tg_safe import safe_delete_cq_message
+from app.services.pagination import calc_page, pager_row
+
+LIST_PAGE_SIZE = 8
 
 router = Router()
 logger = logging.getLogger(__name__)
@@ -182,37 +185,71 @@ def make_chat_render_fn(db: Database, state: FSMContext, locale: str):
     return render
 
 
+@router.callback_query(F.data.startswith("c:orders:p:"))
+async def list_orders_page(cq: CallbackQuery, db: Database, state: FSMContext, locale: str = "ru"):
+    page = int(cq.data.split(":")[-1])
+    await list_orders_render(cq, db, state, locale, page)
+
+
 @router.callback_query(F.data == "c:orders")
 async def list_orders(cq: CallbackQuery, db: Database, state: FSMContext, locale: str = "ru"):
+    await list_orders_render(cq, db, state, locale, 0)
+
+
+async def list_orders_render(cq: CallbackQuery, db: Database, state: FSMContext, locale: str, page: int):
     await clear_state_keep_screen(state, db, "client", cq.from_user.id)
     await state.update_data(user_id=cq.from_user.id)
     await remember_client_screen(state, "orders", {})
     orders = OrdersRepo(db)
-    rows = await orders.list_for_client(cq.from_user.id)
-    if not rows:
+    total = await orders.count_for_client(cq.from_user.id)
+    if total <= 0:
         await cq.message.edit_text(t(locale, "orders.empty"), reply_markup=kb_client_main(locale))
         await cq.answer()
         return
 
+    pi = calc_page(total=total, page=page, page_size=LIST_PAGE_SIZE)
+    rows = await orders.list_for_client_page(cq.from_user.id, limit=pi.limit, offset=pi.offset)
     order_ids = [int(r["id"]) for r in rows]
-    await cq.message.edit_text(t(locale, "orders.title"), reply_markup=kb_orders_list(locale, order_ids))
+    kb = kb_orders_list(locale, order_ids)
+    pager = pager_row("c:orders", pi.page, pi.total_pages)
+    if pager:
+        kb.inline_keyboard.append(pager)
+    kb.inline_keyboard.append([InlineKeyboardButton(text=t(locale, "nav.back"), callback_data="c:back:main")])
+    await cq.message.edit_text(t(locale, "orders.title"), reply_markup=kb)
     await cq.answer()
+
+
+@router.callback_query(F.data.startswith("c:history:p:"))
+async def list_history_page(cq: CallbackQuery, db: Database, state: FSMContext, locale: str = "ru"):
+    page = int(cq.data.split(":")[-1])
+    await list_history_render(cq, db, state, locale, page)
 
 
 @router.callback_query(F.data == "c:history")
 async def list_history(cq: CallbackQuery, db: Database, state: FSMContext, locale: str = "ru"):
+    await list_history_render(cq, db, state, locale, 0)
+
+
+async def list_history_render(cq: CallbackQuery, db: Database, state: FSMContext, locale: str, page: int):
     await clear_state_keep_screen(state, db, "client", cq.from_user.id)
     await state.update_data(user_id=cq.from_user.id)
     await remember_client_screen(state, "history", {})
     orders = OrdersRepo(db)
-    rows = await orders.list_for_client(cq.from_user.id, statuses=DONE_STATUSES)
-    if not rows:
+    total = await orders.count_for_client(cq.from_user.id, statuses=DONE_STATUSES)
+    if total <= 0:
         await cq.message.edit_text(t(locale, "orders.history.empty"), reply_markup=kb_back(locale, "order_menu"))
         await cq.answer()
         return
 
+    pi = calc_page(total=total, page=page, page_size=LIST_PAGE_SIZE)
+    rows = await orders.list_for_client_page(cq.from_user.id, statuses=DONE_STATUSES, limit=pi.limit, offset=pi.offset)
     order_ids = [int(r["id"]) for r in rows]
-    await cq.message.edit_text(t(locale, "orders.history.title"), reply_markup=kb_orders_list(locale, order_ids, back_target="order_menu"))
+    kb = kb_orders_list(locale, order_ids, back_target="order_menu")
+    pager = pager_row("c:history", pi.page, pi.total_pages)
+    if pager:
+        kb.inline_keyboard.append(pager)
+    kb.inline_keyboard.append([InlineKeyboardButton(text=t(locale, "nav.back"), callback_data="c:back:order_menu")])
+    await cq.message.edit_text(t(locale, "orders.history.title"), reply_markup=kb)
     await cq.answer()
 
 
@@ -299,19 +336,36 @@ async def cancel_order(cq: CallbackQuery, db: Database, state: FSMContext, local
     await _render_order_card(cq, state, db, locale, o, items, shop_name)
 
 
+@router.callback_query(F.data.startswith("c:chat:p:"))
+async def chat_list_page(cq: CallbackQuery, db: Database, state: FSMContext, locale: str = "ru"):
+    page = int(cq.data.split(":")[-1])
+    await chat_list_render(cq, db, state, locale, page)
+
+
 @router.callback_query(F.data == "c:chat")
 async def chat_list(cq: CallbackQuery, db: Database, state: FSMContext, locale: str = "ru"):
+    await chat_list_render(cq, db, state, locale, 0)
+
+
+async def chat_list_render(cq: CallbackQuery, db: Database, state: FSMContext, locale: str, page: int):
     await clear_state_keep_screen(state, db, "client", cq.from_user.id)
     await state.update_data(user_id=cq.from_user.id)
     await remember_client_screen(state, "chat_list", {})
     chats = ChatRepo(db)
-    order_ids = await chats.list_order_ids_with_chat(user_id=cq.from_user.id)
-    if not order_ids:
+    total = await chats.count_order_ids_with_chat(user_id=cq.from_user.id)
+    if total <= 0:
         await cq.message.edit_text(t(locale, "chat.none"), reply_markup=kb_client_main(locale))
         await cq.answer()
         return
 
-    await cq.message.edit_text(t(locale, "chat.list_title"), reply_markup=kb_chat_orders(locale, order_ids, "c"))
+    pi = calc_page(total=total, page=page, page_size=LIST_PAGE_SIZE)
+    order_ids = await chats.list_order_ids_with_chat_page(user_id=cq.from_user.id, limit=pi.limit, offset=pi.offset)
+    kb = kb_chat_orders(locale, order_ids, "c")
+    pager = pager_row("c:chat", pi.page, pi.total_pages)
+    if pager:
+        kb.inline_keyboard.append(pager)
+    kb.inline_keyboard.append([InlineKeyboardButton(text=t(locale, "nav.back"), callback_data="c:back:main")])
+    await cq.message.edit_text(t(locale, "chat.list_title"), reply_markup=kb)
     await cq.answer()
 
 
