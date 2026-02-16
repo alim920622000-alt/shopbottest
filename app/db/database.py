@@ -47,6 +47,8 @@ class Database:
         connection = await aiosqlite.connect(self.config.path)
         try:
             await connection.execute("PRAGMA foreign_keys = ON;")
+            await connection.execute("PRAGMA journal_mode = WAL;")
+            await connection.execute("PRAGMA busy_timeout = 8000;")
             connection.row_factory = aiosqlite.Row
             yield connection
         finally:
