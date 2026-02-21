@@ -59,7 +59,7 @@ def kb_categories_list(locale: str, categories: list[dict], kind: str, shop_id: 
         title = _pick_category_name(c, locale)
         kb.append([InlineKeyboardButton(text=title, callback_data=f"c:cat:{shop_id}:{c['id']}")])
 
-    kb.append([InlineKeyboardButton(text=t(locale, "search.search"), callback_data=f"c:search:{kind}:{shop_id}")])
+ #  kb.append([InlineKeyboardButton(text=t(locale, "search.search"), callback_data=f"c:search:{kind}:{shop_id}")])
     kb.append([InlineKeyboardButton(text=t(locale, "search.at_search"), callback_data=f"c:at_search:{kind}:{shop_id}")])
     kb.append([
         InlineKeyboardButton(text=t(locale, "nav.home_alt"), callback_data="c:home"),
@@ -223,7 +223,7 @@ def kb_chat_orders(locale: str, order_ids: list[int], prefix: str) -> InlineKeyb
     kb = []
     for oid in order_ids:
         kb.append([InlineKeyboardButton(text=t(locale, "orders.item_tpl", order_id=oid), callback_data=f"{prefix}:chat:{oid}")])
-    kb.append([InlineKeyboardButton(text=t(locale, "nav.back"), callback_data="c:back:main")])
+   # kb.append([InlineKeyboardButton(text=t(locale, "nav.back"), callback_data="c:back:main")])
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
 
