@@ -597,13 +597,12 @@ async def back(cq: CallbackQuery, db: Database, state: FSMContext, locale: str =
 
     if target == "shop_list":
         # вернуться в список магазинов
-        await cq.message.edit_text(t(locale, "order_menu.prompt"), reply_markup=kb_order_menu(locale))
-        await cq.answer()
+        await list_shops_render(cq, db, state, locale, page=0)
         return
-
+    
     if target == "restaurant_list":
-        await cq.message.edit_text(t(locale, "order_menu.prompt"), reply_markup=kb_order_menu(locale))
-        await cq.answer()
+        # вернуться в список ресторанов
+        await list_restaurants_render(cq, db, state, locale, page=0)
         return
 
     if target == "order_menu":
