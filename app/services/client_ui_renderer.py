@@ -134,10 +134,9 @@ async def render_client_screen(db: Database, state: FSMContext) -> tuple[str, In
             text = t(locale, "orders.history.empty") if screen == "history" else t(locale, "orders.empty")
             back = kb_back(locale, "order_menu") if screen == "history" else kb_client_main(locale)
             return text, back
-        order_ids = [int(r["id"]) for r in rows]
         title = t(locale, "orders.history.title") if screen == "history" else t(locale, "orders.title")
         back_target = "order_menu" if screen == "history" else "main"
-        return title, kb_orders_list(locale, order_ids, back_target=back_target)
+        return title, kb_orders_list(locale, rows, back_target=back_target)
 
     if screen == "order_card":
         order_id = int(payload.get("order_id") or 0)
@@ -171,7 +170,8 @@ async def render_client_screen(db: Database, state: FSMContext) -> tuple[str, In
         order_ids = await ChatRepo(db).list_order_ids_with_chat(user_id=int(user_id))
         if not order_ids:
             return t(locale, "chat.none"), kb_client_main(locale)
-        return t(locale, "chat.list_title"), kb_chat_orders(locale, order_ids, "c")
+        brief_rows = await OrdersRepo(db).list_brief_by_ids(order_ids)
+        return t(locale, "chat.list_title"), kb_chat_orders(locale, brief_rows, "c")
 
     if screen == "chat":
         order_id = int(payload.get("order_id") or data.get("chat_order_id") or 0)

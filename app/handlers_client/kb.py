@@ -9,6 +9,20 @@ def _pick_category_name(cat: dict, locale: str) -> str:
         return cat.get("name_tj") or cat.get("name_ru") or cat.get("name")
     return cat.get("name_ru") or cat.get("name")
 
+
+def _order_type_emoji(business_type: str | None) -> str:
+    return "🍽️" if business_type == "restaurant" else "🛒"
+
+
+def _order_button_text(row: dict) -> str:
+    order_id = row["id"]
+    shop_name = (row.get("shop_name") or "").strip()
+    if not shop_name:
+        shop_id = row.get("shop_id")
+        shop_name = f"#{shop_id}" if shop_id is not None else ""
+    emoji = _order_type_emoji(row.get("business_type"))
+    return f"{emoji} {order_id} · {shop_name}"
+
 def kb_client_main(locale: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text=t(locale, "main.order"), callback_data="c:order_menu")],
@@ -219,25 +233,26 @@ def kb_cart_menu(locale: str) -> InlineKeyboardMarkup:
     ])
 
 
-def kb_chat_orders(locale: str, order_ids: list[int], prefix: str) -> InlineKeyboardMarkup:
+def kb_chat_orders(locale: str, rows: list[dict], prefix: str) -> InlineKeyboardMarkup:
     kb = []
-    for oid in order_ids:
-        kb.append([InlineKeyboardButton(text=t(locale, "orders.item_tpl", order_id=oid), callback_data=f"{prefix}:chat:{oid}")])
-   # kb.append([InlineKeyboardButton(text=t(locale, "nav.back"), callback_data="c:back:main")])
+    for row in rows:
+        order_id = row["id"]
+        kb.append([InlineKeyboardButton(text=_order_button_text(row), callback_data=f"{prefix}:chat:{order_id}")])
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
 
 def kb_orders_list(
     locale: str,
-    order_ids: list[int],
+    rows: list[dict],
     back_target: str = "main",
 ) -> InlineKeyboardMarkup:
     kb: list[list[InlineKeyboardButton]] = []
 
-    for oid in order_ids:
+    for row in rows:
+        order_id = row["id"]
         kb.append([InlineKeyboardButton(
-            text=t(locale, "orders.item_tpl", order_id=oid),
-            callback_data=f"c:order:{oid}"
+            text=_order_button_text(row),
+            callback_data=f"c:order:{order_id}"
         )])
 
     return InlineKeyboardMarkup(inline_keyboard=kb)
