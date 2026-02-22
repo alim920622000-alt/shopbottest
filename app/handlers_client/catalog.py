@@ -1,5 +1,47 @@
 import logging
 import re
+import html
+
+def _money_s(amount: float) -> str:
+    return f"{amount:.2f} с."
+    
+def _render_receipt_pre(
+    items: list[dict],
+    total: float,
+    total_label: str = "ИТОГО",
+    width: int = 28,
+) -> str:
+    rows: list[tuple[str, str]] = []
+    for it in items:
+        qty = int(it["quantity"])
+        name = str(it["name"])
+        line_total = float(it["price"]) * qty
+        left = f"{qty} x {name}"
+        right = _money_s(line_total)
+        rows.append((left, right))
+
+    total_left = total_label
+    total_right = _money_s(total)
+
+    max_left = max([len(total_left)] + [len(l) for l, _ in rows])
+    max_right = max([len(total_right)] + [len(r) for _, r in rows])
+    line_width = max(width, max_left + 2 + max_right)
+    sep = "-" * line_width
+
+    def line(left: str, right: str) -> str:
+        dots = line_width - len(left) - len(right) - 2
+        if dots < 1:
+            dots = 1
+        return f"{left} {'.' * dots} {right}"
+
+    lines = [sep]
+    lines += [line(l, r) for l, r in rows]
+    lines += [sep, line(total_left, total_right)]
+
+    body = "\n".join(lines)
+    return f"<pre>{html.escape(body)}</pre>"
+
+    
 from aiogram import Router, F
 router = Router()
 logger = logging.getLogger(__name__)
@@ -661,13 +703,17 @@ async def render_cart(
 
 
     total = sum(float(i["price"]) * int(i["quantity"]) for i in items)
-    text_lines = [f"{cart_title}:"]
-    for i in items:
-        line_total = float(i["price"]) * int(i["quantity"])
-        text_lines.append(f"- {i['name']} x{i['quantity']} = {line_total}")
-    text_lines.append("\n" + t(locale, "cart.total", total=total))
 
-    await message.edit_text("\n".join(text_lines), reply_markup=kb_cart(locale, items, back_target))
+    header = f"{cart_title}"
+    pre = _render_receipt_pre(items=items, total=total, total_label="ИТОГО", width=28)
+    
+    text = f"{header}\n\n{pre}"
+    
+    await message.edit_text(
+        text,
+        reply_markup=kb_cart(locale, items, back_target),
+        parse_mode="HTML",
+    )
 
 
 # Фильтр с точным совпадением и префиксом через ":" нужен, чтобы не перехватывать c:cart_inc/dec/del.
@@ -941,7 +987,7 @@ async def checkout_pick_fulfillment(cq: CallbackQuery, db: Database, state: FSMC
         shop_id=shop_id,
         back_cb=back_cb,
     )
-    await cq.message.edit_text(text, reply_markup=reply_markup)
+    await cq.message.edit_text(text, reply_markup=reply_markup, parse_mode="HTML")
     await cq.answer()
 
 
@@ -984,7 +1030,7 @@ async def _render_checkout_confirm(
         shop_id=shop_id,
         back_cb=back_cb,
     )
-    await cq.message.edit_text(text, reply_markup=reply_markup)
+    await cq.message.edit_text(text, reply_markup=reply_markup, parse_mode="HTML")
     await cq.answer()
 
 
@@ -1009,17 +1055,24 @@ async def _build_checkout_confirm_payload(
     if business_type == "shop" and selected_fulfillment not in {"courier", "pickup"}:
         selected_fulfillment = "courier"
 
-    lines = [t(locale, "checkout.confirm_title")]
-    for i in shop_items:
-        line_total = float(i["price"]) * int(i["quantity"])
-        lines.append(f"- {i['name']} x{i['quantity']} = {line_total}")
-    lines.append("\n" + t(locale, "cart.total", total=total))
+    # вместо lines = [...]
+    receipt = _render_receipt_pre(
+        title=t(locale, "checkout.confirm_title"),
+        items=shop_items,
+        total=total,
+        total_label="ИТОГО",
+        width=28,
+    )
+    
     comment = (data.get("order_comment") or "").strip()
-    lines.append(t(locale, "checkout.comment_label"))
-    lines.append(comment or t(locale, "checkout.comment_empty"))
-
+    comment_label = t(locale, "checkout.comment_label")
+    comment_text = comment or t(locale, "checkout.comment_empty")
+    
+    # Важно: в Markdown не нужно html.escape, просто обычный текст
+    text = f"{receipt}\n\n{comment_label}\n{comment_text}"
+    
     return (
-        "\n".join(lines),
+        text,
         kb_checkout_confirm(
             locale,
             confirm_cb=f"c:checkout_confirm:{shop_id}",
@@ -1068,6 +1121,7 @@ async def save_order_comment(message: Message, state: FSMContext, db: Database, 
             chat_id=message.chat.id,
             message_id=screen_message_id,
             reply_markup=reply_markup,
+            parse_mode="HTML",
         )
     else:
         await message.answer(text, reply_markup=reply_markup)

@@ -86,7 +86,7 @@ TEXTS: dict[str, str] = {
     "cart.empty": "Сават бўш.",
     "cart.empty_for_shop": "Бу нуқта учун сават бўш.",
     "cart.title": "🧺 Сават",
-    "cart.title.shop": "🧺 Дўкон савати",
+    "cart.title.shop": "🛒 Дўкон савати",
     "cart.title.restaurant": "🧺 Ресторан савати",
     "cart.total": "Жами: {total}",
     "cart.added": "Саватга қўшилди",

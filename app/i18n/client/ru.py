@@ -86,7 +86,7 @@ TEXTS: dict[str, str] = {
     "cart.empty": "Корзина пуста.",
     "cart.empty_for_shop": "Корзина пуста для этой точки.",
     "cart.title": "🧺 Корзина",
-    "cart.title.shop": "🧺 Корзина магазинов",
+    "cart.title.shop": "🛒 Корзина магазинов",
     "cart.title.restaurant": "🧺 Корзина ресторанов",
     "cart.total": "Итого: {total}",
     "cart.added": "Добавлено в корзину",
