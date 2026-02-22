@@ -146,9 +146,9 @@ def kb_cart(locale: str, items: list[dict], back_target: str | None = None) -> I
             InlineKeyboardButton(text=f"{it['quantity']} {qty_suffix}", callback_data="c:noop"),
             InlineKeyboardButton(text="➕", callback_data=f"c:cart_inc:{pid}"),
         ])
-        kb.append([
-            InlineKeyboardButton(text=t(locale, "cart.del_item_tpl", name=it["name"]), callback_data=f"c:cart_del:{pid}")
-        ])
+        #kb.append([
+         #   InlineKeyboardButton(text=t(locale, "cart.del_item_tpl", name=it["name"]), callback_data=f"c:cart_del:{pid}")
+       # ])
 
     kb.append([InlineKeyboardButton(text=t(locale, "cart.checkout"), callback_data="c:checkout")])
     kb.append([InlineKeyboardButton(text=t(locale, "nav.back"), callback_data=_cart_back_callback(back_target))])

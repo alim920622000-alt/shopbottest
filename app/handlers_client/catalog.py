@@ -621,10 +621,10 @@ async def back(cq: CallbackQuery, db: Database, state: FSMContext, locale: str =
             await cq.answer()
             return
         if return_view and return_view.get("name") == "shops_list":
-            await list_shops(cq, db, state)
+            await list_shops(cq, db, state, locale=locale)
             return
         if return_view and return_view.get("name") == "restaurants_list":
-            await list_restaurants(cq, db, state)
+            await list_restaurants(cq, db, state, locale=locale)
             return
         await cq.message.edit_text(t(locale, "order_menu.prompt"), reply_markup=kb_order_menu(locale))
         await cq.answer()
@@ -715,7 +715,6 @@ async def render_cart(
         parse_mode="HTML",
     )
 
-
 # Фильтр с точным совпадением и префиксом через ":" нужен, чтобы не перехватывать c:cart_inc/dec/del.
 @router.callback_query((F.data == "c:cart") | (F.data.startswith("c:cart:")))
 async def open_cart(cq: CallbackQuery, db: Database, state: FSMContext, locale: str = "ru"):
@@ -742,6 +741,10 @@ async def open_cart(cq: CallbackQuery, db: Database, state: FSMContext, locale: 
             "back_target": ":".join(back_parts) if back_parts else None,
         },
     )
+    
+    logger.warning("OPEN_CART kind=%r business_type=%r last_kind=%r cart_kind_state=%r",
+               kind, business_type, data.get("last_kind"), data.get("cart_kind"))
+               
     await render_cart(
         cq.message,
         cq.from_user.id,
@@ -1057,19 +1060,19 @@ async def _build_checkout_confirm_payload(
 
     # вместо lines = [...]
     receipt = _render_receipt_pre(
-        title=t(locale, "checkout.confirm_title"),
         items=shop_items,
         total=total,
         total_label="ИТОГО",
         width=28,
     )
     
+    header = t(locale, "checkout.confirm_title")
+    
     comment = (data.get("order_comment") or "").strip()
     comment_label = t(locale, "checkout.comment_label")
     comment_text = comment or t(locale, "checkout.comment_empty")
     
-    # Важно: в Markdown не нужно html.escape, просто обычный текст
-    text = f"{receipt}\n\n{comment_label}\n{comment_text}"
+    text = f"{header}\n\n{receipt}\n\n{comment_label}\n{comment_text}"
     
     return (
         text,
