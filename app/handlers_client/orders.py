@@ -209,8 +209,7 @@ async def list_orders_render(cq: CallbackQuery, db: Database, state: FSMContext,
 
     pi = calc_page(total=total, page=page, page_size=LIST_PAGE_SIZE)
     rows = await orders.list_for_client_page(cq.from_user.id, limit=pi.limit, offset=pi.offset)
-    order_ids = [int(r["id"]) for r in rows]
-    kb = kb_orders_list(locale, order_ids)
+    kb = kb_orders_list(locale, rows)
     pager = pager_row("c:orders", pi.page, pi.total_pages)
     if pager:
         kb.inline_keyboard.append(pager)
@@ -243,8 +242,7 @@ async def list_history_render(cq: CallbackQuery, db: Database, state: FSMContext
 
     pi = calc_page(total=total, page=page, page_size=LIST_PAGE_SIZE)
     rows = await orders.list_for_client_page(cq.from_user.id, statuses=DONE_STATUSES, limit=pi.limit, offset=pi.offset)
-    order_ids = [int(r["id"]) for r in rows]
-    kb = kb_orders_list(locale, order_ids, back_target="order_menu")
+    kb = kb_orders_list(locale, rows, back_target="order_menu")
     pager = pager_row("c:history", pi.page, pi.total_pages)
     if pager:
         kb.inline_keyboard.append(pager)
@@ -360,7 +358,8 @@ async def chat_list_render(cq: CallbackQuery, db: Database, state: FSMContext, l
 
     pi = calc_page(total=total, page=page, page_size=LIST_PAGE_SIZE)
     order_ids = await chats.list_order_ids_with_chat_page(user_id=cq.from_user.id, limit=pi.limit, offset=pi.offset)
-    kb = kb_chat_orders(locale, order_ids, "c")
+    brief_rows = await OrdersRepo(db).list_brief_by_ids(order_ids)
+    kb = kb_chat_orders(locale, brief_rows, "c")
     pager = pager_row("c:chat", pi.page, pi.total_pages)
     if pager:
         kb.inline_keyboard.append(pager)

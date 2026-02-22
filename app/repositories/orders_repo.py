@@ -141,6 +141,25 @@ class OrdersRepo:
             rows = await cur.fetchall()
             return [dict(r) for r in rows]
 
+
+    async def list_brief_by_ids(self, order_ids: Sequence[int]) -> Sequence[dict]:
+        if not order_ids:
+            return []
+
+        placeholders = ",".join(["?"] * len(order_ids))
+        q = f"""
+            SELECT o.id, o.shop_id, s.name AS shop_name, s.business_type
+            FROM orders o
+            JOIN shops s ON s.id = o.shop_id
+            WHERE o.id IN ({placeholders})
+        """
+        async with self.db.conn() as conn:
+            cur = await conn.execute(q, [int(oid) for oid in order_ids])
+            rows = await cur.fetchall()
+
+        rows_by_id = {int(row["id"]): dict(row) for row in rows}
+        return [rows_by_id[int(oid)] for oid in order_ids if int(oid) in rows_by_id]
+
     async def get_order(self, order_id: int) -> Optional[dict]:
         async with self.db.conn() as conn:
             cur = await conn.execute("SELECT * FROM orders WHERE id=?", (order_id,))
