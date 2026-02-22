@@ -240,7 +240,7 @@ async def build_admin_messages_payload(
     if pagination:
         rows.append(pagination)
     rows.append([InlineKeyboardButton(text="🔙 Назад", callback_data=f"{prefix}:notif:back")])
-    return t(locale, "notif.messages"), InlineKeyboardMarkup(inline_keyboard=rows)
+    return "🆕 Новые сообщения", InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 async def remember_admin_prev_target(db: Database, bot_kind: str, user_id: int, target: str) -> None:
