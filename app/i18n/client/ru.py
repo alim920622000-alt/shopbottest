@@ -128,6 +128,7 @@ TEXTS: dict[str, str] = {
     "chat.hint": "ℹ️ Просто напишите сообщение в поле ниже и отправьте.",
     "chat.separator": "────────────────────────",
     "chat.no_messages": "Пока сообщений нет.",
+    "chat.role.me": "Я",
     "chat.role.client": "Клиент",
     "chat.role.shop": "Магазин",
     "chat.role.restaurant": "Ресторан",

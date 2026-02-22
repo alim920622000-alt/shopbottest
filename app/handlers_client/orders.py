@@ -163,6 +163,7 @@ def make_chat_render_fn(db: Database, state: FSMContext, locale: str):
         order = await orders.get_order(order_id)
         shop = ShopsRepo(db)
         shop_info = await shop.get(int(order["shop_id"])) if order else None
+        shop_name = shop_info["name"] if shop_info else None
         business_type = shop_info["business_type"] if shop_info else "shop"
 
         chat = ChatRepo(db)
@@ -178,7 +179,15 @@ def make_chat_render_fn(db: Database, state: FSMContext, locale: str):
         messages = await chat.list_messages(order_id, limit=PAGE_SIZE, offset=offset)
 
         # Рендер чата должен быть в том же locale, что и остальной клиентский UI.
-        text = build_chat_screen_text(order_id, messages, False, business_type, locale)
+        text = build_chat_screen_text(
+            order_id,
+            messages,
+            False,
+            business_type,
+            locale,
+            "client",
+            shop_name=shop_name,
+        )
         kb = build_chat_screen_kb(order_id, page, total_pages, "c", kb_chat_nav_rows(locale, order_id, back_target))
         return text, kb
 
@@ -390,7 +399,15 @@ async def render_chat(
     offset = (total_pages - page) * PAGE_SIZE
     messages = await chat.list_messages(order_id, limit=PAGE_SIZE, offset=offset)
 
-    text = build_chat_screen_text(order_id, messages, show_hint, business_type, locale)
+    text = build_chat_screen_text(
+        order_id,
+        messages,
+        show_hint,
+        business_type,
+        locale,
+        "client",
+        shop_name=shop_info["name"] if shop_info else None,
+    )
     kb = build_chat_screen_kb(order_id, page, total_pages, "c", kb_chat_nav_rows(locale, order_id, back_target))
     await cq.message.edit_text(text, reply_markup=kb)
 

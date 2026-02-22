@@ -11,6 +11,8 @@ from app.handlers_admin_shop.utils import get_admin_shop_ids, is_shop_admin
 from app.repositories.chat_repo import ChatRepo
 from app.repositories.chat_reads_repo import ChatReadsRepo
 from app.repositories.orders_repo import OrdersRepo
+from app.repositories.shops_repo import ShopsRepo
+from app.repositories.client_profiles_repo import ClientProfilesRepo
 from app.handlers_admin_shop.start import kb_admin_main
 from app.ui.nav import kb_nav
 from app.services.chat_ui import (
@@ -115,7 +117,24 @@ async def build_chat_payload(
     offset = (total_pages - page) * PAGE_SIZE
     messages = await chat.list_messages(order_id, limit=PAGE_SIZE, offset=offset)
 
-    text = build_chat_screen_text(order_id, messages, False, "shop")
+    order = await OrdersRepo(db).get_order(order_id)
+    shop_info = await ShopsRepo(db).get(order["shop_id"]) if order else None
+    profile = await ClientProfilesRepo(db).get(order["client_user_id"]) if order else None
+
+    shop_name = shop_info["name"] if shop_info else None
+    client_name = profile["full_name"] if profile else None
+    business_type = shop_info["business_type"] if shop_info else "shop"
+
+    text = build_chat_screen_text(
+        order_id,
+        messages,
+        False,
+        business_type,
+        "ru",
+        "admin",
+        shop_name=shop_name,
+        client_name=client_name,
+    )
     kb = build_chat_screen_kb(order_id, page, total_pages, "a", kb_chat_nav_rows(back_target))
     return text, kb
 

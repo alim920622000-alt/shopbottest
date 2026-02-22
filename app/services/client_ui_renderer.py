@@ -187,7 +187,15 @@ async def render_client_screen(db: Database, state: FSMContext) -> tuple[str, In
         page = max(1, min(page, total_pages))
         offset = (total_pages - page) * PAGE_SIZE
         messages = await chat.list_messages(order_id, limit=PAGE_SIZE, offset=offset)
-        text = build_chat_screen_text(order_id, messages, False, business_type, locale)
+        text = build_chat_screen_text(
+            order_id,
+            messages,
+            False,
+            business_type,
+            locale,
+            "client",
+            shop_name=shop_info["name"] if shop_info else None,
+        )
         kb = build_chat_screen_kb(order_id, page, total_pages, "c", kb_chat_nav_rows(locale, order_id, back_target))
         return text, kb
 

@@ -34,6 +34,9 @@ def build_chat_screen_text(
     show_hint: bool,
     business_type: str,
     locale: str = "ru",
+    viewer: str = "client",
+    shop_name: str | None = None,
+    client_name: str | None = None,
 ) -> str:
     lines: list[str] = [t(locale, "chat.title", order_id=order_id), ""]
     if show_hint:
@@ -47,18 +50,22 @@ def build_chat_screen_text(
 
     lines.append("")
     for msg in messages:
-        is_client = msg.get("sender_role") == "client"
+        sender_role = msg.get("sender_role")
+        is_client = sender_role == "client"
         indent = CLIENT_INDENT if is_client else ""
         if is_client:
-            icon = "🟢"
-            role = t(locale, "chat.role.client")
+            icon = "👤"
+            if viewer == "client":
+                role = t(locale, "chat.role.me")
+            else:
+                role = client_name or t(locale, "chat.role.client")
         else:
             if business_type == "restaurant":
-                icon = "🧑‍🍳"
-                role = t(locale, "chat.role.restaurant")
+                icon = "🍽️"
+                role = shop_name or t(locale, "chat.role.restaurant")
             else:
                 icon = "🛒"
-                role = t(locale, "chat.role.shop")
+                role = shop_name or t(locale, "chat.role.shop")
         time_str = _format_time(msg.get("created_at"))
         lines.append(f"{indent}{icon} {role} · {time_str}")
         text = str(msg.get("message_text") or "")
