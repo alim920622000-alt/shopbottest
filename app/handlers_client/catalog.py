@@ -667,7 +667,8 @@ async def back(cq: CallbackQuery, db: Database, state: FSMContext, locale: str =
         await cq.answer()
         return
 
-    await clear_state_keep_screen(state, db, "client", cq.from_user.id)
+    if target not in ("cart",):
+        await clear_state_keep_screen(state, db, "client", cq.from_user.id)
 
     if target == "main":
         await cq.message.edit_text(t(locale, "main.select_section"), reply_markup=kb_client_main(locale))
