@@ -699,12 +699,14 @@ async def back(cq: CallbackQuery, db: Database, state: FSMContext, locale: str =
 
     if target == "cart":
         await render_cart(
-            cq.message,
-            cq.from_user.id,
-            db,
-            business_type=data.get("cart_kind"),
-            back_target=data.get("cart_back_target"),
-        )
+        cq.message,
+        cq.from_user.id,
+        db,
+        business_type=data.get("cart_kind"),
+        shop_id=data.get("cart_shop_id"),
+        back_target=data.get("cart_back_target"),
+        locale=locale,
+    )
         await cq.answer()
         return
 
@@ -721,11 +723,12 @@ async def render_cart(
     user_id: int,
     db: Database,
     business_type: str | None = None,
+    shop_id: int | None = None,
     back_target: str | None = None,
     locale: str = "ru",
 ):
     cart = CartRepo(db)
-    items = await cart.list_items(user_id, business_type=business_type)
+    items = await cart.list_items(user_id, business_type=business_type, shop_id=shop_id)
 
     if not items:
         await message.edit_text(t(locale, "cart.empty"), reply_markup=kb_cart_empty(locale, back_target))
@@ -751,17 +754,62 @@ async def render_cart(
         reply_markup=kb_cart(locale, items, back_target),
         parse_mode="HTML",
     )
+    
+async def show_cart_shop_picker(
+    cq: CallbackQuery,
+    db: Database,
+    state: FSMContext,
+    locale: str,
+    business_type: str,
+    back_target: str | None,
+):
+    cart = CartRepo(db)
+    shop_ids = await cart.list_shop_ids(cq.from_user.id, business_type)
+
+    if locale == "uz":
+        title = "Savatni ko‘rish uchun muassasani tanlang"
+    elif locale == "tj":
+        title = "Барои дидани сабад муассисаро интихоб кунед"
+    else:
+        title = "Выберите заведение для просмотра корзины"
+
+    shops_repo = ShopsRepo(db)
+    rows: list[list[InlineKeyboardButton]] = []
+
+    for sid in shop_ids:
+        s = await shops_repo.get(int(sid))
+        name = (s.get("name") if s else None) or f"ID {sid}"
+        icon = "🏪" if business_type == "shop" else "🍽️"
+        rows.append([
+            InlineKeyboardButton(
+                text=f"{icon} {name}",
+                callback_data=f"c:cart:{business_type}:{sid}" + (f":{back_target}" if back_target else ""),
+            )
+        ])
+
+    # кнопка назад (в меню корзины)
+    rows.append([InlineKeyboardButton(text=t(locale, "nav.back"), callback_data="c:cart_menu")])
+
+    await cq.message.edit_text(title, reply_markup=InlineKeyboardMarkup(inline_keyboard=rows))
 
 # Фильтр с точным совпадением и префиксом через ":" нужен, чтобы не перехватывать c:cart_inc/dec/del.
 @router.callback_query((F.data == "c:cart") | (F.data.startswith("c:cart:")))
 async def open_cart(cq: CallbackQuery, db: Database, state: FSMContext, locale: str = "ru"):
     data = await state.get_data()
     parts = cq.data.split(":")
+    # Форматы:
+    # c:cart
+    # c:cart:shop
+    # c:cart:shop:1
     kind = parts[2] if len(parts) > 2 else "auto"
-    back_parts = parts[3:] if len(parts) > 3 else []
+    shop_id = int(parts[3]) if len(parts) > 3 and parts[3].isdigit() else None
+    back_parts = parts[4:] if shop_id is not None else (parts[3:] if len(parts) > 3 else [])
+    
     if kind == "auto":
         kind = data.get("last_kind") or ""
+    
     business_type = kind if kind in ("shop", "restaurant") else None
+    back_target = ":".join(back_parts) if back_parts else None
     return_view = _parse_cart_back_target(back_parts) or data.get("last_view")
     await state.update_data(
         cart_return_view=return_view,
@@ -769,7 +817,7 @@ async def open_cart(cq: CallbackQuery, db: Database, state: FSMContext, locale: 
         user_id=cq.from_user.id,
     )
     if business_type:
-        await state.update_data(cart_kind=business_type)
+        await state.update_data(cart_kind=business_type, cart_shop_id=shop_id)
     await remember_client_screen(
         state,
         "cart",
@@ -782,12 +830,37 @@ async def open_cart(cq: CallbackQuery, db: Database, state: FSMContext, locale: 
     logger.warning("OPEN_CART kind=%r business_type=%r last_kind=%r cart_kind_state=%r",
                kind, business_type, data.get("last_kind"), data.get("cart_kind"))
                
+    # Если выбрали тип (shop/restaurant), но shop_id не выбран — решаем:
+    if business_type and shop_id is None:
+        cart = CartRepo(db)
+        shop_ids = await cart.list_shop_ids(cq.from_user.id, business_type)
+    
+        if len(shop_ids) == 0:
+            # пусто — отрисуем пустую корзину этого типа
+            await render_cart(cq.message, cq.from_user.id, db,
+                              business_type=business_type,
+                              shop_id=None,
+                              back_target=back_target,
+                              locale=locale)
+            await cq.answer()
+            return
+    
+        if len(shop_ids) == 1:
+            shop_id = shop_ids[0]
+            await state.update_data(cart_shop_id=shop_id)
+        else:
+            await show_cart_shop_picker(cq, db, state, locale, business_type, back_target)
+            await cq.answer()
+            return
+        
+        
     await render_cart(
         cq.message,
         cq.from_user.id,
         db,
         business_type=business_type,
-        back_target=":".join(back_parts) if back_parts else None,
+        shop_id=shop_id,
+        back_target=back_target,
         locale=locale,
     )
     await cq.answer()
@@ -877,6 +950,7 @@ async def cart_inc(cq: CallbackQuery, db: Database, state: FSMContext, locale: s
         cq.message,
         cq.from_user.id,
         db,
+        shop_id=data.get("cart_shop_id"),
         business_type=data.get("cart_kind"),
         back_target=data.get("cart_back_target"),
         locale=locale,
@@ -888,7 +962,11 @@ async def cart_dec(cq: CallbackQuery, db: Database, state: FSMContext, locale: s
     product_id = int(cq.data.split(":")[2])
     cart = CartRepo(db)
     data = await state.get_data()
-    items = await cart.list_items(cq.from_user.id, business_type=data.get("cart_kind"))
+    items = await cart.list_items(
+        cq.from_user.id,
+        business_type=data.get("cart_kind"),
+        shop_id=data.get("cart_shop_id"),
+    )
     current = next((x for x in items if x["product_id"] == product_id), None)
     if not current:
         await cq.answer(t(locale, "cart.dec_none"), show_alert=True)
@@ -900,6 +978,7 @@ async def cart_dec(cq: CallbackQuery, db: Database, state: FSMContext, locale: s
         cq.message,
         cq.from_user.id,
         db,
+        shop_id=data.get("cart_shop_id"),
         business_type=data.get("cart_kind"),
         back_target=data.get("cart_back_target"),
         locale=locale,
@@ -931,7 +1010,14 @@ async def checkout(cq: CallbackQuery, db: Database, state: FSMContext, locale: s
     if cart_kind not in ("shop", "restaurant"):
         last_kind = data.get("last_kind")
         cart_kind = last_kind if last_kind in ("shop", "restaurant") else None
-    items = await cart.list_items(cq.from_user.id, business_type=cart_kind)
+    
+    #logger.warning("CHECKOUT cart_kind=%r cart_shop_id=%r", cart_kind, cart_shop_id)
+    
+    items = await cart.list_items(
+        cq.from_user.id,
+        business_type=data.get("cart_kind"),
+        shop_id=data.get("cart_shop_id"),
+    )
     if not items:
         await cq.message.edit_text(t(locale, "cart.empty"), reply_markup=kb_back(locale, "cart_menu"))
         await cq.answer()
@@ -982,13 +1068,13 @@ async def checkout_pick_shop(cq: CallbackQuery, db: Database, state: FSMContext,
 @router.callback_query(F.data == "c:checkout_back")
 async def checkout_back(cq: CallbackQuery, db: Database, state: FSMContext, locale: str = "ru"):
     data = await state.get_data()
-    # На всякий случай подтягиваем locale из FSM, если middleware не смог передать его в аргумент.
     eff_locale = data.get("locale") or locale
 
     shops = data.get("checkout_shops") or []
     shop_ids = data.get("checkout_shop_ids") or []
 
-    if shops:
+    # ✅ Если магазинов больше одного — показать выбор
+    if len(shop_ids) > 1:
         await cq.message.edit_text(
             t(eff_locale, "checkout.multiple_shops"),
             reply_markup=kb_checkout_choose_shop(eff_locale, shops),
@@ -996,17 +1082,25 @@ async def checkout_back(cq: CallbackQuery, db: Database, state: FSMContext, loca
         await cq.answer()
         return
 
-    # fallback (если вдруг shops не сохранились)
-    if shop_ids:
-        fallback = [{"id": int(sid), "name": f"ID {sid}", "business_type": None} for sid in shop_ids]
-        await cq.message.edit_text(
-            t(eff_locale, "checkout.multiple_shops"),
-            reply_markup=kb_checkout_choose_shop(eff_locale, fallback),
+    # ✅ Если один магазин — вернуться в корзину конкретного магазина
+    if len(shop_ids) == 1:
+        await render_cart(
+            cq.message,
+            cq.from_user.id,
+            db,
+            business_type=data.get("cart_kind"),
+            shop_id=data.get("cart_shop_id"),
+            back_target=data.get("cart_back_target"),
+            locale=eff_locale,
         )
         await cq.answer()
         return
 
-    await cq.message.edit_text(t(eff_locale, "cart.empty"), reply_markup=kb_back(eff_locale, "cart_menu"))
+    # fallback
+    await cq.message.edit_text(
+        t(eff_locale, "cart.empty"),
+        reply_markup=kb_back(eff_locale, "cart_menu"),
+    )
     await cq.answer()
 
 
@@ -1126,7 +1220,11 @@ async def _build_checkout_confirm_payload(
 ):
     cart = CartRepo(db)
     data = await state.get_data()
-    items = await cart.list_items(user_id, business_type=data.get("cart_kind"))
+    items = await cart.list_items(
+        user_id,
+        business_type=data.get("cart_kind"),
+        shop_id=data.get("cart_shop_id"),
+    )
     shop_items = [it for it in items if int(it["shop_id"]) == shop_id]
     if not shop_items:
         return t(locale, "cart.empty_for_shop"), kb_back(locale, "cart_menu")
