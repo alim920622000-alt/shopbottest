@@ -161,13 +161,25 @@ def kb_cart_empty(locale: str, back_target: str | None = None) -> InlineKeyboard
     ])
 
 
-def kb_checkout_choose_shop(locale: str, shop_ids: list[int]) -> InlineKeyboardMarkup:
+def kb_checkout_choose_shop(locale: str, shops: list[dict]):
     kb = []
-    for sid in shop_ids:
-        kb.append([InlineKeyboardButton(text=t(locale, "checkout.choose_shop_tpl", shop_id=sid), callback_data=f"c:checkout_shop:{sid}")])
-    kb.append([InlineKeyboardButton(text=t(locale, "nav.back"), callback_data="c:cart")])
-    return InlineKeyboardMarkup(inline_keyboard=kb)
 
+    for s in shops:
+        sid = int(s["id"])
+        name = (s.get("name") or "").strip() or f"ID {sid}"
+        bt = s.get("business_type")
+        emoji = "🍽️" if bt == "restaurant" else "🏬"
+
+        kb.append([
+            InlineKeyboardButton(
+                text=f"{emoji} {name}",
+                callback_data=f"c:checkout_shop:{sid}",
+            )
+        ])
+
+    kb.append([InlineKeyboardButton(text=t(locale, "nav.back"), callback_data="c:cart_menu")])
+    return InlineKeyboardMarkup(inline_keyboard=kb)
+    
 
 def kb_checkout_confirm(
     locale: str,

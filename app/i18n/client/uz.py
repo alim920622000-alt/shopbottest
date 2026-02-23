@@ -48,7 +48,7 @@ TEXTS: dict[str, str] = {
     "order_card.chat": "💬 Буюртма бўйича чат",
 
     # Кабинет
-    "cabinet.edit_name": "✏️ Исм-фамилия",
+    "cabinet.edit_name": "✏️ Исмингиз",
     "cabinet.edit_phone": "📞 Телефон",
     "cabinet.edit_address": "📍 Манзил",
     "cabinet.language": "🌐 Тил",
@@ -95,8 +95,8 @@ TEXTS: dict[str, str] = {
     "cart.deleted": "Ўчирилди",
 
     # Буюртмани расмийлаштириш
-    "checkout.multiple_shops": "Саватда турли дўконлар/ресторанлардан маҳсулот бор. Қайси нуқта учун буюртма берилади?",
-    "checkout.confirm_title": "Буюртмани тасдиқланг:",
+    "checkout.multiple_shops": "🧺 Саватда турли дўконлар/ресторанлардан маҳсулот бор. Қайси нуқта учун буюртма берилади?",
+    "checkout.confirm_title": "🛒 Буюртмани тасдиқланг:",
     "checkout.create_failed": "Буюртма яратиб бўлмади: сават бўш ёки бу нуқта учун буюртма аллақачон яратилган.",
     "checkout.created": "✅ Буюртма муваффақиятли яратилди!\nБуюртма рақами: {order_id}\nСтатус: {status}",
 
@@ -136,17 +136,17 @@ TEXTS: dict[str, str] = {
 
     # Кабинет
     "cabinet.title": "👤 Кабинет",
-    "cabinet.full_name": "Исм-фамилия",
+    "cabinet.full_name": "Исмингиз",
     "cabinet.phone": "Телефон",
     "cabinet.address": "Манзил",
     "cabinet.empty_value": "—",
-    "cabinet.enter_name": "Исм-фамилияни киритинг:",
+    "cabinet.enter_name": "Исмингизни киритинг:",
     "cabinet.enter_phone": "Телефонни киритинг:",
     "cabinet.enter_address": "Манзилни киритинг:",
-    "cabinet.name_required": "Исм-фамилия бўш бўлиши мумкин эмас.",
+    "cabinet.name_required": "Исмингиз бўш бўлиши мумкин эмас.",
     "cabinet.phone_required": "Телефон бўш бўлиши мумкин эмас.",
     "cabinet.address_required": "Манзил бўш бўлиши мумкин эмас.",
-    "cabinet.name_saved": "Исм-фамилия сақланди.",
+    "cabinet.name_saved": "Исмингиз сақланди.",
     "cabinet.phone_saved": "Телефон сақланди.",
     "cabinet.address_saved": "Манзил сақланди.",
 

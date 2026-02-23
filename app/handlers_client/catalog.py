@@ -897,15 +897,37 @@ async def checkout(cq: CallbackQuery, db: Database, state: FSMContext, locale: s
         return
 
     shop_ids = sorted({int(i["shop_id"]) for i in items})
-    await state.update_data(checkout_shop_ids=shop_ids, order_comment="", fulfillment_type=None)
+
+    # ✅ строим список shops (id, name, business_type) один раз
+    shops_repo = ShopsRepo(db)
+    shops: list[dict] = []
+    for sid in shop_ids:
+        s = await shops_repo.get(sid)
+        if s:
+            shops.append({
+                "id": int(s["id"]),
+                "name": s.get("name") or f"ID {sid}",
+            
+                "business_type": s.get("business_type"),
+            })
+        else:
+            shops.append({"id": sid, "name": f"ID {sid}", "business_type": None})
+
+    # ✅ сохраним и shop_ids и shops (чтобы checkout_back мог показать имена без db)
+    await state.update_data(
+        checkout_shop_ids=shop_ids,
+        checkout_shops=shops,
+        order_comment="",
+        fulfillment_type=None,
+    )
+
     if len(shop_ids) == 1:
         await _render_checkout_confirm(cq, db, state, locale, shop_ids[0], back_cb="c:back:cart")
         return
 
-    # если в корзине товары из разных точек — выбрать
     await cq.message.edit_text(
         t(locale, "checkout.multiple_shops"),
-        reply_markup=kb_checkout_choose_shop(locale, shop_ids),
+        reply_markup=kb_checkout_choose_shop(locale, shops),
     )
     await cq.answer()
 
@@ -919,14 +941,28 @@ async def checkout_pick_shop(cq: CallbackQuery, db: Database, state: FSMContext,
 @router.callback_query(F.data == "c:checkout_back")
 async def checkout_back(cq: CallbackQuery, state: FSMContext, locale: str = "ru"):
     data = await state.get_data()
+
+    shops = data.get("checkout_shops") or []
     shop_ids = data.get("checkout_shop_ids") or []
-    if shop_ids:
+
+    if shops:
         await cq.message.edit_text(
             t(locale, "checkout.multiple_shops"),
-            reply_markup=kb_checkout_choose_shop(locale, shop_ids),
+            reply_markup=kb_checkout_choose_shop(locale, shops),
         )
         await cq.answer()
         return
+
+    # fallback (если вдруг shops не сохранились)
+    if shop_ids:
+        fallback = [{"id": int(sid), "name": f"ID {sid}", "business_type": None} for sid in shop_ids]
+        await cq.message.edit_text(
+            t(locale, "checkout.multiple_shops"),
+            reply_markup=kb_checkout_choose_shop(locale, fallback),
+        )
+        await cq.answer()
+        return
+
     await cq.message.edit_text(t(locale, "cart.empty"), reply_markup=kb_back(locale, "cart_menu"))
     await cq.answer()
 
