@@ -45,7 +45,7 @@ def _render_receipt_pre(
 from aiogram import Router, F
 router = Router()
 logger = logging.getLogger(__name__)
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery, Message, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
@@ -410,6 +410,43 @@ async def show_category_products(
     )
 
 
+
+
+@router.callback_query(F.data.startswith("c:cart_prod:"))
+async def open_product_from_cart(cq: CallbackQuery, db: Database, state: FSMContext, locale: str = "ru"):
+    # c:cart_prod:{product_id}
+    product_id = int(cq.data.split(":")[2])
+
+    prod = ProductsRepo(db)
+    p = await prod.get(product_id)
+
+    data = await state.get_data()
+    cart_kind = data.get("cart_kind") or "auto"
+    cart_back_target = data.get("cart_back_target")
+    back_cb = f"c:cart:{cart_kind}:{cart_back_target}" if cart_back_target else f"c:cart:{cart_kind}"
+
+    if not p:
+        markup_not_found = InlineKeyboardMarkup(inline_keyboard=[[
+            InlineKeyboardButton(text=t(locale, "nav.back"), callback_data=back_cb),
+        ]])
+        await safe_edit_text(cq, t(locale, "product.not_found"), reply_markup=markup_not_found)
+        await cq.answer()
+        return
+
+    text = _build_product_card_text(p)
+    await state.update_data(user_id=cq.from_user.id)
+    await remember_client_screen(state, "product_card", {"product_id": product_id, "source": "cart"})
+
+    markup = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=t(locale, "product.add_to_cart"), callback_data=f"c:add:{product_id}")],
+        [
+            InlineKeyboardButton(text=t(locale, "nav.home"), callback_data="c:home"),
+            InlineKeyboardButton(text=t(locale, "nav.back"), callback_data=back_cb),
+        ],
+    ])
+
+    await safe_edit_text(cq, text, reply_markup=markup)
+    await cq.answer()
 @router.callback_query(F.data.startswith("c:prod:"))
 async def open_product(cq: CallbackQuery, db: Database, state: FSMContext, locale: str = "ru"):
     # c:prod:{product_id}
