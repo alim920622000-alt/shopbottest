@@ -590,11 +590,9 @@ async def add_category_save(message: Message, state: FSMContext, db: Database):
     await message.answer("Категория добавлена ✅\nОткройте «Меню → Категории» заново.")
 
 
-@router.callback_query(F.data.startswith("r:cat:"))
+@router.callback_query(F.data.startswith("r:cat:") & F.data.contains(":p:"))
 async def open_category_page(cq: CallbackQuery, db: Database):
     parts = cq.data.split(":")
-    if len(parts) != 6 or parts[4] != "p":
-        return
     restaurant_id = int(parts[2])
     category_id = int(parts[3])
     page = int(parts[5])
@@ -624,8 +622,8 @@ async def render_category_products(cq: CallbackQuery, db: Database, restaurant_i
 @router.callback_query(F.data.startswith("r:cat:"))
 async def open_category(cq: CallbackQuery, db: Database):
     # r:cat:{restaurant_id}:{category_id}
-    if ":p:" in cq.data:
-        return
+    #if ":p:" in cq.data:
+     #   return
     _, _, restaurant_id_str, category_id_str = cq.data.split(":", 3)
     restaurant_id = int(restaurant_id_str)
     category_id = int(category_id_str)

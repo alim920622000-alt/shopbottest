@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from datetime import datetime
 from math import ceil
+from app.utils.tz import fmt_hm
 
 from aiogram import Bot
 from aiogram.exceptions import TelegramBadRequest

@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from math import ceil
 from typing import Sequence
+from app.utils.tz import fmt_hm
 
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 

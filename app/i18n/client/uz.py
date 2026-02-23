@@ -174,7 +174,7 @@ TEXTS: dict[str, str] = {
     "checkout.comment_prompt": "Буюртма учун изоҳни оддий матнда ёзинг:",
     "checkout.comment": "✏️ Изоҳ қўшиш",
     "delivery": "🚚 Yetkazib berish",
-    "pickup": "🏬 Olib ketish",
+    "pickup": "🚶 Olib ketish",
     "dine_in": "🍽 Zalda",
     "order.repeat": "🔁 Buyurtmani takrorlash",
     "order.repeat.added": "✅ Savatga qoʻshildi: {count}",
