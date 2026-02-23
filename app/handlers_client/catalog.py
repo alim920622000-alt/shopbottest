@@ -247,7 +247,7 @@ async def order_menu(cq: CallbackQuery, db: Database, state: FSMContext, locale:
     await cq.answer()
 
 @router.callback_query(F.data == "c:cart_menu")
-async def cart_menu(cq: CallbackQuery, state: FSMContext, locale: str = "ru"):
+async def cart_menu(cq: CallbackQuery, db: Database, state: FSMContext, locale: str = "ru"):
     await state.update_data(last_view={"name": "cart_menu"})
     await state.update_data(user_id=cq.from_user.id)
     await remember_client_screen(state, "cart_menu", {})
@@ -927,7 +927,11 @@ async def cart_del(cq: CallbackQuery, db: Database, state: FSMContext, locale: s
 async def checkout(cq: CallbackQuery, db: Database, state: FSMContext, locale: str = "ru"):
     cart = CartRepo(db)
     data = await state.get_data()
-    items = await cart.list_items(cq.from_user.id, business_type=data.get("cart_kind"))
+    cart_kind = data.get("cart_kind")
+    if cart_kind not in ("shop", "restaurant"):
+        last_kind = data.get("last_kind")
+        cart_kind = last_kind if last_kind in ("shop", "restaurant") else None
+    items = await cart.list_items(cq.from_user.id, business_type=cart_kind)
     if not items:
         await cq.message.edit_text(t(locale, "cart.empty"), reply_markup=kb_back(locale, "cart_menu"))
         await cq.answer()
@@ -976,16 +980,18 @@ async def checkout_pick_shop(cq: CallbackQuery, db: Database, state: FSMContext,
 
 
 @router.callback_query(F.data == "c:checkout_back")
-async def checkout_back(cq: CallbackQuery, state: FSMContext, locale: str = "ru"):
+async def checkout_back(cq: CallbackQuery, db: Database, state: FSMContext, locale: str = "ru"):
     data = await state.get_data()
+    # На всякий случай подтягиваем locale из FSM, если middleware не смог передать его в аргумент.
+    eff_locale = data.get("locale") or locale
 
     shops = data.get("checkout_shops") or []
     shop_ids = data.get("checkout_shop_ids") or []
 
     if shops:
         await cq.message.edit_text(
-            t(locale, "checkout.multiple_shops"),
-            reply_markup=kb_checkout_choose_shop(locale, shops),
+            t(eff_locale, "checkout.multiple_shops"),
+            reply_markup=kb_checkout_choose_shop(eff_locale, shops),
         )
         await cq.answer()
         return
@@ -994,13 +1000,13 @@ async def checkout_back(cq: CallbackQuery, state: FSMContext, locale: str = "ru"
     if shop_ids:
         fallback = [{"id": int(sid), "name": f"ID {sid}", "business_type": None} for sid in shop_ids]
         await cq.message.edit_text(
-            t(locale, "checkout.multiple_shops"),
-            reply_markup=kb_checkout_choose_shop(locale, fallback),
+            t(eff_locale, "checkout.multiple_shops"),
+            reply_markup=kb_checkout_choose_shop(eff_locale, fallback),
         )
         await cq.answer()
         return
 
-    await cq.message.edit_text(t(locale, "cart.empty"), reply_markup=kb_back(locale, "cart_menu"))
+    await cq.message.edit_text(t(eff_locale, "cart.empty"), reply_markup=kb_back(eff_locale, "cart_menu"))
     await cq.answer()
 
 
