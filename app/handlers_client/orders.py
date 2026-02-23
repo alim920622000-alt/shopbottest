@@ -93,7 +93,7 @@ def _can_cancel_order(order: dict | None, now: datetime | None = None) -> bool:
     created_at = _parse_created_at(order.get("created_at"))
     if not created_at:
         return False
-    now = now or datetime.utcnow()
+    now = now or utcnow()
     return now - created_at <= timedelta(minutes=CANCEL_WINDOW_MINUTES)
 
 
@@ -320,7 +320,7 @@ async def cancel_order(cq: CallbackQuery, db: Database, state: FSMContext, local
         await cq.answer()
         return
 
-    now = datetime.utcnow()
+    now = utcnow()
     created_at = _parse_created_at(o.get("created_at"))
     if o.get("status") == "canceled":
         await cq.answer(t(locale, "order.cancel.already"), show_alert=True)
