@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timedelta
 from app.utils.tz import utcnow
+from datetime import timezone
 
 from aiogram import Router, F
 from aiogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, Message
@@ -72,19 +73,29 @@ def kb_order_card(
 
 
 def _parse_created_at(value: object) -> datetime | None:
+    dt: datetime | None = None
+
     if isinstance(value, datetime):
-        return value
-    if isinstance(value, str):
+        dt = value
+    elif isinstance(value, str):
         for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M"):
             try:
-                return datetime.strptime(value, fmt)
+                dt = datetime.strptime(value, fmt)
+                break
             except ValueError:
                 continue
-        try:
-            return datetime.fromisoformat(value)
-        except ValueError:
-            return None
-    return None
+        if dt is None:
+            try:
+                dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            except ValueError:
+                return None
+    else:
+        return None
+
+    # привести к UTC-aware
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
 
 
 def _can_cancel_order(order: dict | None, now: datetime | None = None) -> bool:

@@ -79,8 +79,9 @@ async def notify_admins_new_order(
     bot = Bot(token=token)
     try:
         for uid in admin_ids:
+    
             try:
-                await bot.send_message(uid, text, reply_markup=reply_markup)
+                #await bot.send_message(uid, text, reply_markup=reply_markup)
                 await show_notification_center_for_user(
                     bot=bot,
                     db=db,

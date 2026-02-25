@@ -195,5 +195,5 @@ TEXTS: dict[str, str] = {
     "notif.order_item": "💬 Заказ #{order_id} · {unread_count} {suffix}",
 
     # Fallback
-    "msg.unknown_command": "Я не понял команду. Используйте меню ниже.",
+    "msg.unknown_command": "🤖 Я не понял команду. Используйте меню ниже 👇.",
 }

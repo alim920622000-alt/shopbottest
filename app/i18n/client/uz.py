@@ -196,5 +196,5 @@ TEXTS: dict[str, str] = {
     "notif.order_item": "💬 Буюртма #{order_id} · {unread_count} {suffix}",
 
     # Fallback
-    "msg.unknown_command": "Фармонни тушунмадим. Қуйидаги менюдан фойдаланинг.",
+    "msg.unknown_command": "🤖 Фармонни тушунмадим. Қуйидаги менюдан фойдаланинг 👇.",
 }

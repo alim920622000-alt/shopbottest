@@ -61,7 +61,7 @@ def kb_shops_list(locale: str, items: list[dict], kind: str) -> InlineKeyboardMa
         kb.append([InlineKeyboardButton(text=x["name"], callback_data=f"c:pick:{kind}:{x['id']}")])
     kb.append([
         InlineKeyboardButton(text=t(locale, "nav.home_alt"), callback_data="c:home"),
-        InlineKeyboardButton(text=t(locale, "order_menu.cart"), callback_data=f"c:cart:{kind}:shops_list"),
+        InlineKeyboardButton(text=t(locale, "order_menu.cart"), callback_data=f"c:cart:{kind}:{kind}s_list"),
         InlineKeyboardButton(text=t(locale, "nav.back"), callback_data="c:back:order_menu"),
     ])
     return InlineKeyboardMarkup(inline_keyboard=kb)
@@ -83,19 +83,19 @@ def kb_categories_list(locale: str, categories: list[dict], kind: str, shop_id: 
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
 
-def kb_products_list(locale: str, products: list[dict], shop_id: int, category_id: int) -> InlineKeyboardMarkup:
+def kb_products_list(locale: str, products: list[dict], shop_id: int, category_id: int, kind: str) -> InlineKeyboardMarkup:
     kb = []
     for p in products:
         kb.append([InlineKeyboardButton(text=f"{p['name']} — {p['price']}", callback_data=f"c:prod:{p['id']}")])
     kb.append([
         InlineKeyboardButton(text=t(locale, "nav.home_alt"), callback_data="c:home"),
-        InlineKeyboardButton(text=t(locale, "order_menu.cart"), callback_data=f"c:cart:auto:products:{shop_id}:{category_id}"),
+        InlineKeyboardButton(text=t(locale, "order_menu.cart"), callback_data=f"c:cart:{kind}:products:{shop_id}:{category_id}"),
         InlineKeyboardButton(text=t(locale, "nav.back"), callback_data=f"c:pickback:{shop_id}"),
     ])
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
 
-def kb_products_list_shop(locale: str, products: list[dict], shop_id: int, category_id: int) -> InlineKeyboardMarkup:
+def kb_products_list_shop(locale: str, products: list[dict], shop_id: int, category_id: int, kind: str) -> InlineKeyboardMarkup:
     kb = []
     for p in products:
         sku = (p.get("sku") or "").strip().upper()
@@ -104,7 +104,7 @@ def kb_products_list_shop(locale: str, products: list[dict], shop_id: int, categ
         kb.append([InlineKeyboardButton(text=f"{p['name']} — {p['price']}", callback_data=f"c:prodsku:{shop_id}:{sku}")])
     kb.append([
         InlineKeyboardButton(text=t(locale, "nav.home_alt"), callback_data="c:home"),
-        InlineKeyboardButton(text=t(locale, "order_menu.cart"), callback_data=f"c:cart:auto:products:{shop_id}:{category_id}"),
+        InlineKeyboardButton(text=t(locale, "order_menu.cart"), callback_data=f"c:cart:{kind}:products:{shop_id}:{category_id}"),
         InlineKeyboardButton(text=t(locale, "nav.back"), callback_data=f"c:pickback:{shop_id}"),
     ])
     return InlineKeyboardMarkup(inline_keyboard=kb)

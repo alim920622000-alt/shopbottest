@@ -399,7 +399,11 @@ async def show_category_products(
     )
     pi = calc_page(total=total, page=page, page_size=PAGE_SIZE)
     products = await prod.list_by_category_for_shop_page(shop_id, category_id, limit=pi.limit, offset=pi.offset, active_only=True)
-    products_kb = kb_products_list_shop(locale, products, shop_id, category_id) if kind == "shop" else kb_products_list(locale, products, shop_id, category_id)
+    products_kb = (
+        kb_products_list_shop(locale, products, shop_id, category_id, kind)
+        if kind == "shop"
+        else kb_products_list(locale, products, shop_id, category_id, kind)
+    )
     pager = pager_row(f"c:cat:{shop_id}:{category_id}", pi.page, pi.total_pages)
     if pager:
         products_kb.inline_keyboard.insert(len(products_kb.inline_keyboard)-1, pager)
@@ -615,7 +619,19 @@ async def back(cq: CallbackQuery, db: Database, state: FSMContext, locale: str =
     parts = cq.data.split(":")
     target = parts[2] if len(parts) > 2 else ""
     data = await state.get_data()
-
+    eff_locale = data.get("locale") or locale
+    logger.warning(
+        "BACK target=%r locale=%r eff_locale=%r last_kind=%r last_view=%r cart_kind=%r cart_shop_id=%r cart_back_target=%r",
+        target,
+        locale,
+        eff_locale,
+        data.get("last_kind"),
+        data.get("last_view"),
+        data.get("cart_kind"),
+        data.get("cart_shop_id"),
+        data.get("cart_back_target"),
+    )
+    
     if target == "from_cart":
         back_parts = parts[3:] if len(parts) > 3 else []
         return_view = _parse_cart_back_target(back_parts) if back_parts else data.get("cart_return_view")
@@ -631,6 +647,7 @@ async def back(cq: CallbackQuery, db: Database, state: FSMContext, locale: str =
                 state,
                 return_view.get("shop_id"),
                 return_view.get("category_id"),
+                locale=eff_locale,
             )
             await cq.answer()
             return
@@ -645,48 +662,48 @@ async def back(cq: CallbackQuery, db: Database, state: FSMContext, locale: str =
                 db,
                 return_view.get("kind"),
                 return_view.get("shop_id"),
-                locale=locale,
+                locale=eff_locale,
             )
             await cq.answer()
             return
         if return_view and return_view.get("name") == "cart_menu":
-            await cq.message.edit_text(t(locale, "cart.select"), reply_markup=kb_cart_menu(locale))
+            await cq.message.edit_text(t(eff_locale, "cart.select"), reply_markup=kb_cart_menu(eff_locale))
             await cq.answer()
             return
         if return_view and return_view.get("name") == "order_menu":
-            await cq.message.edit_text(t(locale, "order_menu.prompt"), reply_markup=kb_order_menu(locale))
+            await cq.message.edit_text(t(eff_locale, "order_menu.prompt"), reply_markup=kb_order_menu(eff_locale))
             await cq.answer()
             return
         if return_view and return_view.get("name") == "shops_list":
-            await list_shops(cq, db, state, locale=locale)
+            await list_shops(cq, db, state, locale=eff_locale)
             return
         if return_view and return_view.get("name") == "restaurants_list":
-            await list_restaurants(cq, db, state, locale=locale)
+            await list_restaurants(cq, db, state, locale=eff_locale)
             return
-        await cq.message.edit_text(t(locale, "order_menu.prompt"), reply_markup=kb_order_menu(locale))
+        await cq.message.edit_text(t(eff_locale, "order_menu.prompt"), reply_markup=kb_order_menu(eff_locale))
         await cq.answer()
         return
 
-    if target not in ("cart",):
+    if target in ("main", "order_menu"):
         await clear_state_keep_screen(state, db, "client", cq.from_user.id)
 
     if target == "main":
-        await cq.message.edit_text(t(locale, "main.select_section"), reply_markup=kb_client_main(locale))
+        await cq.message.edit_text(t(eff_locale, "main.select_section"), reply_markup=kb_client_main(eff_locale))
         await cq.answer()
         return
 
     if target == "shop_list":
         # вернуться в список магазинов
-        await list_shops_render(cq, db, state, locale, page=0)
+        await list_shops_render(cq, db, state, eff_locale, page=0)
         return
     
     if target == "restaurant_list":
         # вернуться в список ресторанов
-        await list_restaurants_render(cq, db, state, locale, page=0)
+        await list_restaurants_render(cq, db, state, eff_locale, page=0)
         return
 
     if target == "order_menu":
-        await cq.message.edit_text(t(locale, "order_menu.prompt"), reply_markup=kb_order_menu(locale))
+        await cq.message.edit_text(t(eff_locale, "order_menu.prompt"), reply_markup=kb_order_menu(eff_locale))
         await cq.answer()
         return
 
@@ -694,7 +711,7 @@ async def back(cq: CallbackQuery, db: Database, state: FSMContext, locale: str =
         if len(parts) >= 5:
             kind = parts[3]
             shop_id = int(parts[4])
-            await show_categories(cq.message, db, kind, shop_id, locale=locale, page=0)
+            await show_categories(cq.message, db, kind, shop_id, locale=eff_locale, page=0)
             await cq.answer()
             return
 
@@ -706,17 +723,17 @@ async def back(cq: CallbackQuery, db: Database, state: FSMContext, locale: str =
         business_type=data.get("cart_kind"),
         shop_id=data.get("cart_shop_id"),
         back_target=data.get("cart_back_target"),
-        locale=locale,
+        locale=eff_locale,
     )
         await cq.answer()
         return
 
     if target == "cart_menu":
-        await cq.message.edit_text(t(locale, "cart.select"), reply_markup=kb_cart_menu(locale))
+        await cq.message.edit_text(t(eff_locale, "cart.select"), reply_markup=kb_cart_menu(eff_locale))
         await cq.answer()
         return
 
-    await cq.answer(t(locale, "nav.unknown"), show_alert=True)
+    await cq.answer(t(eff_locale, "nav.unknown"), show_alert=True)
 
 
 async def render_cart(
@@ -732,7 +749,7 @@ async def render_cart(
     items = await cart.list_items(user_id, business_type=business_type, shop_id=shop_id)
 
     if not items:
-        await message.edit_text(t(locale, "cart.empty"), reply_markup=kb_cart_empty(locale, back_target))
+        await message.edit_text(t(eff_locale, "cart.empty"), reply_markup=kb_cart_empty(eff_locale, back_target))
         return
 
     if business_type == "shop":
@@ -819,6 +836,16 @@ async def open_cart(cq: CallbackQuery, db: Database, state: FSMContext, locale: 
     )
     if business_type:
         await state.update_data(cart_kind=business_type, cart_shop_id=shop_id)
+        data_after = await state.get_data()
+        logger.warning(
+            "CART_CTX after: locale=%r last_kind=%r last_view=%r cart_kind=%r cart_shop_id=%r cart_back_target=%r",
+            data_after.get("locale"),
+            data_after.get("last_kind"),
+            data_after.get("last_view"),
+            data_after.get("cart_kind"),
+            data_after.get("cart_shop_id"),
+            data_after.get("cart_back_target"),
+        )
     await remember_client_screen(
         state,
         "cart",
@@ -929,9 +956,9 @@ async def search_input(message: Message, state: FSMContext, db: Database, locale
 
     products = [r.product for r in results]
     reply_markup = (
-        kb_products_list_shop(locale, products, shop_id, products[0]["category_id"])
+        kb_products_list_shop(locale, products, shop_id, products[0]["category_id"], kind)
         if kind == "shop"
-        else kb_products_list(locale, products, shop_id, products[0]["category_id"])
+        else kb_products_list(locale, products, shop_id, products[0]["category_id"], kind)
     )
     await message.answer(
         t(locale, "search.results_title"),
