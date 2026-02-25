@@ -195,6 +195,22 @@ TEXTS: dict[str, str] = {
     "notif.new_suffix": "янги",
     "notif.order_item": "💬 Буюртма #{order_id} · {unread_count} {suffix}",
 
+    "order.status.new": "🆕 Yangi",
+    "order.status.preparing": "⏳ Tayyorlanmoqda",
+    "order.status.ready": "📦 Tayyor",
+    "order.status.picked_up": "🛵 Kuryer oldi",
+    "order.status.arrived": "📍 Kuryer yetib keldi",
+    "order.status.delivered": "✅ Yetkazildi",
+    "order.status.canceled": "❌ Bekor qilindi",
+    "order.arrival.title": "🚨 Kuryer eshik oldida",
+    "order.arrival.code_label": "Qabul qilish kodi: {code}",
+    "order.arrival.confirm_button": "✅ Buyurtmani oldim",
+    "order.arrival.confirm_final": "✅ Tasdiqlash",
+    "order.arrival.cancel": "↩️ Bekor qilish",
+    "order.arrival.back": "🔙 Buyurtmalarga qaytish",
+    "order.arrival.done": "Buyurtma tasdiqlandi.",
+    "nav.courier_arrived_button": "🚨 Kuryer yetib keldi",
+
     # Fallback
     "msg.unknown_command": "🤖 Фармонни тушунмадим. Қуйидаги менюдан фойдаланинг 👇.",
 }

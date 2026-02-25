@@ -56,7 +56,7 @@ from app.repositories.products_repo import ProductsRepo
 from app.repositories.orders_repo import OrdersRepo
 from app.repositories.cart_repo import CartRepo
 from app.services.search_service import SearchService
-from app.services.admin_notifications import notify_admins_new_order
+from app.services.admin_notifications import notify_admins_new_order, notify_couriers_new_order
 from app.services.screen import (
     clear_state_keep_screen,
     delete_screen,
@@ -1375,6 +1375,7 @@ async def _create_order_for_shop(cq: CallbackQuery, db: Database, state: FSMCont
     # 2) уведомляем админов точки, но не ломаем оформление заказа при ошибках
     try:
         await notify_admins_new_order(db, order_id=order_id, shop_id=shop_id, storage=state.storage)
+        await notify_couriers_new_order(db, order_id=order_id)
     except Exception:
         logger.warning("Не удалось отправить уведомление админам по заказу %s", order_id, exc_info=True)
 

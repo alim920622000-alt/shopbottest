@@ -194,6 +194,22 @@ TEXTS: dict[str, str] = {
     "notif.new_suffix": "новых",
     "notif.order_item": "💬 Заказ #{order_id} · {unread_count} {suffix}",
 
+    "order.status.new": "🆕 Новый",
+    "order.status.preparing": "⏳ Готовится",
+    "order.status.ready": "📦 Готов",
+    "order.status.picked_up": "🛵 Курьер забрал",
+    "order.status.arrived": "📍 Курьер прибыл",
+    "order.status.delivered": "✅ Доставлен",
+    "order.status.canceled": "❌ Отменён",
+    "order.arrival.title": "🚨 Курьер у двери",
+    "order.arrival.code_label": "Код передачи: {code}",
+    "order.arrival.confirm_button": "✅ Я получил заказ",
+    "order.arrival.confirm_final": "✅ Подтвердить",
+    "order.arrival.cancel": "↩️ Отмена",
+    "order.arrival.back": "🔙 Назад к заказам",
+    "order.arrival.done": "Заказ подтверждён.",
+    "nav.courier_arrived_button": "🚨 Курьер прибыл",
+
     # Fallback
     "msg.unknown_command": "🤖 Я не понял команду. Используйте меню ниже 👇.",
 }

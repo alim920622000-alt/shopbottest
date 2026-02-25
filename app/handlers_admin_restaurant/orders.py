@@ -27,8 +27,8 @@ def _format_fulfillment_type(value: str | None) -> str:
     return mapping.get((value or "").strip(), "🚚 Доставка")
 
 
-CURRENT = ["new", "preparing", "on_the_way"]
-DONE = ["finished", "canceled"]
+CURRENT = ["new", "preparing", "ready"]
+DONE = ["delivered", "canceled", "finished"]
 
 
 def kb_orders_list(order_ids: list[int]) -> InlineKeyboardMarkup:
@@ -45,8 +45,7 @@ def kb_order_card(order_id: int, can_chat: bool = True) -> InlineKeyboardMarkup:
 def kb_order_card_with_back(order_id: int, back_target: str, can_chat: bool = True) -> InlineKeyboardMarkup:
     kb = [
         [InlineKeyboardButton(text="👨‍🍳 Готовится", callback_data=f"r:st:{order_id}:preparing")],
-        [InlineKeyboardButton(text="🚚 В пути", callback_data=f"r:st:{order_id}:on_the_way")],
-        [InlineKeyboardButton(text="✅ Завершён", callback_data=f"r:st:{order_id}:finished")],
+        [InlineKeyboardButton(text="📦 Готово", callback_data=f"r:st:{order_id}:ready")],
         [InlineKeyboardButton(text="❌ Отменить", callback_data=f"r:st:{order_id}:canceled")],
         [
             InlineKeyboardButton(text="🏠 Главная", callback_data="r:home"),
@@ -81,9 +80,12 @@ async def build_order_card_payload(
     items = await orders.get_order_items(order_id)
     comment = (o.get("comment") or "").strip()
     comment_line = comment or "— не добавлен —"
+    shop_info = await __import__("app.repositories.shops_repo", fromlist=["ShopsRepo"]).ShopsRepo(db).get(int(o["shop_id"]))
+    reserve = "Да" if int((shop_info or {}).get("allow_prepare_before_courier") or 0) == 1 else "Нет"
     lines = [
         f"Заказ #{o['id']}",
-        f"Статус: {o['status']}",
+        f"🛟 Резервные курьеры: {reserve}",
+        f"Статус (legacy): {o['status']}",
         f"Сумма: {o['total_amount']}",
         f"Получение: {_format_fulfillment_type(o.get('fulfillment_type'))}",
         f"Комментарий: {comment_line}",
@@ -211,7 +213,7 @@ async def set_status(cq: CallbackQuery, db: Database, state: FSMContext):
     order_id = int(order_id_str)
 
     orders = OrdersRepo(db)
-    await orders.set_status(order_id, status)
+    await orders.set_merchant_status(order_id, status)
 
     await cq.answer("Статус обновлён")
     data = await state.get_data()

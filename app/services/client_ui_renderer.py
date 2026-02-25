@@ -34,10 +34,15 @@ from app.repositories.shops_repo import ShopsRepo
 from app.services.chat_ui import PAGE_SIZE, build_chat_screen_kb, build_chat_screen_text, calc_total_pages
 from app.services.notification_center import build_client_center_payload, build_client_messages_payload
 from app.services.order_chat_access import can_access_order_chat, CLOSED_STATUSES
+from app.services.order_statuses import compose_client_status_key
 
 
-async def _render_main(locale: str) -> tuple[str, InlineKeyboardMarkup | None]:
-    return t(locale, "main.select_section"), kb_client_main(locale)
+async def _render_main(db: Database, locale: str, user_id: int | None) -> tuple[str, InlineKeyboardMarkup | None]:
+    has_arrived = False
+    if user_id:
+        rows = await OrdersRepo(db).list_for_client(int(user_id))
+        has_arrived = any(str(r.get("courier_status") or "").strip().lower() == "arrived" and int(r.get("handoff_confirmed") or 0) == 0 for r in rows)
+    return t(locale, "main.select_section"), kb_client_main(locale, has_arrived_order=has_arrived)
 
 
 async def render_client_screen(db: Database, state: FSMContext) -> tuple[str, InlineKeyboardMarkup | None]:
@@ -107,7 +112,7 @@ async def render_client_screen(db: Database, state: FSMContext) -> tuple[str, In
 
     if screen == "cart":
         if not user_id:
-            return await _render_main(locale)
+            return await _render_main(db, locale, user_id)
         business_type = payload.get("business_type")
         back_target = payload.get("back_target")
         items = await CartRepo(db).list_items(int(user_id), business_type=business_type)
@@ -127,7 +132,7 @@ async def render_client_screen(db: Database, state: FSMContext) -> tuple[str, In
 
     if screen in ("orders", "history"):
         if not user_id:
-            return await _render_main(locale)
+            return await _render_main(db, locale, user_id)
         statuses = DONE_STATUSES if screen == "history" else None
         rows = await OrdersRepo(db).list_for_client(int(user_id), statuses=statuses)
         if not rows:
@@ -141,7 +146,7 @@ async def render_client_screen(db: Database, state: FSMContext) -> tuple[str, In
     if screen == "order_card":
         order_id = int(payload.get("order_id") or 0)
         if not user_id:
-            return await _render_main(locale)
+            return await _render_main(db, locale, user_id)
         orders = OrdersRepo(db)
         order = await orders.get_order(order_id)
         if not order or int(order["client_user_id"]) != int(user_id):
@@ -152,7 +157,7 @@ async def render_client_screen(db: Database, state: FSMContext) -> tuple[str, In
         lines = [
             t(locale, "orders.item_tpl", order_id=order["id"]),
             t(locale, "order.shop", shop_name=shop_name),
-            t(locale, "order.status", status=order["status"]),
+            t(locale, "order.status", status=t(locale, compose_client_status_key(order.get('merchant_status'), order.get('courier_status')))),
             t(locale, "order.total", total=order["total_amount"]),
             "",
             t(locale, "order.items_title"),
@@ -166,7 +171,7 @@ async def render_client_screen(db: Database, state: FSMContext) -> tuple[str, In
 
     if screen == "chat_list":
         if not user_id:
-            return await _render_main(locale)
+            return await _render_main(db, locale, user_id)
         order_ids = await ChatRepo(db).list_order_ids_with_chat(user_id=int(user_id))
         if not order_ids:
             return t(locale, "chat.none"), kb_client_main(locale)
@@ -201,18 +206,18 @@ async def render_client_screen(db: Database, state: FSMContext) -> tuple[str, In
 
     if screen == "notif_center":
         if not user_id:
-            return await _render_main(locale)
+            return await _render_main(db, locale, user_id)
         return await build_client_center_payload(db, int(user_id), locale)
 
     if screen == "notif_messages":
         if not user_id:
-            return await _render_main(locale)
+            return await _render_main(db, locale, user_id)
         page = int(payload.get("page") or 1)
         return await build_client_messages_payload(db, int(user_id), page, locale)
 
     if screen == "cabinet":
         if not user_id:
-            return await _render_main(locale)
+            return await _render_main(db, locale, user_id)
         profile = await ClientProfilesRepo(db).get(int(user_id))
         full_name = profile["full_name"] if profile else ""
         phone = profile["phone"] if profile else ""
@@ -229,4 +234,4 @@ async def render_client_screen(db: Database, state: FSMContext) -> tuple[str, In
     if screen == "language_select":
         return t(locale, "language.select_title"), kb_language_select(locale)
 
-    return await _render_main(locale)
+    return await _render_main(db, locale, user_id)

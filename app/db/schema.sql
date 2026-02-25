@@ -8,7 +8,8 @@ CREATE TABLE IF NOT EXISTS shops (
     address TEXT,
     logo_url TEXT,
     about TEXT,
-    is_active INTEGER DEFAULT 1
+    is_active INTEGER DEFAULT 1,
+    allow_prepare_before_courier INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS users (
@@ -63,6 +64,13 @@ CREATE TABLE IF NOT EXISTS orders (
     fulfillment_type TEXT NOT NULL DEFAULT 'courier',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME,
+    merchant_status TEXT NOT NULL DEFAULT 'new',
+    courier_status TEXT NOT NULL DEFAULT 'searching',
+    courier_user_id INTEGER,
+    handoff_code TEXT,
+    handoff_confirmed INTEGER NOT NULL DEFAULT 0,
+    client_arrival_message_id INTEGER,
+    zone_id INTEGER,
     FOREIGN KEY (shop_id) REFERENCES shops(id) ON DELETE CASCADE
 );
 
@@ -183,6 +191,30 @@ CREATE TABLE IF NOT EXISTS admin_nav_state (
     PRIMARY KEY (bot_kind, user_id)
 );
 
+CREATE TABLE IF NOT EXISTS zones (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    is_active INTEGER NOT NULL DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS couriers (
+    user_id INTEGER PRIMARY KEY,
+    is_online INTEGER NOT NULL DEFAULT 0,
+    accept_all_zones INTEGER NOT NULL DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS courier_zones (
+    courier_user_id INTEGER NOT NULL,
+    zone_id INTEGER NOT NULL,
+    PRIMARY KEY (courier_user_id, zone_id),
+    FOREIGN KEY (zone_id) REFERENCES zones(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS app_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
+
 -- Индексы под частые выборки
 -- CREATE INDEX IF NOT EXISTS idx_categories_shop ON categories(shop_id);
 CREATE INDEX IF NOT EXISTS idx_products_shop ON products(shop_id);
@@ -192,6 +224,12 @@ CREATE INDEX IF NOT EXISTS idx_products_keywords_norm ON products(keywords_norm)
 CREATE UNIQUE INDEX IF NOT EXISTS uq_products_sku ON products(sku);
 CREATE INDEX IF NOT EXISTS idx_orders_shop_status ON orders(shop_id, status);
 CREATE INDEX IF NOT EXISTS idx_orders_client ON orders(client_user_id);
+CREATE INDEX IF NOT EXISTS idx_orders_courier_status ON orders(courier_status);
+CREATE INDEX IF NOT EXISTS idx_orders_merchant_status ON orders(merchant_status);
+CREATE INDEX IF NOT EXISTS idx_orders_courier_user ON orders(courier_user_id);
+CREATE INDEX IF NOT EXISTS idx_orders_zone_id ON orders(zone_id);
+CREATE INDEX IF NOT EXISTS idx_couriers_online ON couriers(is_online);
+CREATE INDEX IF NOT EXISTS idx_courier_zones_zone ON courier_zones(zone_id);
 CREATE INDEX IF NOT EXISTS idx_shop_admins_user ON shop_admins(user_id);
 CREATE INDEX IF NOT EXISTS idx_search_synonyms_term ON search_synonyms(term);
 CREATE INDEX IF NOT EXISTS idx_promotions_shop ON promotions(shop_id);

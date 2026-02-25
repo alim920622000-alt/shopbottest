@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timedelta
-from app.utils.tz import utcnow
-from datetime import timezone
+from app.utils.tz import utcnow, ensure_utc
+import random
 
 from aiogram import Router, F
 from aiogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, Message
@@ -31,6 +31,7 @@ from app.services.screen import clear_state_keep_screen, show_screen
 from app.services.chat_screen_controller import ChatScreenController
 from app.services.client_ui_state import remember_client_screen
 from app.services.notification_center import parse_notif_context, NOTIF_SRC_MSGS
+from app.services.order_statuses import compose_client_status_key
 from app.services.order_chat_access import can_access_order_chat, CLOSED_STATUSES
 from app.handlers_client.catalog import render_cart
 from app.i18n.client.translator import t
@@ -42,7 +43,7 @@ LIST_PAGE_SIZE = 8
 router = Router()
 logger = logging.getLogger(__name__)
 
-DONE_STATUSES = ["ready", "finished", "canceled", "delivered"]
+DONE_STATUSES = ["finished", "canceled", "delivered"]
 CANCELABLE_STATUSES = ["new"]
 
 
@@ -92,10 +93,7 @@ def _parse_created_at(value: object) -> datetime | None:
     else:
         return None
 
-    # привести к UTC-aware
-    if dt.tzinfo is None:
-        return dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc)
+    return ensure_utc(dt)
 
 
 def _can_cancel_order(order: dict | None, now: datetime | None = None) -> bool:
@@ -114,7 +112,7 @@ def _build_order_text(locale: str, order: dict, items: list[dict], shop_name: st
     lines = [
         t(locale, "orders.item_tpl", order_id=order["id"]),
         t(locale, "order.shop", shop_name=shop_name),
-        t(locale, "order.status", status=order["status"]),
+        t(locale, "order.status", status=t(locale, compose_client_status_key(order.get("merchant_status"), order.get("courier_status")))),
         t(locale, "order.total", total=order["total_amount"]),
         t(locale, "order.comment", comment=comment_line),
         "",
@@ -298,6 +296,11 @@ async def order_card(cq: CallbackQuery, db: Database, state: FSMContext, locale:
         await cq.answer()
         return
 
+    if o.get("courier_status") == "arrived" and int(o.get("handoff_confirmed") or 0) == 0:
+        await _show_arrival_screen(cq, db, locale, o)
+        await cq.answer()
+        return
+
     items = await orders.get_order_items(order_id)
     shop = ShopsRepo(db)
     shop_info = await shop.get(int(o["shop_id"]))
@@ -340,13 +343,21 @@ async def cancel_order(cq: CallbackQuery, db: Database, state: FSMContext, local
     elif not created_at or now - created_at > timedelta(minutes=CANCEL_WINDOW_MINUTES):
         await cq.answer(t(locale, "order.cancel.expired"), show_alert=True)
     else:
-        await orders.set_status(order_id, "canceled")
+        await orders.set_merchant_status(order_id, "canceled")
+        await orders.set_courier_status(order_id, "canceled")
         o["status"] = "canceled"
+        o["merchant_status"] = "canceled"
+        o["courier_status"] = "canceled"
         try:
             await notify_admins_order_canceled(db, order_id=order_id, shop_id=int(o["shop_id"]))
         except Exception:
             logger.warning("Не удалось отправить уведомление об отмене заказа %s", order_id, exc_info=True)
         await cq.answer(t(locale, "order.cancel.success"))
+
+    if o.get("courier_status") == "arrived" and int(o.get("handoff_confirmed") or 0) == 0:
+        await _show_arrival_screen(cq, db, locale, o)
+        await cq.answer()
+        return
 
     items = await orders.get_order_items(order_id)
     shop = ShopsRepo(db)
@@ -354,6 +365,61 @@ async def cancel_order(cq: CallbackQuery, db: Database, state: FSMContext, local
     shop_name = shop_info["name"] if shop_info else f"#{o['shop_id']}"
     await _render_order_card(cq, state, db, locale, o, items, shop_name)
 
+
+
+
+def kb_arrival_first(locale: str, order_id: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=t(locale, "order_card.chat"), callback_data=f"c:chat:{order_id}")],
+        [InlineKeyboardButton(text=t(locale, "order.arrival.confirm_button"), callback_data=f"c:arrival:confirm:{order_id}")],
+        [InlineKeyboardButton(text=t(locale, "order.arrival.back"), callback_data="c:orders")],
+    ])
+
+
+def kb_arrival_second(locale: str, order_id: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=t(locale, "order.arrival.confirm_final"), callback_data=f"c:arrival:done:{order_id}")],
+        [InlineKeyboardButton(text=t(locale, "order.arrival.cancel"), callback_data=f"c:order:{order_id}")],
+    ])
+
+
+async def _show_arrival_screen(cq: CallbackQuery, db: Database, locale: str, order: dict) -> None:
+    text = (
+        f"{t(locale, 'order.arrival.title')}\n"
+        f"{t(locale, 'orders.item_tpl', order_id=order['id'])}\n"
+        f"{t(locale, 'order.total', total=order['total_amount'])}\n"
+        f"{t(locale, 'order.arrival.code_label', code=(order.get('handoff_code') or '----'))}"
+    )
+    await cq.message.edit_text(text, reply_markup=kb_arrival_first(locale, int(order['id'])))
+
+
+@router.callback_query(F.data.startswith("c:arrival:confirm:"))
+async def arrival_confirm(cq: CallbackQuery, db: Database, locale: str = "ru"):
+    order_id = int(cq.data.split(":")[-1])
+    o = await OrdersRepo(db).get_order(order_id)
+    if not o or int(o.get("client_user_id") or 0) != cq.from_user.id:
+        await cq.answer(t(locale, "order.not_found"), show_alert=True)
+        return
+    await cq.message.edit_text(t(locale, "order.arrival.title"), reply_markup=kb_arrival_second(locale, order_id))
+    await cq.answer()
+
+
+@router.callback_query(F.data.startswith("c:arrival:done:"))
+async def arrival_done(cq: CallbackQuery, db: Database, locale: str = "ru"):
+    order_id = int(cq.data.split(":")[-1])
+    repo = OrdersRepo(db)
+    o = await repo.get_order(order_id)
+    if not o or int(o.get("client_user_id") or 0) != cq.from_user.id:
+        await cq.answer(t(locale, "order.not_found"), show_alert=True)
+        return
+    await repo.confirm_client_handoff(order_id)
+    await cq.answer(t(locale, "order.arrival.done"), show_alert=True)
+    updated = await repo.get_order(order_id)
+    items = await repo.get_order_items(order_id)
+    shop_info = await ShopsRepo(db).get(int(updated["shop_id"]))
+    shop_name = shop_info["name"] if shop_info else f"#{updated['shop_id']}"
+    text = _build_order_text(locale, updated, items, shop_name)
+    await cq.message.edit_text(text, reply_markup=kb_order_card(locale, order_id, "c:history", can_cancel=False, can_chat=False, can_repeat=True))
 
 @router.callback_query(F.data.startswith("c:chat:p:"))
 async def chat_list_page(cq: CallbackQuery, db: Database, state: FSMContext, locale: str = "ru"):

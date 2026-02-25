@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import Optional
 from contextlib import asynccontextmanager
 
+from app.services.order_statuses import map_from_legacy, map_to_legacy
+
 
 @dataclass(frozen=True)
 class DBConfig:
@@ -90,8 +92,16 @@ class Database:
         await add_column("products", "updated_at", "updated_at DATETIME")
         await add_column("products", "sku", "sku TEXT")
 
-        # orders: комментарий клиента
+        # orders: комментарий клиента и двухосевые статусы
         await add_column("orders", "comment", "comment TEXT DEFAULT ''")
+        await add_column("orders", "merchant_status", "merchant_status TEXT NOT NULL DEFAULT 'new'")
+        await add_column("orders", "courier_status", "courier_status TEXT NOT NULL DEFAULT 'searching'")
+        await add_column("orders", "courier_user_id", "courier_user_id INTEGER")
+        await add_column("orders", "handoff_code", "handoff_code TEXT")
+        await add_column("orders", "handoff_confirmed", "handoff_confirmed INTEGER NOT NULL DEFAULT 0")
+        await add_column("orders", "client_arrival_message_id", "client_arrival_message_id INTEGER")
+        await add_column("orders", "zone_id", "zone_id INTEGER")
+        await add_column("shops", "allow_prepare_before_courier", "allow_prepare_before_courier INTEGER NOT NULL DEFAULT 0")
         await add_column("client_profiles", "locale", "locale TEXT DEFAULT 'ru'")
 
         await connection.execute(
@@ -215,6 +225,42 @@ class Database:
             )
             """
         )
+        await connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS zones (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                is_active INTEGER NOT NULL DEFAULT 1
+            )
+            """
+        )
+        await connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS couriers (
+                user_id INTEGER PRIMARY KEY,
+                is_online INTEGER NOT NULL DEFAULT 0,
+                accept_all_zones INTEGER NOT NULL DEFAULT 1
+            )
+            """
+        )
+        await connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS courier_zones (
+                courier_user_id INTEGER NOT NULL,
+                zone_id INTEGER NOT NULL,
+                PRIMARY KEY (courier_user_id, zone_id),
+                FOREIGN KEY (zone_id) REFERENCES zones(id) ON DELETE CASCADE
+            )
+            """
+        )
+        await connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS app_settings (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            )
+            """
+        )
 
         await connection.execute("CREATE INDEX IF NOT EXISTS idx_products_name_norm ON products(name_norm);")
         await connection.execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_products_sku ON products(sku);")
@@ -239,6 +285,25 @@ class Database:
         await connection.execute("CREATE INDEX IF NOT EXISTS idx_chat_order ON order_chat_messages(order_id, created_at);")
         await connection.execute("CREATE INDEX IF NOT EXISTS idx_chat_reads_viewer ON order_chat_reads(viewer_role, viewer_user_id);")
         await connection.execute("CREATE INDEX IF NOT EXISTS idx_order_seen_viewer ON order_seen(viewer_role, viewer_user_id);")
+        await connection.execute("CREATE INDEX IF NOT EXISTS idx_orders_courier_status ON orders(courier_status);")
+        await connection.execute("CREATE INDEX IF NOT EXISTS idx_orders_merchant_status ON orders(merchant_status);")
+        await connection.execute("CREATE INDEX IF NOT EXISTS idx_orders_courier_user ON orders(courier_user_id);")
+        await connection.execute("CREATE INDEX IF NOT EXISTS idx_orders_zone_id ON orders(zone_id);")
+        await connection.execute("CREATE INDEX IF NOT EXISTS idx_couriers_online ON couriers(is_online);")
+        await connection.execute("CREATE INDEX IF NOT EXISTS idx_courier_zones_zone ON courier_zones(zone_id);")
         await connection.execute(
             "CREATE INDEX IF NOT EXISTS idx_chat_reminders_due ON chat_message_reminders(recipient_kind, status, scheduled_at);"
         )
+
+        cur_orders = await connection.execute("SELECT id, status, merchant_status, courier_status FROM orders")
+        order_rows = await cur_orders.fetchall()
+        for row in order_rows:
+            merchant_status = (row["merchant_status"] or "").strip().lower()
+            courier_status = (row["courier_status"] or "").strip().lower()
+            if not merchant_status or not courier_status:
+                merchant_status, courier_status = map_from_legacy(row["status"])
+            legacy = map_to_legacy(merchant_status, courier_status)
+            await connection.execute(
+                "UPDATE orders SET merchant_status=?, courier_status=?, status=?, updated_at=CURRENT_TIMESTAMP WHERE id=?",
+                (merchant_status, courier_status, legacy, int(row["id"])),
+            )

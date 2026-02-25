@@ -46,9 +46,11 @@ def kb_order_card(order_id: int, can_chat: bool = True) -> InlineKeyboardMarkup:
     return kb_order_card_with_back(order_id, "a:orders", can_chat)
 
 
-def kb_order_card_with_back(order_id: int, back_target: str, can_chat: bool = True) -> InlineKeyboardMarkup:
-    kb = [
-        [InlineKeyboardButton(text="✅ Готовится", callback_data=f"a:st:{order_id}:preparing")],
+def kb_order_card_with_back(order_id: int, back_target: str, can_chat: bool = True, show_preparing: bool = True) -> InlineKeyboardMarkup:
+    kb = []
+    if show_preparing:
+        kb.append([InlineKeyboardButton(text="✅ Готовится", callback_data=f"a:st:{order_id}:preparing")])
+    kb += [
         [InlineKeyboardButton(text="📦 Готово", callback_data=f"a:st:{order_id}:ready")],
         [InlineKeyboardButton(text="❌ Отменить", callback_data=f"a:st:{order_id}:canceled")],
         [
@@ -73,9 +75,12 @@ async def build_order_card_payload(
     items = await orders.get_order_items(order_id)
     comment = (o.get("comment") or "").strip()
     comment_line = comment or "— не добавлен —"
+    shop_info = await __import__("app.repositories.shops_repo", fromlist=["ShopsRepo"]).ShopsRepo(db).get(int(o["shop_id"]))
+    reserve = "Да" if int((shop_info or {}).get("allow_prepare_before_courier") or 0) == 1 else "Нет"
     lines = [
         f"Заказ #{o['id']}",
-        f"Статус: {o['status']}",
+        f"🛟 Резервные курьеры: {reserve}",
+        f"Статус (legacy): {o['status']}",
         f"Сумма: {o['total_amount']}",
         f"Получение: {_format_fulfillment_type(o.get('fulfillment_type'))}",
         f"Комментарий: {comment_line}",
@@ -205,7 +210,7 @@ async def set_status(cq: CallbackQuery, db: Database, state: FSMContext):
     order_id = int(order_id_str)
 
     orders = OrdersRepo(db)
-    await orders.set_status(order_id, status)
+    await orders.set_merchant_status(order_id, status)
 
     await cq.answer("Статус обновлён")
     # перерисуем карточку заказа
@@ -213,9 +218,12 @@ async def set_status(cq: CallbackQuery, db: Database, state: FSMContext):
     items = await orders.get_order_items(order_id)
     comment = (o.get("comment") or "").strip()
     comment_line = comment or "— не добавлен —"
+    shop_info = await __import__("app.repositories.shops_repo", fromlist=["ShopsRepo"]).ShopsRepo(db).get(int(o["shop_id"]))
+    reserve = "Да" if int((shop_info or {}).get("allow_prepare_before_courier") or 0) == 1 else "Нет"
     lines = [
         f"Заказ #{o['id']}",
-        f"Статус: {o['status']}",
+        f"🛟 Резервные курьеры: {reserve}",
+        f"Статус (legacy): {o['status']}",
         f"Сумма: {o['total_amount']}",
         f"Получение: {_format_fulfillment_type(o.get('fulfillment_type'))}",
         f"Комментарий: {comment_line}",
