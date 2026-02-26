@@ -749,7 +749,7 @@ async def render_cart(
     items = await cart.list_items(user_id, business_type=business_type, shop_id=shop_id)
 
     if not items:
-        await message.edit_text(t(eff_locale, "cart.empty"), reply_markup=kb_cart_empty(eff_locale, back_target))
+        await message.edit_text(t(locale, "cart.empty"), reply_markup=kb_cart_empty(locale, back_target))
         return
 
     if business_type == "shop":
