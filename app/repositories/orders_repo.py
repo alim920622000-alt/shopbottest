@@ -1,4 +1,5 @@
 from __future__ import annotations
+import random
 from typing import Optional, Sequence
 
 from app.db.database import Database
@@ -34,12 +35,13 @@ class OrdersRepo:
                 total += float(r["price"]) * int(r["quantity"])
 
             legacy_status = map_to_legacy("new", "searching")
+            handoff_code = f"{random.randint(1000, 9999)}"
             cur2 = await conn.execute(
                 """INSERT INTO orders (
                     shop_id, client_user_id, status, merchant_status, courier_status,
-                    total_amount, comment, fulfillment_type, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)""",
-                (shop_id, client_user_id, legacy_status, "new", "searching", total, comment, fulfillment_type),
+                    total_amount, comment, fulfillment_type, handoff_code, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)""",
+                (shop_id, client_user_id, legacy_status, "new", "searching", total, comment, fulfillment_type, handoff_code),
             )
             order_id = int(cur2.lastrowid)
 

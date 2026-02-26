@@ -19,6 +19,7 @@ from app.repositories.orders_repo import OrdersRepo
 from app.repositories.settings_repo import SettingsRepo
 from app.repositories.zones_repo import ZonesRepo
 from app.services.chat_ui import PAGE_SIZE as CHAT_PAGE_SIZE, build_chat_screen_kb, build_chat_screen_text, calc_total_pages
+from app.services.courier_capacity import MODE_FREE, MODE_MEDIUM, MODE_STRICT, can_accept_order, get_courier_capacity_mode
 from app.services.order_chat_access import can_access_order_chat
 from app.services.pagination import calc_page
 
@@ -33,6 +34,7 @@ class CourierStates(StatesGroup):
     zone_rename = State()
     cabinet_phone = State()
     order_chat = State()
+    complete_code_wait = State()
 
 
 def _push(stack: list[str], view: str) -> list[str]:
@@ -141,10 +143,21 @@ async def _render_orders_list(cq: CallbackQuery, db: Database, state: FSMContext
         pi = calc_page(total=total, page=page, page_size=ORDERS_PAGE_SIZE)
         rows = await orders_repo.list_history_for_courier_page(cq.from_user.id, limit=pi.limit, offset=pi.offset)
 
+    if mode == "active" and total == 0:
+        await _save_current_view(state, mode, {"page": 0})
+        await cq.message.edit_text(
+            "У вас нет активных заказов",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[_back_row(), _home_row()]),
+        )
+        return
+
     kb_rows = [
         [InlineKeyboardButton(text=f"Заказ #{r['id']}", callback_data=f"cr:order:{r['id']}:{mode}:{pi.page}")]
         for r in rows
     ]
+    if mode == "active" and total == 1 and rows:
+        await _render_order_card(cq, db, state, int(rows[0]["id"]), "active", pi.page)
+        return
     if not kb_rows:
         kb_rows.append([InlineKeyboardButton(text="Список пуст", callback_data="cr:noop")])
     if pi.total_pages > 1:
@@ -179,15 +192,33 @@ async def _build_order_card(order: dict, source: str, page: int) -> tuple[str, I
     if not closed and courier_status == "searching":
         rows.append([InlineKeyboardButton(text="✅ Принять доставку", callback_data=f"cr:accept:{order['id']}:{source}:{page}")])
     if not closed and courier_status == "assigned" and merchant_status == "ready":
-        rows.append([InlineKeyboardButton(text="📦 Забрал заказ", callback_data=f"cr:pickup:{order['id']}:{source}:{page}")])
+        rows.append([InlineKeyboardButton(text="📦 Забрать заказ", callback_data=f"cr:pickup:{order['id']}:{source}:{page}")])
     if not closed and courier_status == "picked_up":
         rows.append([InlineKeyboardButton(text="📍 Прибыл", callback_data=f"cr:arrived:{order['id']}:{source}:{page}")])
-    if not closed and courier_status in {"arrived", "picked_up", "assigned"}:
-        rows.append([InlineKeyboardButton(text="✅ Завершить", callback_data=f"cr:finish:{order['id']}:{source}:{page}")])
+    if not closed and courier_status == "arrived":
+        rows.append([InlineKeyboardButton(text="✅ Завершить заказ", callback_data=f"cr:finish:{order['id']}:{source}:{page}")])
     if not closed and courier_status in {"assigned", "picked_up", "arrived"}:
         rows.append([InlineKeyboardButton(text="💬 Чат по заказу", callback_data=f"cr:chat:{order['id']}:1:{source}:{page}")])
     rows.append(_back_row())
+    rows.append(_home_row())
     return "\n".join(lines), InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def _mode_label(mode: int) -> str:
+    if mode == MODE_MEDIUM:
+        return "Средний (2 активных заказа)"
+    if mode == MODE_FREE:
+        return "Свободный (3 активных заказа)"
+    return "Строгий (1 активный заказ)"
+
+
+def _mode_text(mode: int, current_mode: int) -> str:
+    mark = "✅ " if mode == current_mode else ""
+    if mode == MODE_MEDIUM:
+        return f"{mark}Режим 2: Средний (2 активных заказа)"
+    if mode == MODE_FREE:
+        return f"{mark}Режим 3: Свободный (3 активных заказа)"
+    return f"{mark}Режим 1: Строгий (1 активный заказ)"
 
 
 async def _render_order_card(cq: CallbackQuery, db: Database, state: FSMContext, order_id: int, source: str, page: int) -> bool:
@@ -215,21 +246,30 @@ async def _render_cabinet(cq: CallbackQuery, db: Database, state: FSMContext) ->
         f"Транспорт: {transport}\n"
         f"На линии: {online}"
     )
-    kb = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="📞 Указать телефон", callback_data="cr:cabinet_phone")],
+    kb_rows = [
+        [InlineKeyboardButton(text="📞 Указать телефон", callback_data="cr:cabinet_phone")],
+        [
+            InlineKeyboardButton(text="🚗 Авто", callback_data="cr:transport:auto"),
+            InlineKeyboardButton(text="🏍 Мото", callback_data="cr:transport:moto"),
+        ],
+        [
+            InlineKeyboardButton(text="🛵 Скутер", callback_data="cr:transport:scooter"),
+            InlineKeyboardButton(text="🚶 Пешком", callback_data="cr:transport:foot"),
+        ],
+        [InlineKeyboardButton(text="🔁 На линии / Не на линии", callback_data="cr:toggle_online")],
+    ]
+    if _is_superadmin(cq.from_user.id):
+        mode = await get_courier_capacity_mode(db)
+        text += f"\n\n⚙️ Режим заказов курьера: {_mode_label(mode)}"
+        kb_rows.extend(
             [
-                InlineKeyboardButton(text="🚗 Авто", callback_data="cr:transport:auto"),
-                InlineKeyboardButton(text="🏍 Мото", callback_data="cr:transport:moto"),
-            ],
-            [
-                InlineKeyboardButton(text="🛵 Скутер", callback_data="cr:transport:scooter"),
-                InlineKeyboardButton(text="🚶 Пешком", callback_data="cr:transport:foot"),
-            ],
-            [InlineKeyboardButton(text="🔁 На линии / Не на линии", callback_data="cr:toggle_online")],
-            _back_row(),
-        ]
-    )
+                [InlineKeyboardButton(text=_mode_text(MODE_STRICT, mode), callback_data=f"cr:cap_set:{MODE_STRICT}")],
+                [InlineKeyboardButton(text=_mode_text(MODE_MEDIUM, mode), callback_data=f"cr:cap_set:{MODE_MEDIUM}")],
+                [InlineKeyboardButton(text=_mode_text(MODE_FREE, mode), callback_data=f"cr:cap_set:{MODE_FREE}")],
+            ]
+        )
+    kb_rows.append(_back_row())
+    kb = InlineKeyboardMarkup(inline_keyboard=kb_rows)
     await _save_current_view(state, "cabinet")
     await cq.message.edit_text(text, reply_markup=kb)
 
@@ -472,33 +512,16 @@ async def order_card(cq: CallbackQuery, db: Database, state: FSMContext):
     await cq.answer()
 
 
-async def _can_accept(db: Database, courier_user_id: int) -> bool:
-    settings = SettingsRepo(db)
-    mode = int(await settings.get("courier_capacity_mode", "1"))
-    max_active = int(await settings.get("max_active_orders", "2"))
-    active = await OrdersRepo(db).list_active_for_courier(courier_user_id)
-    if mode == 1:
-        return len(active) < 1
-    if mode == 2:
-        return len(active) < max_active
-    if mode == 3:
-        if len(active) == 0:
-            return True
-        if len(active) > 1:
-            return False
-        return str(active[0].get("courier_status") or "") == "arrived"
-    return False
-
-
 @router.callback_query(F.data.startswith("cr:accept:"))
 async def accept(cq: CallbackQuery, db: Database, state: FSMContext):
     _, _, order_id, source, page = cq.data.split(":")
-    if not await _can_accept(db, cq.from_user.id):
-        await cq.answer("Превышен лимит активных заказов", show_alert=True)
+    can_accept, reason = await can_accept_order(db, cq.from_user.id)
+    if not can_accept:
+        await cq.answer(reason, show_alert=True)
         return
     ok = await OrdersRepo(db).assign_courier_atomic(int(order_id), cq.from_user.id)
     await _render_order_card(cq, db, state, int(order_id), source, int(page))
-    await cq.answer("Принято" if ok else "Уже занят", show_alert=not ok)
+    await cq.answer("Принято" if ok else "Заказ уже занят.", show_alert=not ok)
 
 
 @router.callback_query(F.data.startswith("cr:pickup:"))
@@ -523,9 +546,34 @@ async def arrived(cq: CallbackQuery, db: Database, state: FSMContext):
 @router.callback_query(F.data.startswith("cr:finish:"))
 async def finish(cq: CallbackQuery, db: Database, state: FSMContext):
     _, _, order_id, source, page = cq.data.split(":")
-    await OrdersRepo(db).set_courier_status(int(order_id), "delivered")
+    order = await OrdersRepo(db).get_order(int(order_id))
+    if not order or int(order.get("courier_user_id") or 0) != cq.from_user.id:
+        await cq.answer("Заказ не найден", show_alert=True)
+        return
+    if str(order.get("courier_status") or "").strip().lower() != "arrived":
+        await _render_order_card(cq, db, state, int(order_id), source, int(page))
+        await cq.answer("Завершение доступно только после статуса «Прибыл».", show_alert=True)
+        return
+    await state.set_state(CourierStates.complete_code_wait)
+    await state.update_data(complete_order_id=int(order_id), complete_source=source, complete_page=int(page), complete_message_id=cq.message.message_id)
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="⬅️ Назад", callback_data=f"cr:finish_cancel:{order_id}:{source}:{page}")],
+        _home_row(),
+    ])
+    await cq.message.edit_text(
+        "Попросите клиента сообщить 4-значный код для завершения заказа.\nВведите 4-значный код:",
+        reply_markup=kb,
+    )
+    await cq.answer()
+
+
+@router.callback_query(F.data.startswith("cr:finish_cancel:"))
+async def finish_cancel(cq: CallbackQuery, db: Database, state: FSMContext):
+    _, _, order_id, source, page = cq.data.split(":")
+    await state.set_state(None)
+    await _push_and_render(state, source, "order", {"order_id": int(order_id), "source": source, "page": int(page)})
     await _render_order_card(cq, db, state, int(order_id), source, int(page))
-    await cq.answer("Заказ завершён")
+    await cq.answer("Возврат в карточку")
 
 
 @router.callback_query(F.data == "cr:cabinet")
@@ -751,16 +799,63 @@ async def capacity_menu(cq: CallbackQuery, db: Database):
 
 
 @router.callback_query(F.data.startswith("cr:cap_set:"))
-async def cap_set(cq: CallbackQuery, db: Database):
+async def cap_set(cq: CallbackQuery, db: Database, state: FSMContext):
+    if not _is_superadmin(cq.from_user.id):
+        await cq.answer("Недостаточно прав", show_alert=True)
+        return
     mode = cq.data.split(":")[-1]
     await SettingsRepo(db).set("courier_capacity_mode", mode)
     logger.info("Режим вместимости курьеров обновлён: %s", mode)
+    await _render_cabinet(cq, db, state)
     await cq.answer("Режим сохранён")
+
+
+@router.message(CourierStates.complete_code_wait)
+async def finish_code_input(message: Message, db: Database, state: FSMContext):
+    data = await state.get_data()
+    order_id = int(data.get("complete_order_id") or 0)
+    source = str(data.get("complete_source") or "active")
+    page = int(data.get("complete_page") or 0)
+    message_id = int(data.get("complete_message_id") or 0)
+    code = (message.text or "").strip()
+    if not order_id:
+        await state.clear()
+        await _render_menu(message, db, message.from_user.id)
+        return
+
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="⬅️ Назад", callback_data=f"cr:finish_cancel:{order_id}:{source}:{page}")],
+        _home_row(),
+    ])
+    if not (len(code) == 4 and code.isdigit()):
+        await message.answer("Введите 4 цифры", reply_markup=kb)
+        return
+
+    order = await OrdersRepo(db).get_order(order_id)
+    if not order or int(order.get("courier_user_id") or 0) != message.from_user.id:
+        await state.clear()
+        await message.answer("Заказ не найден")
+        return
+
+    if str(order.get("handoff_code") or "") != code:
+        await message.answer("Неверный код. Попробуйте ещё раз.", reply_markup=kb)
+        return
+
+    await OrdersRepo(db).confirm_client_handoff(order_id)
+    await state.set_state(None)
+    order_view = await OrdersRepo(db).get_order(order_id)
+    if order_view and message_id:
+        text, card_kb = await _build_order_card(order_view, source, page)
+        await message.bot.edit_message_text(text=text, chat_id=message.chat.id, message_id=message_id, reply_markup=card_kb)
+    elif order_view:
+        text, card_kb = await _build_order_card(order_view, source, page)
+        await message.answer(text, reply_markup=card_kb)
+    await message.answer("Заказ завершён ✅")
 
 
 @router.message(F.text)
 async def fallback_text(message: Message, state: FSMContext, db: Database):
-    if await state.get_state() in {CourierStates.zone_add.state, CourierStates.zone_rename.state, CourierStates.order_chat.state, CourierStates.cabinet_phone.state}:
+    if await state.get_state() in {CourierStates.zone_add.state, CourierStates.zone_rename.state, CourierStates.order_chat.state, CourierStates.cabinet_phone.state, CourierStates.complete_code_wait.state}:
         return
     await message.answer("Команда неверна, используйте меню ниже.")
     await _render_menu(message, db, message.from_user.id)
