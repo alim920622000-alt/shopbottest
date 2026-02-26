@@ -10,8 +10,8 @@ from app.repositories.admins_repo import AdminsRepo
 from app.repositories.orders_repo import OrdersRepo
 from app.repositories.shops_repo import ShopsRepo
 from app.repositories.couriers_repo import CouriersRepo
-from app.repositories.settings_repo import SettingsRepo
 from app.services.notification_center import show_notification_center_for_user
+from app.services.courier_capacity import can_accept_order
 
 logger = logging.getLogger(__name__)
 
@@ -150,24 +150,6 @@ async def notify_admins_order_canceled(db: Database, order_id: int, shop_id: int
         await bot.session.close()
 
 
-async def _courier_can_accept(db: Database, courier_user_id: int) -> bool:
-    settings = SettingsRepo(db)
-    mode = int(await settings.get("courier_capacity_mode", "1"))
-    max_active = int(await settings.get("max_active_orders", "2"))
-    active = await OrdersRepo(db).list_active_for_courier(courier_user_id)
-    if mode == 1:
-        return len(active) < 1
-    if mode == 2:
-        return len(active) < max_active
-    if mode == 3:
-        if len(active) == 0:
-            return True
-        if len(active) > 1:
-            return False
-        return str(active[0].get("courier_status") or "") == "arrived"
-    return False
-
-
 async def notify_couriers_new_order(db: Database, order_id: int) -> None:
     token = os.getenv("COURIER_BOT_TOKEN", "").strip()
     if not token:
@@ -178,7 +160,8 @@ async def notify_couriers_new_order(db: Database, order_id: int) -> None:
     bot = Bot(token=token)
     try:
         for uid in online_ids:
-            if not await _courier_can_accept(db, uid):
+            can_accept, _ = await can_accept_order(db, uid)
+            if not can_accept:
                 continue
             visible = await OrdersRepo(db).list_available_for_courier(uid)
             if not any(int(r["id"]) == int(order_id) for r in visible):
