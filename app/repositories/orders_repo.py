@@ -160,6 +160,30 @@ class OrdersRepo:
             rows = await cur.fetchall()
             return [dict(r) for r in rows]
 
+    async def count_for_client_excluding(self, client_user_id: int, exclude_statuses: Sequence[str]) -> int:
+        placeholders = ",".join(["?"] * len(exclude_statuses))
+        q = f"SELECT COUNT(*) AS cnt FROM orders WHERE client_user_id=? AND status NOT IN ({placeholders})"
+        async with self.db.conn() as conn:
+            cur = await conn.execute(q, [client_user_id, *exclude_statuses])
+            row = await cur.fetchone()
+            return int(row["cnt"]) if row else 0
+    
+    async def list_for_client_page_excluding(self, client_user_id: int, exclude_statuses: Sequence[str], *, limit: int, offset: int) -> Sequence[dict]:
+        placeholders = ",".join(["?"] * len(exclude_statuses))
+        q = f"""
+            SELECT o.*, s.name AS shop_name, s.business_type
+            FROM orders o
+            JOIN shops s ON s.id = o.shop_id
+            WHERE o.client_user_id=? AND o.status NOT IN ({placeholders})
+            ORDER BY CASE WHEN o.courier_status='arrived' THEN 0 ELSE 1 END, o.created_at DESC
+            LIMIT ? OFFSET ?
+        """
+        params = [client_user_id, *exclude_statuses, limit, offset]
+        async with self.db.conn() as conn:
+            cur = await conn.execute(q, params)
+            rows = await cur.fetchall()
+            return [dict(r) for r in rows]
+
     async def count_for_client(self, client_user_id: int, statuses: Sequence[str] | None = None) -> int:
         q = "SELECT COUNT(*) AS cnt FROM orders WHERE client_user_id=?"
         params: list = [client_user_id]

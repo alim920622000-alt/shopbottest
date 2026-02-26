@@ -220,14 +220,14 @@ async def list_orders_render(cq: CallbackQuery, db: Database, state: FSMContext,
     await state.update_data(user_id=cq.from_user.id)
     await remember_client_screen(state, "orders", {})
     orders = OrdersRepo(db)
-    total = await orders.count_for_client(cq.from_user.id)
+    total = await orders.count_for_client_excluding(cq.from_user.id, DONE_STATUSES)
     if total <= 0:
         await cq.message.edit_text(t(locale, "orders.empty"), reply_markup=kb_client_main(locale))
         await cq.answer()
         return
 
     pi = calc_page(total=total, page=page, page_size=LIST_PAGE_SIZE)
-    rows = await orders.list_for_client_page(cq.from_user.id, limit=pi.limit, offset=pi.offset)
+    rows = await orders.list_for_client_page_excluding(cq.from_user.id, DONE_STATUSES, limit=pi.limit, offset=pi.offset)
     kb = kb_orders_list(locale, rows)
     pager = pager_row("c:orders", pi.page, pi.total_pages)
     if pager:
