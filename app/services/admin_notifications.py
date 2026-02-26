@@ -184,7 +184,11 @@ async def notify_couriers_new_order(db: Database, order_id: int) -> None:
             if not any(int(r["id"]) == int(order_id) for r in visible):
                 continue
             try:
-                await bot.send_message(uid, f"🆕 Доступен заказ #{order_id}\nОткройте раздел 'Доступные'.")
+                await bot.send_message(
+                    uid,
+                    f"🆕 Новый заказ #{order_id}\nДоступен для принятия.",
+                    reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="Открыть заказ", callback_data=f"cr:order:{order_id}")]]),
+                )
             except Exception:
                 logger.warning("Не удалось отправить пуш курьеру %s по заказу %s", uid, order_id, exc_info=True)
     finally:

@@ -16,6 +16,36 @@ class ZonesRepo:
             rows = await cur.fetchall()
             return [dict(r) for r in rows]
 
+    async def list_all(self) -> list[dict]:
+        async with self.db.conn() as conn:
+            cur = await conn.execute("SELECT * FROM zones ORDER BY is_active DESC, name COLLATE NOCASE ASC")
+            rows = await cur.fetchall()
+            return [dict(r) for r in rows]
+
+    async def create(self, name: str) -> int:
+        async with self.db.conn() as conn:
+            cur = await conn.execute("INSERT INTO zones (name, is_active) VALUES (?, 1)", (name.strip(),))
+            await conn.commit()
+            return int(cur.lastrowid)
+
+    async def rename(self, zone_id: int, name: str) -> None:
+        async with self.db.conn() as conn:
+            await conn.execute("UPDATE zones SET name=? WHERE id=?", (name.strip(), zone_id))
+            await conn.commit()
+
+    async def set_active(self, zone_id: int, is_active: bool) -> None:
+        async with self.db.conn() as conn:
+            await conn.execute("UPDATE zones SET is_active=? WHERE id=?", (1 if is_active else 0, zone_id))
+            if not is_active:
+                await conn.execute("DELETE FROM courier_zones WHERE zone_id=?", (zone_id,))
+            await conn.commit()
+
+    async def get(self, zone_id: int) -> dict | None:
+        async with self.db.conn() as conn:
+            cur = await conn.execute("SELECT * FROM zones WHERE id=?", (zone_id,))
+            row = await cur.fetchone()
+            return dict(row) if row else None
+
     async def count_active(self) -> int:
         async with self.db.conn() as conn:
             cur = await conn.execute("SELECT COUNT(*) AS cnt FROM zones WHERE is_active=1")

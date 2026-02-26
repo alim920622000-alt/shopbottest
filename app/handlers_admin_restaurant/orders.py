@@ -42,18 +42,20 @@ def kb_order_card(order_id: int, can_chat: bool = True) -> InlineKeyboardMarkup:
     return kb_order_card_with_back(order_id, "r:orders", can_chat)
 
 
-def kb_order_card_with_back(order_id: int, back_target: str, can_chat: bool = True) -> InlineKeyboardMarkup:
-    kb = [
-        [InlineKeyboardButton(text="👨‍🍳 Готовится", callback_data=f"r:st:{order_id}:preparing")],
-        [InlineKeyboardButton(text="📦 Готово", callback_data=f"r:st:{order_id}:ready")],
-        [InlineKeyboardButton(text="❌ Отменить", callback_data=f"r:st:{order_id}:canceled")],
-        [
-            InlineKeyboardButton(text="🏠 Главная", callback_data="r:home"),
-            InlineKeyboardButton(text="🔙 Назад", callback_data=back_target),
-        ],
-    ]
+def kb_order_card_with_back(order_id: int, back_target: str, can_chat: bool = True, show_status_actions: bool = True) -> InlineKeyboardMarkup:
+    kb = []
+    if show_status_actions:
+        kb.extend([
+            [InlineKeyboardButton(text="👨‍🍳 Готовится", callback_data=f"r:st:{order_id}:preparing")],
+            [InlineKeyboardButton(text="📦 Готово", callback_data=f"r:st:{order_id}:ready")],
+            [InlineKeyboardButton(text="❌ Отменить", callback_data=f"r:st:{order_id}:canceled")],
+        ])
     if can_chat:
-        kb.insert(4, [InlineKeyboardButton(text="💬 Чат по заказу", callback_data=f"r:chat:{order_id}")])
+        kb.append([InlineKeyboardButton(text="💬 Чат по заказу", callback_data=f"r:chat:{order_id}")])
+    kb.append([
+        InlineKeyboardButton(text="🏠 Главная", callback_data="r:home"),
+        InlineKeyboardButton(text="🔙 Назад", callback_data=back_target),
+    ])
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
 
@@ -96,7 +98,9 @@ async def build_order_card_payload(
         lines.append(f"- {it['name']} x{it['quantity']} = {it['price_at_moment']}")
 
     can_chat = await can_access_order_chat(db, o)
-    return "\n".join(lines), kb_order_card_with_back(order_id, back_target, can_chat)
+    merchant_status = str(o.get("merchant_status") or "")
+    show_actions = merchant_status in {"new", "preparing"}
+    return "\n".join(lines), kb_order_card_with_back(order_id, back_target, can_chat, show_status_actions=show_actions)
 
 
 async def render_order_card_by_id(cq: CallbackQuery, db: Database, state: FSMContext, order_id: int) -> None:
@@ -178,10 +182,11 @@ async def list_orders_render(cq: CallbackQuery, db: Database, state: FSMContext,
 
 @router.callback_query(F.data.startswith("r:order:"))
 async def order_card(cq: CallbackQuery, db: Database, state: FSMContext):
-    order_id = int(cq.data.split(":")[2])
+    parts = cq.data.split(":")
+    order_id = int(parts[2])
     await remember_admin_prev_target(db, "admin_restaurant", cq.from_user.id, f"r:order:{order_id}")
     src, page = parse_notif_context(cq.data)
-    back_target = "r:orders"
+    back_target = parts[3] if len(parts) > 3 else "r:orders"
     if src == NOTIF_SRC_ORDERS:
         page = max(1, page or 1)
         back_target = f"r:notif:orders" if page == 1 else f"r:notif:op:{page}"

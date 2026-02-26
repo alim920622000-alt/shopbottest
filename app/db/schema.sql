@@ -200,7 +200,8 @@ CREATE TABLE IF NOT EXISTS zones (
 CREATE TABLE IF NOT EXISTS couriers (
     user_id INTEGER PRIMARY KEY,
     is_online INTEGER NOT NULL DEFAULT 0,
-    accept_all_zones INTEGER NOT NULL DEFAULT 1
+    accept_all_zones INTEGER NOT NULL DEFAULT 1,
+    transport_type TEXT DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS courier_zones (
