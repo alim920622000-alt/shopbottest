@@ -173,7 +173,7 @@ TEXTS: dict[str, str] = {
     "checkout.comment_prompt": "Шарҳро ба фармоиш бо матни оддӣ нависед:",
     "checkout.comment": "✏️ Иловаи шарҳ",
     "delivery": "🚚 Расонидан",
-    "pickup": "🏬 Худгирифт",
+    "pickup": "🚶 Худгирифт",
     "dine_in": "🍽 Дар толор",
     "order.repeat": "🔁 Такрори фармоиш",
     "order.repeat.added": "✅ Ба сабад илова шуд: {count}",
@@ -195,5 +195,5 @@ TEXTS: dict[str, str] = {
     "notif.order_item": "💬 Фармоиш #{order_id} · {unread_count} {suffix}",
 
     # Fallback
-    "msg.unknown_command": "Фармонро нафаҳмидам. Аз менюи поён истифода баред.",
+    "msg.unknown_command": "🤖 Фармонро нафаҳмидам. Аз менюи поён истифода баред 👇.",
 }

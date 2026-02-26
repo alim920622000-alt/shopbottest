@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timedelta
+from app.utils.tz import utcnow
+from datetime import timezone
 
 from aiogram import Router, F
 from aiogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, Message
@@ -71,19 +73,29 @@ def kb_order_card(
 
 
 def _parse_created_at(value: object) -> datetime | None:
+    dt: datetime | None = None
+
     if isinstance(value, datetime):
-        return value
-    if isinstance(value, str):
+        dt = value
+    elif isinstance(value, str):
         for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M"):
             try:
-                return datetime.strptime(value, fmt)
+                dt = datetime.strptime(value, fmt)
+                break
             except ValueError:
                 continue
-        try:
-            return datetime.fromisoformat(value)
-        except ValueError:
-            return None
-    return None
+        if dt is None:
+            try:
+                dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            except ValueError:
+                return None
+    else:
+        return None
+
+    # привести к UTC-aware
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
 
 
 def _can_cancel_order(order: dict | None, now: datetime | None = None) -> bool:
@@ -92,7 +104,7 @@ def _can_cancel_order(order: dict | None, now: datetime | None = None) -> bool:
     created_at = _parse_created_at(order.get("created_at"))
     if not created_at:
         return False
-    now = now or datetime.utcnow()
+    now = now or utcnow()
     return now - created_at <= timedelta(minutes=CANCEL_WINDOW_MINUTES)
 
 
@@ -210,14 +222,14 @@ async def list_orders_render(cq: CallbackQuery, db: Database, state: FSMContext,
     await state.update_data(user_id=cq.from_user.id)
     await remember_client_screen(state, "orders", {})
     orders = OrdersRepo(db)
-    total = await orders.count_for_client(cq.from_user.id)
+    total = await orders.count_for_client_excluding(cq.from_user.id, DONE_STATUSES)
     if total <= 0:
         await cq.message.edit_text(t(locale, "orders.empty"), reply_markup=kb_client_main(locale))
         await cq.answer()
         return
 
     pi = calc_page(total=total, page=page, page_size=LIST_PAGE_SIZE)
-    rows = await orders.list_for_client_page(cq.from_user.id, limit=pi.limit, offset=pi.offset)
+    rows = await orders.list_for_client_page_excluding(cq.from_user.id, DONE_STATUSES, limit=pi.limit, offset=pi.offset)
     kb = kb_orders_list(locale, rows)
     pager = pager_row("c:orders", pi.page, pi.total_pages)
     if pager:
@@ -319,7 +331,7 @@ async def cancel_order(cq: CallbackQuery, db: Database, state: FSMContext, local
         await cq.answer()
         return
 
-    now = datetime.utcnow()
+    now = utcnow()
     created_at = _parse_created_at(o.get("created_at"))
     if o.get("status") == "canceled":
         await cq.answer(t(locale, "order.cancel.already"), show_alert=True)

@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from math import ceil
 from typing import Sequence
+from app.utils.tz import fmt_hm
 
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
@@ -98,15 +99,17 @@ def build_chat_screen_kb(
 
 def _format_time(value: object) -> str:
     if isinstance(value, datetime):
-        return value.strftime("%H:%M")
+        return fmt_hm(value)
     if isinstance(value, str):
         for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M"):
             try:
-                return datetime.strptime(value, fmt).strftime("%H:%M")
+                dt = datetime.strptime(value, fmt)
+                return fmt_hm(dt)
             except ValueError:
                 continue
         try:
-            return datetime.fromisoformat(value).strftime("%H:%M")
+            dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            return fmt_hm(dt)
         except ValueError:
             return "??:??"
     return "??:??"

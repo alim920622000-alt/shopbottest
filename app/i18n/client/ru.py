@@ -173,7 +173,7 @@ TEXTS: dict[str, str] = {
     "checkout.comment_prompt": "Напишите комментарий к заказу обычным текстом:",
     "checkout.comment": "✏️ Добавить комментарий",
     "delivery": "🚚 Доставка",
-    "pickup": "🏬 Самовывоз",
+    "pickup": "🚶 Самовывоз",
     "dine_in": "🍽 В зале",
     "order.repeat": "🔁 Повторить заказ",
     "order.repeat.added": "✅ Добавлено в корзину: {count}",
@@ -195,5 +195,5 @@ TEXTS: dict[str, str] = {
     "notif.order_item": "💬 Заказ #{order_id} · {unread_count} {suffix}",
 
     # Fallback
-    "msg.unknown_command": "Я не понял команду. Используйте меню ниже.",
+    "msg.unknown_command": "🤖 Я не понял команду. Используйте меню ниже 👇.",
 }

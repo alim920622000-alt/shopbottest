@@ -14,3 +14,5 @@ python3 -m app.admin_shop_main &
 
 # Запускаем клиентского бота
 python3 -m app.client_main &
+
+python3 -m app.courier_main &
