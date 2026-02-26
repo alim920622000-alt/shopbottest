@@ -57,14 +57,39 @@ class Database:
     async def init_schema(self, schema_path: Optional[str] = None) -> None:
         if schema_path is None:
             schema_path = str(Path(__file__).with_name("schema.sql"))
-
-        sql = Path(schema_path).read_text(encoding="utf-8")
+    
+        # schema.sql содержит CREATE INDEX ... по новым колонкам.
+        # На старой БД новые колонки ещё не добавлены -> падает "no such column".
+        # Решение: сначала DDL без индексов, потом миграции, потом индексы.
+        raw_sql = Path(schema_path).read_text(encoding="utf-8")
+    
+        schema_lines: list[str] = []
+        index_lines: list[str] = []
+    
+        for line in raw_sql.splitlines():
+            l = line.lstrip().upper()
+            if l.startswith("CREATE INDEX") or l.startswith("CREATE UNIQUE INDEX") or l.startswith("DROP INDEX"):
+                index_lines.append(line)
+            else:
+                schema_lines.append(line)
+    
+        sql_schema = "\n".join(schema_lines).strip() + "\n"
+        sql_indexes = "\n".join(index_lines).strip() + "\n"
+    
         async with self.conn() as connection:
-            await connection.executescript(sql)
-            # ✅ ДОБАВЬ ЭТО:
+            # 1) базовые таблицы/DDL (без индексов)
+            if sql_schema.strip():
+                await connection.executescript(sql_schema)
+    
+            # 2) миграции (ADD COLUMN и т.д.)
             await self._migrate(connection)
-
+    
+            # 3) индексы (когда колонки уже точно есть)
+            if sql_indexes.strip():
+                await connection.executescript(sql_indexes)
+    
             await connection.commit()
+        
     
     async def _migrate(self, connection: aiosqlite.Connection) -> None:
         async def has_column(table: str, col: str) -> bool:
