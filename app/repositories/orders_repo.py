@@ -244,6 +244,31 @@ class OrdersRepo:
             return [dict(r) for r in rows]
 
     async def list_available_for_courier(self, courier_user_id: int) -> Sequence[dict]:
+        return await self.list_available_for_courier_page(courier_user_id, limit=1000, offset=0)
+
+    async def count_available_for_courier(self, courier_user_id: int) -> int:
+        async with self.db.conn() as conn:
+            cur = await conn.execute("SELECT accept_all_zones FROM couriers WHERE user_id=?", (courier_user_id,))
+            courier = await cur.fetchone()
+            if not courier:
+                return 0
+            accept_all = int(courier["accept_all_zones"] or 0) == 1
+            q = "SELECT COUNT(*) AS cnt FROM orders o WHERE o.courier_status='searching'"
+            params: list = []
+            if not accept_all:
+                q += """
+                  AND (
+                    o.zone_id IS NULL OR o.zone_id IN (
+                        SELECT zone_id FROM courier_zones WHERE courier_user_id=?
+                    )
+                  )
+                """
+                params.append(courier_user_id)
+            cur2 = await conn.execute(q, params)
+            row = await cur2.fetchone()
+            return int(row["cnt"]) if row else 0
+
+    async def list_available_for_courier_page(self, courier_user_id: int, *, limit: int, offset: int) -> Sequence[dict]:
         async with self.db.conn() as conn:
             cur = await conn.execute("SELECT accept_all_zones FROM couriers WHERE user_id=?", (courier_user_id,))
             courier = await cur.fetchone()
@@ -266,27 +291,54 @@ class OrdersRepo:
                   )
                 """
                 params.append(courier_user_id)
-            q += " ORDER BY o.created_at DESC"
+            q += " ORDER BY o.created_at DESC LIMIT ? OFFSET ?"
+            params.extend([limit, offset])
             cur2 = await conn.execute(q, params)
             rows = await cur2.fetchall()
             return [dict(r) for r in rows]
 
     async def list_active_for_courier(self, courier_user_id: int) -> Sequence[dict]:
+        return await self.list_active_for_courier_page(courier_user_id, limit=1000, offset=0)
+
+    async def count_active_for_courier(self, courier_user_id: int) -> int:
         placeholders = ",".join("?" for _ in ACTIVE_COURIER_STATUSES)
         async with self.db.conn() as conn:
             cur = await conn.execute(
-                f"SELECT o.*, s.name AS shop_name FROM orders o JOIN shops s ON s.id=o.shop_id WHERE o.courier_user_id=? AND o.courier_status IN ({placeholders}) ORDER BY o.updated_at DESC",
+                f"SELECT COUNT(*) AS cnt FROM orders WHERE courier_user_id=? AND courier_status IN ({placeholders})",
                 [courier_user_id, *ACTIVE_COURIER_STATUSES],
+            )
+            row = await cur.fetchone()
+            return int(row["cnt"]) if row else 0
+
+    async def list_active_for_courier_page(self, courier_user_id: int, *, limit: int, offset: int) -> Sequence[dict]:
+        placeholders = ",".join("?" for _ in ACTIVE_COURIER_STATUSES)
+        async with self.db.conn() as conn:
+            cur = await conn.execute(
+                f"SELECT o.*, s.name AS shop_name FROM orders o JOIN shops s ON s.id=o.shop_id WHERE o.courier_user_id=? AND o.courier_status IN ({placeholders}) ORDER BY o.updated_at DESC LIMIT ? OFFSET ?",
+                [courier_user_id, *ACTIVE_COURIER_STATUSES, limit, offset],
             )
             rows = await cur.fetchall()
             return [dict(r) for r in rows]
 
     async def list_history_for_courier(self, courier_user_id: int) -> Sequence[dict]:
+        return await self.list_history_for_courier_page(courier_user_id, limit=1000, offset=0)
+
+    async def count_history_for_courier(self, courier_user_id: int) -> int:
         placeholders = ",".join("?" for _ in HISTORY_COURIER_STATUSES)
         async with self.db.conn() as conn:
             cur = await conn.execute(
-                f"SELECT o.*, s.name AS shop_name FROM orders o JOIN shops s ON s.id=o.shop_id WHERE o.courier_user_id=? AND o.courier_status IN ({placeholders}) ORDER BY o.updated_at DESC",
+                f"SELECT COUNT(*) AS cnt FROM orders WHERE courier_user_id=? AND courier_status IN ({placeholders})",
                 [courier_user_id, *HISTORY_COURIER_STATUSES],
+            )
+            row = await cur.fetchone()
+            return int(row["cnt"]) if row else 0
+
+    async def list_history_for_courier_page(self, courier_user_id: int, *, limit: int, offset: int) -> Sequence[dict]:
+        placeholders = ",".join("?" for _ in HISTORY_COURIER_STATUSES)
+        async with self.db.conn() as conn:
+            cur = await conn.execute(
+                f"SELECT o.*, s.name AS shop_name FROM orders o JOIN shops s ON s.id=o.shop_id WHERE o.courier_user_id=? AND o.courier_status IN ({placeholders}) ORDER BY o.updated_at DESC LIMIT ? OFFSET ?",
+                [courier_user_id, *HISTORY_COURIER_STATUSES, limit, offset],
             )
             rows = await cur.fetchall()
             return [dict(r) for r in rows]
