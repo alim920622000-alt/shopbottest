@@ -194,6 +194,22 @@ TEXTS: dict[str, str] = {
     "notif.new_suffix": "нав",
     "notif.order_item": "💬 Фармоиш #{order_id} · {unread_count} {suffix}",
 
+    "order.status.new": "🆕 Нав",
+    "order.status.preparing": "⏳ Омода шуда истодааст",
+    "order.status.ready": "📦 Омода",
+    "order.status.picked_up": "🛵 Курер гирифт",
+    "order.status.arrived": "📍 Курер расид",
+    "order.status.delivered": "✅ Расонида шуд",
+    "order.status.canceled": "❌ Бекор шуд",
+    "order.arrival.title": "🚨 Курер назди дар аст",
+    "order.arrival.code_label": "Рамзи қабул: {code}",
+    "order.arrival.confirm_button": "✅ Ман фармоишро гирифтам",
+    "order.arrival.confirm_final": "✅ Тасдиқ",
+    "order.arrival.cancel": "↩️ Бекор",
+    "order.arrival.back": "🔙 Ба фармоишҳо",
+    "order.arrival.done": "Фармоиш тасдиқ шуд.",
+    "nav.courier_arrived_button": "🚨 Курер расид",
+
     # Fallback
     "msg.unknown_command": "🤖 Фармонро нафаҳмидам. Аз менюи поён истифода баред 👇.",
 }

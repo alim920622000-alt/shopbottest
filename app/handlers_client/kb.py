@@ -20,16 +20,23 @@ def _order_button_text(row: dict) -> str:
     if not shop_name:
         shop_id = row.get("shop_id")
         shop_name = f"#{shop_id}" if shop_id is not None else ""
+    if str(row.get("courier_status") or "").strip().lower() == "arrived":
+        return f"🚨 #{order_id} · {shop_name}"
     emoji = _order_type_emoji(row.get("business_type"))
     return f"{emoji} {order_id} · {shop_name}"
 
-def kb_client_main(locale: str) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(inline_keyboard=[
+def kb_client_main(locale: str, has_arrived_order: bool = False) -> InlineKeyboardMarkup:
+    rows = [
         [InlineKeyboardButton(text=t(locale, "main.order"), callback_data="c:order_menu")],
         [InlineKeyboardButton(text=t(locale, "main.orders"), callback_data="c:orders")],
+    ]
+    if has_arrived_order:
+        rows.append([InlineKeyboardButton(text=t(locale, "nav.courier_arrived_button"), callback_data="c:orders")])
+    rows.extend([
         [InlineKeyboardButton(text=t(locale, "main.chat"), callback_data="c:chat")],
         [InlineKeyboardButton(text=t(locale, "main.cabinet"), callback_data="c:cabinet")],
     ])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def kb_order_menu(locale: str) -> InlineKeyboardMarkup:

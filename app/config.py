@@ -14,6 +14,7 @@ def _parse_ids(value: str) -> set[int]:
 @dataclass(frozen=True)
 class Settings:
     bot_token: str
+    courier_bot_token: str
     superadmin_ids: set[int]
     admin_ids: set[int]
     db_path: str
@@ -25,6 +26,7 @@ def get_settings() -> Settings:
 
     return Settings(
         bot_token=token,
+        courier_bot_token=os.getenv("COURIER_BOT_TOKEN", "").strip(),
         superadmin_ids=_parse_ids(os.getenv("SUPERADMIN_IDS", "")),
         admin_ids=_parse_ids(os.getenv("ADMIN_IDS", "")),
         db_path=os.getenv("DB_PATH", "shop.db"),
