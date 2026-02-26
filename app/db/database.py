@@ -127,6 +127,7 @@ class Database:
         await add_column("orders", "client_arrival_message_id", "client_arrival_message_id INTEGER")
         await add_column("orders", "zone_id", "zone_id INTEGER")
         await add_column("shops", "allow_prepare_before_courier", "allow_prepare_before_courier INTEGER NOT NULL DEFAULT 0")
+        await add_column("couriers", "transport_type", "transport_type TEXT DEFAULT ''")
         await add_column("client_profiles", "locale", "locale TEXT DEFAULT 'ru'")
 
         await connection.execute(

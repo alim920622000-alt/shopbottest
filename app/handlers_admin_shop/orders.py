@@ -46,20 +46,19 @@ def kb_order_card(order_id: int, can_chat: bool = True) -> InlineKeyboardMarkup:
     return kb_order_card_with_back(order_id, "a:orders", can_chat)
 
 
-def kb_order_card_with_back(order_id: int, back_target: str, can_chat: bool = True, show_preparing: bool = True) -> InlineKeyboardMarkup:
+def kb_order_card_with_back(order_id: int, back_target: str, can_chat: bool = True, show_preparing: bool = True, show_status_actions: bool = True) -> InlineKeyboardMarkup:
     kb = []
-    if show_preparing:
-        kb.append([InlineKeyboardButton(text="✅ Готовится", callback_data=f"a:st:{order_id}:preparing")])
-    kb += [
-        [InlineKeyboardButton(text="📦 Готово", callback_data=f"a:st:{order_id}:ready")],
-        [InlineKeyboardButton(text="❌ Отменить", callback_data=f"a:st:{order_id}:canceled")],
-        [
-            InlineKeyboardButton(text="🏠 Главная", callback_data="a:home"),
-            InlineKeyboardButton(text="🔙 Назад", callback_data=back_target),
-        ],
-    ]
+    if show_status_actions:
+        if show_preparing:
+            kb.append([InlineKeyboardButton(text="✅ Готовится", callback_data=f"a:st:{order_id}:preparing")])
+        kb.append([InlineKeyboardButton(text="📦 Готово", callback_data=f"a:st:{order_id}:ready")])
+        kb.append([InlineKeyboardButton(text="❌ Отменить", callback_data=f"a:st:{order_id}:canceled")])
     if can_chat:
-        kb.insert(3, [InlineKeyboardButton(text="💬 Чат по заказу", callback_data=f"a:chat:{order_id}")])
+        kb.append([InlineKeyboardButton(text="💬 Чат по заказу", callback_data=f"a:chat:{order_id}")])
+    kb.append([
+        InlineKeyboardButton(text="🏠 Главная", callback_data="a:home"),
+        InlineKeyboardButton(text="🔙 Назад", callback_data=back_target),
+    ])
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
 
@@ -90,7 +89,9 @@ async def build_order_card_payload(
     for it in items:
         lines.append(f"- {it['name']} x{it['quantity']} = {it['price_at_moment']}")
     can_chat = await can_access_order_chat(db, o)
-    return "\n".join(lines), kb_order_card_with_back(order_id, back_target, can_chat), True
+    merchant_status = str(o.get("merchant_status") or "")
+    show_actions = merchant_status in {"new", "preparing"}
+    return "\n".join(lines), kb_order_card_with_back(order_id, back_target, can_chat, show_status_actions=show_actions), True
 
 
 async def render_order_card_by_id(cq: CallbackQuery, db: Database, state: FSMContext, order_id: int) -> None:
@@ -173,10 +174,11 @@ async def list_orders_render(cq: CallbackQuery, db: Database, state: FSMContext,
 
 @router.callback_query(F.data.startswith("a:order:"))
 async def order_card(cq: CallbackQuery, db: Database, state: FSMContext):
-    order_id = int(cq.data.split(":")[2])
+    parts = cq.data.split(":")
+    order_id = int(parts[2])
     await remember_admin_prev_target(db, "admin_shop", cq.from_user.id, f"a:order:{order_id}")
     src, page = parse_notif_context(cq.data)
-    back_target = "a:orders"
+    back_target = parts[3] if len(parts) > 3 else "a:orders"
     if src == NOTIF_SRC_ORDERS:
         page = max(1, page or 1)
         back_target = f"a:notif:orders" if page == 1 else f"a:notif:op:{page}"
@@ -213,32 +215,10 @@ async def set_status(cq: CallbackQuery, db: Database, state: FSMContext):
     await orders.set_merchant_status(order_id, status)
 
     await cq.answer("Статус обновлён")
-    # перерисуем карточку заказа
-    o = await orders.get_order(order_id)
-    items = await orders.get_order_items(order_id)
-    comment = (o.get("comment") or "").strip()
-    comment_line = comment or "— не добавлен —"
-    shop_info = await __import__("app.repositories.shops_repo", fromlist=["ShopsRepo"]).ShopsRepo(db).get(int(o["shop_id"]))
-    reserve = "Да" if int((shop_info or {}).get("allow_prepare_before_courier") or 0) == 1 else "Нет"
-    lines = [
-        f"Заказ #{o['id']}",
-        f"🛟 Резервные курьеры: {reserve}",
-        f"Статус (legacy): {o['status']}",
-        f"Сумма: {o['total_amount']}",
-        f"Получение: {_format_fulfillment_type(o.get('fulfillment_type'))}",
-        f"Комментарий: {comment_line}",
-        "",
-        "Состав:",
-    ]
-    for it in items:
-        lines.append(f"- {it['name']} x{it['quantity']} = {it['price_at_moment']}")
     data = await state.get_data()
     back_target = data.get("order_back_target") or "a:orders"
-    await safe_edit_text(
-        cq.message,
-        "\n".join(lines),
-        reply_markup=kb_order_card_with_back(order_id, back_target, await can_access_order_chat(db, o)),
-    )
+    text, kb, _ = await build_order_card_payload(db, order_id, back_target)
+    await safe_edit_text(cq.message, text, reply_markup=kb)
 
 
 @router.callback_query(F.data == "a:back:main")

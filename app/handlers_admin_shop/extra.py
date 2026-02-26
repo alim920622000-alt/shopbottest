@@ -71,7 +71,7 @@ async def history_render(cq: CallbackQuery, db: Database, page: int):
     rows = await orders.list_current_for_shop_page(shop_ids[0], DONE_STATUSES, limit=pi.limit, offset=pi.offset)
     kb = []
     for o in rows:
-        kb.append([InlineKeyboardButton(text=f"Заказ #{o['id']} ({o['status']})", callback_data=f"a:order:{o['id']}")])
+        kb.append([InlineKeyboardButton(text=f"Заказ #{o['id']} ({o['status']})", callback_data=f"a:order:{o['id']}:a:history")])
     pager = pager_row("a:history", pi.page, pi.total_pages)
     if pager:
         kb.append(pager)

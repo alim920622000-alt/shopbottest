@@ -39,3 +39,10 @@ class CouriersRepo:
             cur = await conn.execute("SELECT user_id FROM couriers WHERE is_online=1")
             rows = await cur.fetchall()
             return [int(r["user_id"]) for r in rows]
+
+
+    async def set_transport(self, user_id: int, transport_type: str) -> None:
+        await self.ensure(user_id)
+        async with self.db.conn() as conn:
+            await conn.execute("UPDATE couriers SET transport_type=? WHERE user_id=?", (transport_type, user_id))
+            await conn.commit()
