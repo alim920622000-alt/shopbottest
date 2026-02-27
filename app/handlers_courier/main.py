@@ -13,6 +13,7 @@ from app.config import get_settings
 from app.db.database import Database
 from app.repositories.chat_reads_repo import ChatReadsRepo
 from app.repositories.chat_repo import ChatRepo
+from app.repositories.chat_prefs_repo import ChatPrefsRepo
 from app.repositories.client_profiles_repo import ClientProfilesRepo
 from app.repositories.couriers_repo import CouriersRepo
 from app.repositories.orders_repo import OrdersRepo
@@ -27,6 +28,9 @@ router = Router()
 ZONE_PAGE_SIZE = 8
 ORDERS_PAGE_SIZE = 10
 logger = logging.getLogger(__name__)
+
+THREAD_MERCHANT = "merchant"
+THREAD_COURIER = "courier"
 
 
 class CourierStates(StatesGroup):
@@ -325,10 +329,13 @@ def _phone_request_keyboard() -> ReplyKeyboardMarkup:
     )
 
 
-def _chat_nav_rows(order_id: int, source: str, source_page: int) -> list[list[InlineKeyboardButton]]:
+def _chat_nav_rows(order_id: int, source: str, source_page: int, thread: str) -> list[list[InlineKeyboardButton]]:
+    switch_to = THREAD_COURIER if thread == THREAD_MERCHANT else THREAD_MERCHANT
+    switch_text = "✍️ Написать клиенту" if thread == THREAD_MERCHANT else "✍️ Написать магазину/ресторану"
     return [
+        [InlineKeyboardButton(text=switch_text, callback_data=f"cr:chat_thread:{order_id}:{switch_to}")],
         [InlineKeyboardButton(text="✍️ Написать сообщение", callback_data=f"cr:chat_send:{order_id}:{source}:{source_page}")],
-        [InlineKeyboardButton(text="🔄 Обновить", callback_data=f"cr:chat:{order_id}:1:{source}:{source_page}")],
+        [InlineKeyboardButton(text="🔄 Обновить", callback_data=f"cr:chat_refresh:{order_id}")],
         [InlineKeyboardButton(text="⬅️ Назад", callback_data="cr:back")],
         _home_row(),
     ]
@@ -346,17 +353,19 @@ async def _render_chat(cq: CallbackQuery, db: Database, state: FSMContext, order
 
     chat = ChatRepo(db)
     reads = ChatReadsRepo(db)
-    total_messages = await chat.count_messages(order_id)
+    data = await state.get_data()
+    thread = str(data.get("chat_thread") or THREAD_MERCHANT)
+    total_messages = await chat.count_messages(order_id, thread=thread)
     total_pages = max(1, calc_total_pages(total_messages, CHAT_PAGE_SIZE))
     current_page = max(1, min(page, total_pages))
     offset = (total_pages - current_page) * CHAT_PAGE_SIZE
-    messages = await chat.list_messages(order_id, limit=CHAT_PAGE_SIZE, offset=offset)
+    messages = await chat.list_messages(order_id, thread=thread, limit=CHAT_PAGE_SIZE, offset=offset)
     await reads.mark_read(order_id, "courier", cq.from_user.id)
 
     text = build_chat_screen_text(order_id, messages, False, str(order.get("business_type") or "shop"), "ru", "courier", shop_name=order.get("shop_name"))
-    kb = build_chat_screen_kb(order_id, current_page, total_pages, "cr", _chat_nav_rows(order_id, source, source_page))
+    kb = build_chat_screen_kb(order_id, current_page, total_pages, "cr", _chat_nav_rows(order_id, source, source_page, thread))
     await _save_current_view(state, "order_chat", {"order_id": order_id, "page": current_page, "source": source, "source_page": source_page})
-    await state.update_data(chat_order_id=order_id, chat_page=current_page, chat_source=source, chat_source_page=source_page)
+    await state.update_data(chat_order_id=order_id, chat_page=current_page, chat_source=source, chat_source_page=source_page, chat_thread=thread)
     await cq.message.edit_text(text, reply_markup=kb)
 
 
@@ -376,13 +385,15 @@ async def _render_chat_from_message(message: Message, db: Database, state: FSMCo
         return
 
     chat = ChatRepo(db)
-    total_messages = await chat.count_messages(order_id)
+    data = await state.get_data()
+    thread = str(data.get("chat_thread") or THREAD_MERCHANT)
+    total_messages = await chat.count_messages(order_id, thread=thread)
     total_pages = max(1, calc_total_pages(total_messages, CHAT_PAGE_SIZE))
     page = max(1, min(page, total_pages))
     offset = (total_pages - page) * CHAT_PAGE_SIZE
-    messages = await chat.list_messages(order_id, limit=CHAT_PAGE_SIZE, offset=offset)
+    messages = await chat.list_messages(order_id, thread=thread, limit=CHAT_PAGE_SIZE, offset=offset)
     text = build_chat_screen_text(order_id, messages, False, str(order.get("business_type") or "shop"), "ru", "courier", shop_name=order.get("shop_name"))
-    kb = build_chat_screen_kb(order_id, page, total_pages, "cr", _chat_nav_rows(order_id, source, source_page))
+    kb = build_chat_screen_kb(order_id, page, total_pages, "cr", _chat_nav_rows(order_id, source, source_page, thread))
     await state.update_data(chat_page=page)
     await message.answer(text, reply_markup=kb)
 
@@ -728,6 +739,11 @@ async def zone_delete(cq: CallbackQuery, db: Database, state: FSMContext):
 @router.callback_query(F.data.startswith("cr:chat:"))
 async def order_chat(cq: CallbackQuery, db: Database, state: FSMContext):
     _, _, order_id, page, source, source_page = cq.data.split(":")
+    pref = await ChatPrefsRepo(db).get(int(order_id), "courier", cq.from_user.id)
+    if not pref:
+        pref = THREAD_MERCHANT
+        await ChatPrefsRepo(db).set(int(order_id), "courier", cq.from_user.id, pref)
+    await state.update_data(chat_thread=pref)
     await _push_and_render(
         state,
         "order",
@@ -775,9 +791,10 @@ async def order_chat_message(message: Message, db: Database, state: FSMContext):
         await message.answer("Чат недоступен.")
         return
 
-    await ChatRepo(db).add_message(order_id, message.from_user.id, "courier", text)
+    thread = str(data.get("chat_thread") or THREAD_MERCHANT)
+    await ChatRepo(db).add_message(order_id, message.from_user.id, "courier", text, thread=thread)
     await ChatReadsRepo(db).mark_read(order_id, "courier", message.from_user.id)
-    total = await ChatRepo(db).count_messages(order_id)
+    total = await ChatRepo(db).count_messages(order_id, thread=thread)
     await state.update_data(chat_page=max(1, calc_total_pages(total, CHAT_PAGE_SIZE)))
     await _render_chat_from_message(message, db, state)
 

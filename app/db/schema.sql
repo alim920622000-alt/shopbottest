@@ -132,7 +132,19 @@ CREATE TABLE IF NOT EXISTS order_chat_messages (
     sender_user_id INTEGER NOT NULL,
     sender_role TEXT NOT NULL,
     message_text TEXT NOT NULL,
+    thread TEXT NOT NULL DEFAULT 'merchant',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+);
+
+
+CREATE TABLE IF NOT EXISTS chat_prefs (
+    order_id INTEGER NOT NULL,
+    actor_role TEXT NOT NULL,
+    actor_id INTEGER NOT NULL,
+    thread TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (order_id, actor_role, actor_id),
     FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
 );
 

@@ -51,15 +51,16 @@ def build_chat_screen_text(
 
     lines.append("")
     for msg in messages:
-        sender_role = msg.get("sender_role")
+        sender_role = str(msg.get("sender_role") or "")
         is_client = sender_role == "client"
         indent = CLIENT_INDENT if is_client else ""
-        if is_client:
+
+        if sender_role == "client":
             icon = "👤"
-            if viewer == "client":
-                role = t(locale, "chat.role.me")
-            else:
-                role = client_name or t(locale, "chat.role.client")
+            role = t(locale, "chat.role.me") if viewer == "client" else (client_name or t(locale, "chat.role.client"))
+        elif sender_role == "courier":
+            icon = "🛵"
+            role = "Курьер" if locale == "ru" else ("Kuryer" if locale == "uz" else "Курер")
         else:
             if business_type == "restaurant":
                 icon = "🍽️"

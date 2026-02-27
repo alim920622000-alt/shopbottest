@@ -129,6 +129,7 @@ class Database:
         await add_column("shops", "allow_prepare_before_courier", "allow_prepare_before_courier INTEGER NOT NULL DEFAULT 0")
         await add_column("couriers", "transport_type", "transport_type TEXT DEFAULT ''")
         await add_column("client_profiles", "locale", "locale TEXT DEFAULT 'ru'")
+        await add_column("order_chat_messages", "thread", "thread TEXT NOT NULL DEFAULT 'merchant'")
 
         await connection.execute(
             """
@@ -184,7 +185,21 @@ class Database:
                 sender_user_id INTEGER NOT NULL,
                 sender_role TEXT NOT NULL,
                 message_text TEXT NOT NULL,
+                thread TEXT NOT NULL DEFAULT 'merchant',
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+            )
+            """
+        )
+        await connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS chat_prefs (
+                order_id INTEGER NOT NULL,
+                actor_role TEXT NOT NULL,
+                actor_id INTEGER NOT NULL,
+                thread TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                PRIMARY KEY (order_id, actor_role, actor_id),
                 FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
             )
             """

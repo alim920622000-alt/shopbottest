@@ -17,6 +17,7 @@ from app.repositories.orders_repo import OrdersRepo
 from app.repositories.shops_repo import ShopsRepo
 from app.repositories.chat_repo import ChatRepo
 from app.repositories.chat_reads_repo import ChatReadsRepo
+from app.repositories.chat_prefs_repo import ChatPrefsRepo
 from app.repositories.admins_repo import AdminsRepo
 from app.services.admin_notifications import notify_admins_order_canceled
 from app.services.chat_ui import (
@@ -49,6 +50,10 @@ CANCELABLE_STATUSES = ["new"]
 
 class ClientChatStates(StatesGroup):
     active = State()
+
+
+THREAD_MERCHANT = "merchant"
+THREAD_COURIER = "courier"
 
 
 def kb_order_card(
@@ -154,9 +159,13 @@ async def _render_order_card(
         await cq.message.edit_text(text, reply_markup=reply_markup)
 
 
-def kb_chat_nav_rows(locale: str, order_id: int, back_target: str | None = None) -> list[list[InlineKeyboardButton]]:
+def kb_chat_nav_rows(locale: str, order_id: int, thread: str, back_target: str | None = None) -> list[list[InlineKeyboardButton]]:
     back_cb = back_target or f"c:order:{order_id}"
+    switch_to = THREAD_COURIER if thread == THREAD_MERCHANT else THREAD_MERCHANT
+    switch_text = "✍️ Написать курьеру" if thread == THREAD_MERCHANT else "✍️ Написать магазину/ресторану"
     return [
+        [InlineKeyboardButton(text=switch_text, callback_data=f"c:chat_thread:{order_id}:{switch_to}")],
+        [InlineKeyboardButton(text="🔄 Обновить", callback_data=f"c:chat_refresh:{order_id}")],
         [
             InlineKeyboardButton(text=t(locale, "nav.home"), callback_data="c:home"),
             InlineKeyboardButton(text=t(locale, "nav.back"), callback_data=back_cb),
@@ -167,6 +176,7 @@ def make_chat_render_fn(db: Database, state: FSMContext, locale: str):
     async def render():
         data = await state.get_data()
         order_id = int(data.get("chat_order_id") or 0)
+        thread = str(data.get("chat_thread") or THREAD_MERCHANT)
         back_target = data.get("chat_back_target")
 
         orders = OrdersRepo(db)
@@ -177,7 +187,7 @@ def make_chat_render_fn(db: Database, state: FSMContext, locale: str):
         business_type = shop_info["business_type"] if shop_info else "shop"
 
         chat = ChatRepo(db)
-        total_messages = await chat.count_messages(order_id)
+        total_messages = await chat.count_messages(order_id, thread=thread)
         total_pages = calc_total_pages(total_messages, PAGE_SIZE)
         total_pages = max(1, total_pages)
 
@@ -186,7 +196,7 @@ def make_chat_render_fn(db: Database, state: FSMContext, locale: str):
         page = max(1, min(page, total_pages))
 
         offset = (total_pages - page) * PAGE_SIZE
-        messages = await chat.list_messages(order_id, limit=PAGE_SIZE, offset=offset)
+        messages = await chat.list_messages(order_id, thread=thread, limit=PAGE_SIZE, offset=offset)
 
         # Рендер чата должен быть в том же locale, что и остальной клиентский UI.
         text = build_chat_screen_text(
@@ -198,7 +208,7 @@ def make_chat_render_fn(db: Database, state: FSMContext, locale: str):
             "client",
             shop_name=shop_name,
         )
-        kb = build_chat_screen_kb(order_id, page, total_pages, "c", kb_chat_nav_rows(locale, order_id, back_target))
+        kb = build_chat_screen_kb(order_id, page, total_pages, "c", kb_chat_nav_rows(locale, order_id, thread, back_target))
         return text, kb
 
     return render
@@ -471,11 +481,12 @@ async def render_chat(
     business_type = shop_info["business_type"] if shop_info else "shop"
 
     chat = ChatRepo(db)
-    total_messages = await chat.count_messages(order_id)
+    thread = THREAD_MERCHANT
+    total_messages = await chat.count_messages(order_id, thread=thread)
     total_pages = calc_total_pages(total_messages, PAGE_SIZE)
     page = max(1, min(page, total_pages))
     offset = (total_pages - page) * PAGE_SIZE
-    messages = await chat.list_messages(order_id, limit=PAGE_SIZE, offset=offset)
+    messages = await chat.list_messages(order_id, thread=thread, limit=PAGE_SIZE, offset=offset)
 
     text = build_chat_screen_text(
         order_id,
@@ -486,7 +497,7 @@ async def render_chat(
         "client",
         shop_name=shop_info["name"] if shop_info else None,
     )
-    kb = build_chat_screen_kb(order_id, page, total_pages, "c", kb_chat_nav_rows(locale, order_id, back_target))
+    kb = build_chat_screen_kb(order_id, page, total_pages, "c", kb_chat_nav_rows(locale, order_id, thread, back_target))
     await cq.message.edit_text(text, reply_markup=kb)
 
 
@@ -514,11 +525,13 @@ async def open_chat(cq: CallbackQuery, state: FSMContext, db: Database, locale: 
 
     await cancel_chat_reminder(db, order_id, cq.from_user.id, "client")
     await state.set_state(ClientChatStates.active)
-    await state.update_data(chat_order_id=order_id, chat_back_target=back_target)
+    pref = await ChatPrefsRepo(db).get(order_id, "client", cq.from_user.id)
+    thread = pref or THREAD_MERCHANT
+    await state.update_data(chat_order_id=order_id, chat_back_target=back_target, chat_thread=thread)
 
     # сразу ставим страницу на последнюю
     chat = ChatRepo(db)
-    total_messages = await chat.count_messages(order_id)
+    total_messages = await chat.count_messages(order_id, thread=thread)
     total_pages = max(1, calc_total_pages(total_messages, PAGE_SIZE))
     await state.update_data(chat_page=total_pages)
     await state.update_data(user_id=cq.from_user.id)
@@ -578,6 +591,35 @@ async def paginate_chat(cq: CallbackQuery, state: FSMContext, db: Database, loca
     await cq.answer()
 
 
+@router.callback_query(F.data.startswith("c:chat_thread:"))
+async def switch_chat_thread(cq: CallbackQuery, state: FSMContext, db: Database, locale: str = "ru"):
+    _, _, order_id_raw, thread = cq.data.split(":")
+    order_id = int(order_id_raw)
+    orders = OrdersRepo(db)
+    o = await orders.get_order(order_id)
+    if not o or int(o["client_user_id"]) != cq.from_user.id:
+        await cq.answer(t(locale, "chat.unavailable"), show_alert=True)
+        return
+    if thread not in {THREAD_MERCHANT, THREAD_COURIER}:
+        thread = THREAD_MERCHANT
+    await ChatPrefsRepo(db).set(order_id, "client", cq.from_user.id, thread)
+    chat = ChatRepo(db)
+    total_messages = await chat.count_messages(order_id, thread=thread)
+    total_pages = max(1, calc_total_pages(total_messages, PAGE_SIZE))
+    data = await state.get_data()
+    await state.update_data(chat_order_id=order_id, chat_thread=thread, chat_page=total_pages, chat_back_target=data.get("chat_back_target"))
+    controller = ChatScreenController(bot=cq.bot, chat_id=cq.from_user.id, state=state, render=make_chat_render_fn(db, state, locale), db=db, bot_kind="client")
+    await controller.refresh()
+    await cq.answer()
+
+
+@router.callback_query(F.data.startswith("c:chat_refresh:"))
+async def refresh_chat(cq: CallbackQuery, state: FSMContext, db: Database, locale: str = "ru"):
+    controller = ChatScreenController(bot=cq.bot, chat_id=cq.from_user.id, state=state, render=make_chat_render_fn(db, state, locale), db=db, bot_kind="client")
+    await controller.refresh()
+    await cq.answer()
+
+
 @router.message(ClientChatStates.active)
 async def send_chat_message(message: Message, state: FSMContext, db: Database, locale: str = "ru"):
     text = (message.text or "").strip()
@@ -596,21 +638,25 @@ async def send_chat_message(message: Message, state: FSMContext, db: Database, l
         await message.answer(t(locale, "chat.closed"))
         return
 
+    thread = str(data.get("chat_thread") or THREAD_MERCHANT)
     chat = ChatRepo(db)
-    await chat.add_message(order_id, message.from_user.id, "client", text)
+    await chat.add_message(order_id, message.from_user.id, "client", text, thread=thread)
 
     await cancel_chat_reminder(db, order_id, message.from_user.id, "client")
-    admins = AdminsRepo(db)
-    admin_ids = await admins.list_admin_user_ids(int(o["shop_id"]))
-    shops = ShopsRepo(db)
-    shop = await shops.get(int(o["shop_id"]))
-    admin_kind = "admin_shop"
-    if shop and shop.get("business_type") == "restaurant":
-        admin_kind = "admin_restaurant"
-    for uid in admin_ids:
-        await schedule_chat_reminder(db, order_id, uid, admin_kind, text)
+    if thread == THREAD_MERCHANT:
+        admins = AdminsRepo(db)
+        admin_ids = await admins.list_admin_user_ids(int(o["shop_id"]))
+        shops = ShopsRepo(db)
+        shop = await shops.get(int(o["shop_id"]))
+        admin_kind = "admin_shop"
+        if shop and shop.get("business_type") == "restaurant":
+            admin_kind = "admin_restaurant"
+        for uid in admin_ids:
+            await schedule_chat_reminder(db, order_id, uid, admin_kind, text)
+    elif o.get("courier_user_id"):
+        await schedule_chat_reminder(db, order_id, int(o["courier_user_id"]), "courier", text)
     # 3) после добавления — пересчитать последнюю страницу
-    total_messages = await chat.count_messages(order_id)
+    total_messages = await chat.count_messages(order_id, thread=thread)
     total_pages = max(1, calc_total_pages(total_messages, PAGE_SIZE))
     await state.update_data(chat_page=total_pages)
     await state.update_data(user_id=message.from_user.id)
