@@ -14,7 +14,7 @@ from app.repositories.chat_prefs_repo import ChatPrefsRepo
 from app.repositories.orders_repo import OrdersRepo
 from app.repositories.shops_repo import ShopsRepo
 from app.repositories.client_profiles_repo import ClientProfilesRepo
-from app.handlers_admin_shop.start import kb_admin_main
+from app.handlers_admin_shop.start import build_admin_shop_main_kb
 from app.ui.nav import kb_nav
 from app.services.chat_ui import (
     PAGE_SIZE,
@@ -29,6 +29,7 @@ from app.services.chat_screen_controller import ChatScreenController
 from app.services.order_chat_access import can_access_order_chat
 from app.utils.tg_safe import safe_delete_cq_message
 from app.services.pagination import calc_page, pager_row
+from app.services.badges import get_unread_order_ids_for_view
 
 router = Router()
 
@@ -41,10 +42,14 @@ THREAD_MERCHANT = "merchant"
 THREAD_COURIER = "courier"
 
 
-def kb_chat_list(order_ids: list[int]) -> InlineKeyboardMarkup:
+def kb_chat_list(order_ids: list[int], unread_order_ids: set[int] | None = None) -> InlineKeyboardMarkup:
     kb = []
+    unread_ids = unread_order_ids or set()
     for oid in order_ids:
-        kb.append([InlineKeyboardButton(text=f"Заказ #{oid}", callback_data=f"a:chat:{oid}")])
+        text = f"Заказ #{oid}"
+        if oid in unread_ids:
+            text = f"{text}  🟢"
+        kb.append([InlineKeyboardButton(text=text, callback_data=f"a:chat:{oid}")])
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
 
@@ -92,20 +97,21 @@ async def list_chats_render(cq: CallbackQuery, db: Database, state: FSMContext, 
     await remember_admin_prev_target(db, "admin_shop", cq.from_user.id, "a:chat")
     shop_ids = await get_admin_shop_ids(db, cq.from_user.id)
     if not shop_ids:
-        await cq.message.edit_text("Нет доступа.", reply_markup=kb_admin_main())
+        await cq.message.edit_text("Нет доступа.", reply_markup=await build_admin_shop_main_kb(db, cq.from_user.id))
         await cq.answer()
         return
 
     chat = ChatRepo(db)
     total = await chat.count_order_ids_with_chat(shop_id=shop_ids[0])
     if total <= 0:
-        await cq.message.edit_text("Активных чатов нет.", reply_markup=kb_admin_main())
+        await cq.message.edit_text("Активных чатов нет.", reply_markup=await build_admin_shop_main_kb(db, cq.from_user.id))
         await cq.answer()
         return
 
     pi = calc_page(total=total, page=page, page_size=8)
     order_ids = await chat.list_order_ids_with_chat_page(shop_id=shop_ids[0], limit=pi.limit, offset=pi.offset)
-    kb = kb_chat_list(order_ids)
+    unread_order_ids = await get_unread_order_ids_for_view(db, "admin_shop", cq.from_user.id, [int(order_id) for order_id in order_ids])
+    kb = kb_chat_list(order_ids, unread_order_ids=unread_order_ids)
     pager = pager_row("a:chat", pi.page, pi.total_pages)
     if pager:
         kb.inline_keyboard.append(pager)
@@ -188,7 +194,7 @@ async def open_chat_by_order_id(
     order = await orders.get_order(order_id)
     shop_ids = await get_admin_shop_ids(db, cq.from_user.id)
     if not order or int(order["shop_id"]) not in shop_ids:
-        await cq.message.edit_text("Чат недоступен.", reply_markup=kb_admin_main())
+        await cq.message.edit_text("Чат недоступен.", reply_markup=await build_admin_shop_main_kb(db, cq.from_user.id))
         await cq.answer()
         return
     if not await can_access_order_chat(db, order):

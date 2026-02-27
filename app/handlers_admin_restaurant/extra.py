@@ -7,7 +7,7 @@ from aiogram.fsm.state import StatesGroup, State
 
 from app.db.database import Database
 from app.handlers_admin_restaurant.utils import is_restaurant_admin, get_admin_restaurant_ids
-from app.handlers_admin_restaurant.start import kb_admin_main
+from app.handlers_admin_restaurant.start import build_admin_restaurant_main_kb
 from app.repositories.orders_repo import OrdersRepo
 from app.repositories.shops_repo import ShopsRepo
 from app.repositories.promotions_repo import PromotionsRepo
@@ -31,6 +31,8 @@ from app.services.notification_center import remember_admin_prev_target, parse_n
 from app.utils.tg_safe import safe_delete_cq_message
 from app.ui.nav import kb_nav
 from app.services.pagination import calc_page, pager_row
+from app.services.badges import get_unread_order_ids_for_view
+from app.services.order_ui_status import history_order_status_emoji
 
 router = Router()
 
@@ -86,7 +88,8 @@ async def history_render(cq: CallbackQuery, db: Database, page: int):
     rows = await orders.list_current_for_shop_page(ids[0], DONE_STATUSES, limit=pi.limit, offset=pi.offset)
     kb = []
     for o in rows:
-        kb.append([InlineKeyboardButton(text=f"Заказ #{o['id']} ({o['status']})", callback_data=f"r:order:{o['id']}:r:history")])
+        emoji = history_order_status_emoji(o)
+        kb.append([InlineKeyboardButton(text=f"Заказ #{o['id']}  {emoji}", callback_data=f"r:order:{o['id']}:r:history")])
     pager = pager_row("r:history", pi.page, pi.total_pages)
     if pager:
         kb.append(pager)
@@ -195,7 +198,7 @@ async def promo_add_description(message: Message, state: FSMContext, db: Databas
         db,
         "admin_restaurant",
         "Админ-меню ресторана:",
-        kb_admin_main(),
+        await build_admin_restaurant_main_kb(db, message.from_user.id),
     )
 
 
@@ -357,14 +360,18 @@ async def chat_list_render(cq: CallbackQuery, db: Database, state: FSMContext, p
     chat = ChatRepo(db)
     total = await chat.count_order_ids_with_chat(shop_id=ids[0])
     if total <= 0:
-        await cq.message.edit_text("Активных чатов нет.", reply_markup=kb_admin_main())
+        await cq.message.edit_text("Активных чатов нет.", reply_markup=await build_admin_restaurant_main_kb(db, cq.from_user.id))
         await cq.answer()
         return
     pi = calc_page(total=total, page=page, page_size=8)
     order_ids = await chat.list_order_ids_with_chat_page(shop_id=ids[0], limit=pi.limit, offset=pi.offset)
+    unread_order_ids = await get_unread_order_ids_for_view(db, "admin_restaurant", cq.from_user.id, [int(order_id) for order_id in order_ids])
     kb = []
     for oid in order_ids:
-        kb.append([InlineKeyboardButton(text=f"Заказ #{oid}", callback_data=f"r:chat:{oid}")])
+        text = f"Заказ #{oid}"
+        if int(oid) in unread_order_ids:
+            text = f"{text}  🟢"
+        kb.append([InlineKeyboardButton(text=text, callback_data=f"r:chat:{oid}")])
     pager = pager_row("r:chat", pi.page, pi.total_pages)
     if pager:
         kb.append(pager)
@@ -434,7 +441,7 @@ async def open_chat_by_order_id(
     order = await orders.get_order(order_id)
     ids = await get_admin_restaurant_ids(db, cq.from_user.id)
     if not order or int(order["shop_id"]) not in ids:
-        await cq.message.edit_text("Чат недоступен.", reply_markup=kb_admin_main())
+        await cq.message.edit_text("Чат недоступен.", reply_markup=await build_admin_restaurant_main_kb(db, cq.from_user.id))
         await cq.answer()
         return
     if not await can_access_order_chat(db, order):

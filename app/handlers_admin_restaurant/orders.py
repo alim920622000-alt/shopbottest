@@ -1,7 +1,7 @@
 from aiogram import Router, F
 from aiogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.fsm.context import FSMContext
-from app.handlers_admin_restaurant.start import kb_admin_main  # добавь импорт
+from app.handlers_admin_restaurant.start import build_admin_restaurant_main_kb
 
 from app.db.database import Database
 from app.handlers_admin_restaurant.utils import get_admin_restaurant_ids
@@ -13,6 +13,7 @@ from app.services.notification_center import remember_admin_prev_target, parse_n
 from app.services.screen import clear_state_keep_screen, show_screen
 from app.utils.tg_safe import safe_delete_cq_message
 from app.services.pagination import calc_page, pager_row
+from app.services.order_ui_status import admin_order_sort_key, admin_order_status_emoji
 
 PAGE_SIZE = 8
 
@@ -31,10 +32,12 @@ CURRENT = ["new", "preparing", "ready"]
 DONE = ["delivered", "canceled", "finished"]
 
 
-def kb_orders_list(order_ids: list[int]) -> InlineKeyboardMarkup:
+def kb_orders_list(rows: list[dict]) -> InlineKeyboardMarkup:
     kb = []
-    for oid in order_ids:
-        kb.append([InlineKeyboardButton(text=f"Заказ #{oid}", callback_data=f"r:order:{oid}")])
+    for row in rows:
+        oid = int(row["id"])
+        emoji = admin_order_status_emoji(row)
+        kb.append([InlineKeyboardButton(text=f"Заказ #{oid}  {emoji}", callback_data=f"r:order:{oid}")])
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
 
@@ -121,7 +124,7 @@ async def render_order_card_by_id(cq: CallbackQuery, db: Database, state: FSMCon
 
 async def render_orders_list(cq: CallbackQuery, db: Database, restaurant_id: int, page: int) -> None:
     orders = OrdersRepo(db)
-    total = await orders.count_for_shop(restaurant_id, CURRENT)
+    total = await orders.count_active_for_shop(restaurant_id)
     if total <= 0:
         await cq.message.edit_text(
             f"Текущих заказов нет (restaurant_id={restaurant_id}).",
@@ -133,9 +136,10 @@ async def render_orders_list(cq: CallbackQuery, db: Database, restaurant_id: int
         return
 
     pi = calc_page(total=total, page=page, page_size=PAGE_SIZE)
-    rows = await orders.list_current_for_shop_page(shop_id=restaurant_id, statuses=CURRENT, limit=pi.limit, offset=pi.offset)
-    order_ids = [int(r["id"]) for r in rows]
-    kb = kb_orders_list(order_ids)
+    rows = await orders.list_active_for_shop_page(shop_id=restaurant_id, limit=total, offset=0)
+    sorted_rows = sorted(rows, key=admin_order_sort_key)
+    page_rows = sorted_rows[pi.offset:pi.offset + pi.limit]
+    kb = kb_orders_list(page_rows)
     pager = pager_row("r:orders", pi.page, pi.total_pages)
     if pager:
         kb.inline_keyboard.append(pager)
@@ -228,6 +232,6 @@ async def set_status(cq: CallbackQuery, db: Database, state: FSMContext):
 
 
 @router.callback_query(F.data == "r:back:main")
-async def back_main(cq: CallbackQuery):
-    await cq.message.edit_text("Админ-меню ресторана:", reply_markup=kb_admin_main())
+async def back_main(cq: CallbackQuery, db: Database):
+    await cq.message.edit_text("Админ-меню ресторана:", reply_markup=await build_admin_restaurant_main_kb(db, cq.from_user.id))
     await cq.answer()

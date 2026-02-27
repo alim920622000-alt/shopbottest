@@ -27,11 +27,13 @@ from app.i18n.client.translator import t
 from app.repositories.cart_repo import CartRepo
 from app.repositories.categories_repo import CategoriesRepo
 from app.repositories.chat_repo import ChatRepo
+from app.repositories.chat_reads_repo import ChatReadsRepo
 from app.repositories.client_profiles_repo import ClientProfilesRepo
 from app.repositories.orders_repo import OrdersRepo
 from app.repositories.products_repo import ProductsRepo
 from app.repositories.shops_repo import ShopsRepo
 from app.services.chat_ui import PAGE_SIZE, build_chat_screen_kb, build_chat_screen_text, calc_total_pages
+from app.services.badges import get_unread_order_ids_for_view
 from app.services.notification_center import build_client_center_payload, build_client_messages_payload
 from app.services.order_chat_access import can_access_order_chat, CLOSED_STATUSES
 from app.services.order_statuses import compose_client_status_key
@@ -39,10 +41,16 @@ from app.services.order_statuses import compose_client_status_key
 
 async def _render_main(db: Database, locale: str, user_id: int | None) -> tuple[str, InlineKeyboardMarkup | None]:
     has_arrived = False
+    unread_threads = 0
     if user_id:
         rows = await OrdersRepo(db).list_for_client(int(user_id))
         has_arrived = any(str(r.get("courier_status") or "").strip().lower() == "arrived" and int(r.get("handoff_confirmed") or 0) == 0 for r in rows)
-    return t(locale, "main.select_section"), kb_client_main(locale, has_arrived_order=has_arrived)
+        unread_threads = await ChatReadsRepo(db).count_unread_orders("client", int(user_id))
+    return t(locale, "main.select_section"), kb_client_main(
+        locale,
+        has_arrived_order=has_arrived,
+        chat_unread_threads=unread_threads,
+    )
 
 
 async def render_client_screen(db: Database, state: FSMContext) -> tuple[str, InlineKeyboardMarkup | None]:
@@ -176,7 +184,8 @@ async def render_client_screen(db: Database, state: FSMContext) -> tuple[str, In
         if not order_ids:
             return t(locale, "chat.none"), kb_client_main(locale)
         brief_rows = await OrdersRepo(db).list_brief_by_ids(order_ids)
-        return t(locale, "chat.list_title"), kb_chat_orders(locale, brief_rows, "c")
+        unread_order_ids = await get_unread_order_ids_for_view(db, "client", int(user_id), [int(row["id"]) for row in brief_rows])
+        return t(locale, "chat.list_title"), kb_chat_orders(locale, brief_rows, "c", unread_order_ids=unread_order_ids)
 
     if screen == "chat":
         order_id = int(payload.get("order_id") or data.get("chat_order_id") or 0)

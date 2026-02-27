@@ -140,6 +140,42 @@ class OrdersRepo:
     async def list_history_for_shop(self, shop_id: int, statuses: Sequence[str]) -> Sequence[dict]:
         return await self.list_current_for_shop(shop_id, statuses)
 
+    async def count_active_for_shop(self, shop_id: int) -> int:
+        async with self.db.conn() as conn:
+            cur = await conn.execute(
+                """
+                SELECT COUNT(*) AS cnt
+                FROM orders
+                WHERE shop_id=?
+                  AND (
+                    merchant_status IN ('new', 'preparing', 'ready')
+                    OR courier_status IN ('searching', 'assigned', 'picked_up', 'arrived')
+                  )
+                """,
+                (shop_id,),
+            )
+            row = await cur.fetchone()
+            return int(row["cnt"]) if row else 0
+
+    async def list_active_for_shop_page(self, shop_id: int, *, limit: int, offset: int) -> Sequence[dict]:
+        async with self.db.conn() as conn:
+            cur = await conn.execute(
+                """
+                SELECT *
+                FROM orders
+                WHERE shop_id=?
+                  AND (
+                    merchant_status IN ('new', 'preparing', 'ready')
+                    OR courier_status IN ('searching', 'assigned', 'picked_up', 'arrived')
+                  )
+                ORDER BY created_at DESC
+                LIMIT ? OFFSET ?
+                """,
+                (shop_id, limit, offset),
+            )
+            rows = await cur.fetchall()
+            return [dict(r) for r in rows]
+
     async def count_for_shop(self, shop_id: int, statuses: Sequence[str]) -> int:
         placeholders = ",".join(["?"] * len(statuses))
         q = f"""SELECT COUNT(*) AS cnt FROM orders

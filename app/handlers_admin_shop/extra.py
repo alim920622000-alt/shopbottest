@@ -4,7 +4,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 
 from app.db.database import Database
-from app.handlers_admin_shop.start import kb_admin_main
+from app.handlers_admin_shop.start import build_admin_shop_main_kb
 from app.handlers_admin_shop.utils import is_shop_admin
 from app.handlers_admin_shop.utils import get_admin_shop_ids
 from app.repositories.orders_repo import OrdersRepo
@@ -14,6 +14,7 @@ from app.repositories.categories_repo import CategoriesRepo
 from app.repositories.products_repo import ProductsRepo
 from app.services.screen import clear_state_keep_screen, show_main_menu
 from app.services.pagination import calc_page, pager_row
+from app.services.order_ui_status import history_order_status_emoji
 
 router = Router()
 
@@ -71,7 +72,8 @@ async def history_render(cq: CallbackQuery, db: Database, page: int):
     rows = await orders.list_current_for_shop_page(shop_ids[0], DONE_STATUSES, limit=pi.limit, offset=pi.offset)
     kb = []
     for o in rows:
-        kb.append([InlineKeyboardButton(text=f"Заказ #{o['id']} ({o['status']})", callback_data=f"a:order:{o['id']}:a:history")])
+        emoji = history_order_status_emoji(o)
+        kb.append([InlineKeyboardButton(text=f"Заказ #{o['id']}  {emoji}", callback_data=f"a:order:{o['id']}:a:history")])
     pager = pager_row("a:history", pi.page, pi.total_pages)
     if pager:
         kb.append(pager)
@@ -181,7 +183,7 @@ async def promo_add_description(message: Message, state: FSMContext, db: Databas
         db,
         "admin_shop",
         "Админ-меню магазина:",
-        kb_admin_main(),
+        await build_admin_shop_main_kb(db, message.from_user.id),
     )
 
 

@@ -34,6 +34,7 @@ from app.services.client_ui_state import remember_client_screen
 from app.services.notification_center import parse_notif_context, NOTIF_SRC_MSGS
 from app.services.order_statuses import compose_client_status_key
 from app.services.order_chat_access import can_access_order_chat, CLOSED_STATUSES
+from app.services.badges import get_unread_order_ids_for_view
 from app.handlers_client.catalog import render_cart
 from app.i18n.client.translator import t
 from app.utils.tg_safe import safe_delete_cq_message
@@ -456,7 +457,13 @@ async def chat_list_render(cq: CallbackQuery, db: Database, state: FSMContext, l
     pi = calc_page(total=total, page=page, page_size=LIST_PAGE_SIZE)
     order_ids = await chats.list_order_ids_with_chat_page(user_id=cq.from_user.id, limit=pi.limit, offset=pi.offset)
     brief_rows = await OrdersRepo(db).list_brief_by_ids(order_ids)
-    kb = kb_chat_orders(locale, brief_rows, "c")
+    unread_order_ids = await get_unread_order_ids_for_view(
+        db,
+        "client",
+        cq.from_user.id,
+        [int(row["id"]) for row in brief_rows],
+    )
+    kb = kb_chat_orders(locale, brief_rows, "c", unread_order_ids=unread_order_ids)
     pager = pager_row("c:chat", pi.page, pi.total_pages)
     if pager:
         kb.inline_keyboard.append(pager)
