@@ -25,7 +25,14 @@ def _order_button_text(row: dict) -> str:
     emoji = _order_type_emoji(row.get("business_type"))
     return f"{emoji} {order_id} · {shop_name}"
 
-def kb_client_main(locale: str, has_arrived_order: bool = False) -> InlineKeyboardMarkup:
+def kb_client_main(
+    locale: str,
+    has_arrived_order: bool = False,
+    chat_unread_threads: int = 0,
+) -> InlineKeyboardMarkup:
+    chat_text = t(locale, "main.chat")
+    if chat_unread_threads > 0:
+        chat_text = f"{chat_text} ({chat_unread_threads})"
     rows = [
         [InlineKeyboardButton(text=t(locale, "main.order"), callback_data="c:order_menu")],
         [InlineKeyboardButton(text=t(locale, "main.orders"), callback_data="c:orders")],
@@ -33,7 +40,7 @@ def kb_client_main(locale: str, has_arrived_order: bool = False) -> InlineKeyboa
     if has_arrived_order:
         rows.append([InlineKeyboardButton(text=t(locale, "nav.courier_arrived_button"), callback_data="c:orders")])
     rows.extend([
-        [InlineKeyboardButton(text=t(locale, "main.chat"), callback_data="c:chat")],
+        [InlineKeyboardButton(text=chat_text, callback_data="c:chat")],
         [InlineKeyboardButton(text=t(locale, "main.cabinet"), callback_data="c:cabinet")],
     ])
     return InlineKeyboardMarkup(inline_keyboard=rows)
@@ -256,11 +263,20 @@ def kb_cart_menu(locale: str) -> InlineKeyboardMarkup:
     ])
 
 
-def kb_chat_orders(locale: str, rows: list[dict], prefix: str) -> InlineKeyboardMarkup:
+def kb_chat_orders(
+    locale: str,
+    rows: list[dict],
+    prefix: str,
+    unread_order_ids: set[int] | None = None,
+) -> InlineKeyboardMarkup:
     kb = []
+    unread_ids = unread_order_ids or set()
     for row in rows:
         order_id = row["id"]
-        kb.append([InlineKeyboardButton(text=_order_button_text(row), callback_data=f"{prefix}:chat:{order_id}")])
+        text = _order_button_text(row)
+        if order_id in unread_ids:
+            text = f"{text}  🟢"
+        kb.append([InlineKeyboardButton(text=text, callback_data=f"{prefix}:chat:{order_id}")])
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
 

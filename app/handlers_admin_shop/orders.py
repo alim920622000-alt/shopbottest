@@ -2,7 +2,7 @@ from aiogram.exceptions import TelegramBadRequest
 from app.utils.tg_safe import safe_edit_text, safe_delete_cq_message
 from aiogram import Router, F
 from aiogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
-from app.handlers_admin_shop.start import kb_admin_main  # добавь импорт
+from app.handlers_admin_shop.start import build_admin_shop_main_kb
 from aiogram.fsm.context import FSMContext
 
 from app.db.database import Database
@@ -14,6 +14,7 @@ from app.services.order_chat_access import can_access_order_chat
 from app.services.screen import clear_state_keep_screen, show_main_menu, show_screen
 from app.services.notification_center import remember_admin_prev_target, parse_notif_context, NOTIF_SRC_ORDERS
 from app.services.pagination import calc_page, pager_row
+from app.services.order_ui_status import admin_order_sort_key, admin_order_status_emoji
 
 PAGE_SIZE = 8
 
@@ -35,10 +36,12 @@ def kb_back_admin() -> InlineKeyboardMarkup:
     ])
 
 
-def kb_orders_list(order_ids: list[int]) -> InlineKeyboardMarkup:
+def kb_orders_list(rows: list[dict]) -> InlineKeyboardMarkup:
     kb = []
-    for oid in order_ids:
-        kb.append([InlineKeyboardButton(text=f"Заказ #{oid}", callback_data=f"a:order:{oid}")])
+    for row in rows:
+        oid = int(row["id"])
+        emoji = admin_order_status_emoji(row)
+        kb.append([InlineKeyboardButton(text=f"Заказ #{oid}  {emoji}", callback_data=f"a:order:{oid}")])
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
 
@@ -121,10 +124,10 @@ async def admin_home(cq: CallbackQuery, db: Database, state: FSMContext):
             db=db,
             bot_kind="admin_shop",
             text="Админ-меню магазина:",
-            reply_markup=kb_admin_main(),
+            reply_markup=await build_admin_shop_main_kb(db, cq.from_user.id),
         )
     else:
-        await safe_edit_text(cq.message, "Админ-меню магазина:", reply_markup=kb_admin_main())
+        await safe_edit_text(cq.message, "Админ-меню магазина:", reply_markup=await build_admin_shop_main_kb(db, cq.from_user.id))
 
     await cq.answer()
 
@@ -150,17 +153,17 @@ async def list_orders_render(cq: CallbackQuery, db: Database, state: FSMContext,
 
     shop_id = shop_ids[0]
     orders = OrdersRepo(db)
-    statuses = ["new", "preparing", "ready"]
-    total = await orders.count_for_shop(shop_id, statuses)
+    total = await orders.count_active_for_shop(shop_id)
     if total <= 0:
         await safe_edit_text(cq.message, f"Текущих заказов нет (shop_id={shop_id}).", reply_markup=kb_back_admin())
         await cq.answer()
         return
 
     pi = calc_page(total=total, page=page, page_size=PAGE_SIZE)
-    rows = await orders.list_current_for_shop_page(shop_id=shop_id, statuses=statuses, limit=pi.limit, offset=pi.offset)
-    order_ids = [int(r["id"]) for r in rows]
-    kb = kb_orders_list(order_ids)
+    rows = await orders.list_active_for_shop_page(shop_id=shop_id, limit=total, offset=0)
+    sorted_rows = sorted(rows, key=admin_order_sort_key)
+    page_rows = sorted_rows[pi.offset:pi.offset + pi.limit]
+    kb = kb_orders_list(page_rows)
     pager = pager_row("a:orders", pi.page, pi.total_pages)
     if pager:
         kb.inline_keyboard.append(pager)
@@ -222,6 +225,6 @@ async def set_status(cq: CallbackQuery, db: Database, state: FSMContext):
 
 
 @router.callback_query(F.data == "a:back:main")
-async def back_main(cq: CallbackQuery):
-    await safe_edit_text(cq.message, "Админ-меню магазина:", reply_markup=kb_admin_main())
+async def back_main(cq: CallbackQuery, db: Database):
+    await safe_edit_text(cq.message, "Админ-меню магазина:", reply_markup=await build_admin_shop_main_kb(db, cq.from_user.id))
     await cq.answer()
