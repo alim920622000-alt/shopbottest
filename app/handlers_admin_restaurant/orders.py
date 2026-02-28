@@ -190,7 +190,7 @@ async def order_card(cq: CallbackQuery, db: Database, state: FSMContext):
     order_id = int(parts[2])
     await remember_admin_prev_target(db, "admin_restaurant", cq.from_user.id, f"r:order:{order_id}")
     src, page = parse_notif_context(cq.data)
-    back_target = parts[3] if len(parts) > 3 else "r:orders"
+    back_target = ":".join(parts[3:]) if len(parts) > 3 else "r:orders"
     if src == NOTIF_SRC_ORDERS:
         page = max(1, page or 1)
         back_target = f"r:notif:orders" if page == 1 else f"r:notif:op:{page}"

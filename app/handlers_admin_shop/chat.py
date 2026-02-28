@@ -226,7 +226,7 @@ async def open_chat_by_order_id(
         await state.update_data(chat_page=total_pages)
         await state.update_data(chat_message_id=cq.message.message_id)
         await set_screen_message_id(state, db, "admin_shop", cq.message.chat.id, cq.message.message_id)
-        await render_chat(cq, db, order_id, page=10**9, back_target=back_target)
+        await render_chat(cq, db, order_id, page=10**9, back_target=back_target, state=state)
     await ChatReadsRepo(db).mark_read(order_id, "admin_shop", cq.from_user.id)
     await cq.answer()
 
@@ -240,6 +240,41 @@ async def open_chat(cq: CallbackQuery, state: FSMContext, db: Database):
         page = max(1, page or 1)
         back_target = f"a:notif:msgs" if page == 1 else f"a:notif:mp:{page}"
     await open_chat_by_order_id(cq, state, db, order_id, back_target)
+
+
+@router.callback_query(F.data.startswith("a:chat_thread:"))
+async def switch_chat_thread(cq: CallbackQuery, state: FSMContext, db: Database):
+    _, _, order_id_str, thread = cq.data.split(":", 3)
+    order_id = int(order_id_str)
+    if not await is_shop_admin(db, cq.from_user.id):
+        await cq.answer("Нет доступа", show_alert=True)
+        return
+    orders = OrdersRepo(db)
+    order = await orders.get_order(order_id)
+    shop_ids = await get_admin_shop_ids(db, cq.from_user.id)
+    if not order or int(order["shop_id"]) not in shop_ids:
+        await cq.message.edit_text("Чат недоступен.", reply_markup=await build_admin_shop_main_kb(db, cq.from_user.id))
+        await cq.answer()
+        return
+    if not await can_access_order_chat(db, order):
+        await cq.answer("Чат закрыт.", show_alert=True)
+        return
+    await ChatPrefsRepo(db).set(order_id, "merchant", cq.from_user.id, thread)
+    await state.update_data(chat_thread=thread)
+    data = await state.get_data()
+    back_target = data.get("chat_back_target") or "a:chat"
+    await render_chat(cq, db, order_id, page=10**9, back_target=back_target, state=state)
+    await cq.answer()
+
+
+@router.callback_query(F.data.startswith("a:chat_refresh:"))
+async def refresh_chat(cq: CallbackQuery, state: FSMContext, db: Database):
+    order_id = int(cq.data.split(":")[2])
+    data = await state.get_data()
+    back_target = data.get("chat_back_target") or "a:chat"
+    page = int(data.get("chat_page") or 10**9)
+    await render_chat(cq, db, order_id, page=page, back_target=back_target, state=state)
+    await cq.answer()
 
 
 @router.callback_query(F.data.startswith("a:chatp:"))
@@ -267,7 +302,7 @@ async def paginate_chat(cq: CallbackQuery, state: FSMContext, db: Database):
         chat_back_target=back_target,
     )
     await set_screen_message_id(state, db, "admin_shop", cq.message.chat.id, cq.message.message_id)
-    await render_chat(cq, db, order_id, page=page, back_target=back_target)
+    await render_chat(cq, db, order_id, page=page, back_target=back_target, state=state)
     await cq.answer()
 
 

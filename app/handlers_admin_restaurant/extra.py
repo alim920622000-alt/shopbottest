@@ -36,8 +36,6 @@ from app.services.order_ui_status import history_order_status_emoji
 
 router = Router()
 
-DONE_STATUSES = ["finished", "canceled", "delivered", "ready"]
-
 
 class PromoStates(StatesGroup):
     add_title = State()
@@ -79,13 +77,13 @@ async def history_render(cq: CallbackQuery, db: Database, page: int):
         await cq.answer()
         return
     orders = OrdersRepo(db)
-    total = await orders.count_for_shop(ids[0], DONE_STATUSES)
+    total = await orders.count_history_for_shop(ids[0])
     if total <= 0:
         await cq.message.edit_text("История заказов пуста.", reply_markup=kb_back_home())
         await cq.answer()
         return
     pi = calc_page(total=total, page=page, page_size=8)
-    rows = await orders.list_current_for_shop_page(ids[0], DONE_STATUSES, limit=pi.limit, offset=pi.offset)
+    rows = await orders.list_history_for_shop_page(ids[0], limit=pi.limit, offset=pi.offset)
     kb = []
     for o in rows:
         emoji = history_order_status_emoji(o)
@@ -419,7 +417,7 @@ async def build_chat_payload(
     return text, kb
 
 
-async def render_chat(cq: CallbackQuery, db: Database, order_id: int, page: int, back_target: str) -> None:
+async def render_chat(cq: CallbackQuery, state: FSMContext, db: Database, order_id: int, page: int, back_target: str) -> None:
     data = await state.get_data() if state else {}
     thread = str(data.get("chat_thread") or THREAD_MERCHANT)
     text, kb = await build_chat_payload(db, order_id, page, back_target, thread=thread)
@@ -473,7 +471,7 @@ async def open_chat_by_order_id(
         await state.update_data(chat_page=total_pages)
         await state.update_data(chat_message_id=cq.message.message_id)
         await set_screen_message_id(state, db, "admin_restaurant", cq.message.chat.id, cq.message.message_id)
-        await render_chat(cq, db, order_id, page=10**9, back_target=back_target)
+        await render_chat(cq, state, db, order_id, page=10**9, back_target=back_target)
     await ChatReadsRepo(db).mark_read(order_id, "admin_restaurant", cq.from_user.id)
     await cq.answer()
 
@@ -487,6 +485,41 @@ async def open_chat(cq: CallbackQuery, state: FSMContext, db: Database):
         page = max(1, page or 1)
         back_target = f"r:notif:msgs" if page == 1 else f"r:notif:mp:{page}"
     await open_chat_by_order_id(cq, state, db, order_id, back_target)
+
+
+@router.callback_query(F.data.startswith("r:chat_thread:"))
+async def switch_chat_thread(cq: CallbackQuery, state: FSMContext, db: Database):
+    _, _, order_id_str, thread = cq.data.split(":", 3)
+    order_id = int(order_id_str)
+    if not await is_restaurant_admin(db, cq.from_user.id):
+        await cq.answer("Нет доступа", show_alert=True)
+        return
+    orders = OrdersRepo(db)
+    order = await orders.get_order(order_id)
+    ids = await get_admin_restaurant_ids(db, cq.from_user.id)
+    if not order or int(order["shop_id"]) not in ids:
+        await cq.message.edit_text("Чат недоступен.", reply_markup=await build_admin_restaurant_main_kb(db, cq.from_user.id))
+        await cq.answer()
+        return
+    if not await can_access_order_chat(db, order):
+        await cq.answer("Чат закрыт.", show_alert=True)
+        return
+    await ChatPrefsRepo(db).set(order_id, "merchant", cq.from_user.id, thread)
+    await state.update_data(chat_thread=thread)
+    data = await state.get_data()
+    back_target = data.get("chat_back_target") or "r:chat"
+    await render_chat(cq, state, db, order_id, page=10**9, back_target=back_target)
+    await cq.answer()
+
+
+@router.callback_query(F.data.startswith("r:chat_refresh:"))
+async def refresh_chat(cq: CallbackQuery, state: FSMContext, db: Database):
+    order_id = int(cq.data.split(":")[2])
+    data = await state.get_data()
+    back_target = data.get("chat_back_target") or "r:chat"
+    page = int(data.get("chat_page") or 10**9)
+    await render_chat(cq, state, db, order_id, page=page, back_target=back_target)
+    await cq.answer()
 
 
 @router.callback_query(F.data.startswith("r:chatp:"))
@@ -514,7 +547,7 @@ async def paginate_chat(cq: CallbackQuery, state: FSMContext, db: Database):
         chat_back_target=back_target,
     )
     await set_screen_message_id(state, db, "admin_restaurant", cq.message.chat.id, cq.message.message_id)
-    await render_chat(cq, db, order_id, page=page, back_target=back_target)
+    await render_chat(cq, state, db, order_id, page=page, back_target=back_target)
     await cq.answer()
 
 

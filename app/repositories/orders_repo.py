@@ -147,9 +147,10 @@ class OrdersRepo:
                 SELECT COUNT(*) AS cnt
                 FROM orders
                 WHERE shop_id=?
-                  AND (
-                    merchant_status IN ('new', 'preparing', 'ready')
-                    OR courier_status IN ('searching', 'assigned', 'picked_up', 'arrived')
+                  AND NOT (
+                    courier_status IN ('delivered', 'canceled')
+                    OR merchant_status IN ('completed', 'canceled')
+                    OR status IN ('delivered', 'canceled', 'finished')
                   )
                 """,
                 (shop_id,),
@@ -164,9 +165,48 @@ class OrdersRepo:
                 SELECT *
                 FROM orders
                 WHERE shop_id=?
+                  AND NOT (
+                    courier_status IN ('delivered', 'canceled')
+                    OR merchant_status IN ('completed', 'canceled')
+                    OR status IN ('delivered', 'canceled', 'finished')
+                  )
+                ORDER BY created_at DESC
+                LIMIT ? OFFSET ?
+                """,
+                (shop_id, limit, offset),
+            )
+            rows = await cur.fetchall()
+            return [dict(r) for r in rows]
+
+    async def count_history_for_shop(self, shop_id: int) -> int:
+        async with self.db.conn() as conn:
+            cur = await conn.execute(
+                """
+                SELECT COUNT(*) AS cnt
+                FROM orders
+                WHERE shop_id=?
                   AND (
-                    merchant_status IN ('new', 'preparing', 'ready')
-                    OR courier_status IN ('searching', 'assigned', 'picked_up', 'arrived')
+                    status IN ('delivered', 'canceled', 'finished')
+                    OR merchant_status IN ('completed', 'canceled')
+                    OR courier_status IN ('delivered', 'canceled')
+                  )
+                """,
+                (shop_id,),
+            )
+            row = await cur.fetchone()
+            return int(row["cnt"]) if row else 0
+
+    async def list_history_for_shop_page(self, shop_id: int, *, limit: int, offset: int) -> Sequence[dict]:
+        async with self.db.conn() as conn:
+            cur = await conn.execute(
+                """
+                SELECT *
+                FROM orders
+                WHERE shop_id=?
+                  AND (
+                    status IN ('delivered', 'canceled', 'finished')
+                    OR merchant_status IN ('completed', 'canceled')
+                    OR courier_status IN ('delivered', 'canceled')
                   )
                 ORDER BY created_at DESC
                 LIMIT ? OFFSET ?

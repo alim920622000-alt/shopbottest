@@ -18,8 +18,6 @@ from app.services.order_ui_status import history_order_status_emoji
 
 router = Router()
 
-DONE_STATUSES = ["ready", "canceled", "finished", "delivered"]
-
 class PromoStates(StatesGroup):
     add_title = State()
     add_description = State()
@@ -62,14 +60,14 @@ async def history_render(cq: CallbackQuery, db: Database, page: int):
         return
 
     orders = OrdersRepo(db)
-    total = await orders.count_for_shop(shop_ids[0], DONE_STATUSES)
+    total = await orders.count_history_for_shop(shop_ids[0])
     if total <= 0:
         await cq.message.edit_text("История заказов пуста.", reply_markup=kb_back_home())
         await cq.answer()
         return
 
     pi = calc_page(total=total, page=page, page_size=8)
-    rows = await orders.list_current_for_shop_page(shop_ids[0], DONE_STATUSES, limit=pi.limit, offset=pi.offset)
+    rows = await orders.list_history_for_shop_page(shop_ids[0], limit=pi.limit, offset=pi.offset)
     kb = []
     for o in rows:
         emoji = history_order_status_emoji(o)
