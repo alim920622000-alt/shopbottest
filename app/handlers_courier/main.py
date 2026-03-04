@@ -4,7 +4,7 @@ import logging
 import random
 
 from aiogram import F, Router
-from aiogram.exceptions import TelegramBadRequest
+from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError, TelegramNotFound
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -912,6 +912,13 @@ async def order_chat_message(message: Message, db: Database, state: FSMContext):
     total = await ChatRepo(db).count_messages(order_id, channel=channel)
     await state.update_data(chat_page=max(1, calc_total_pages(total, CHAT_PAGE_SIZE)))
     await _render_chat_from_message(message, db, state)
+    # Удаляем пользовательское сообщение, чтобы чат оставался однооконным screen-экраном
+    try:
+        await message.delete()
+    except (TelegramBadRequest, TelegramForbiddenError, TelegramNotFound):
+        pass
+    except Exception:
+        pass
 
 
 @router.callback_query(F.data == "cr:capacity")
