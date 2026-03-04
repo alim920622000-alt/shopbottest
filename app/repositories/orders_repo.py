@@ -437,7 +437,16 @@ class OrdersRepo:
         placeholders = ",".join("?" for _ in ACTIVE_COURIER_STATUSES)
         async with self.db.conn() as conn:
             cur = await conn.execute(
-                f"SELECT COUNT(*) AS cnt FROM orders WHERE courier_user_id=? AND courier_status IN ({placeholders})",
+                f"""
+                SELECT COUNT(*) AS cnt
+                FROM orders
+                WHERE courier_user_id=?
+                  -- Активные заказы курьера: только статусы в процессе доставки.
+                  -- Исключаем отменённые/отклонённые/завершённые заказы по courier_status, merchant_status и legacy status.
+                  AND courier_status IN ({placeholders})
+                  AND lower(coalesce(merchant_status, '')) NOT IN ('cancelled', 'canceled', 'declined', 'rejected', 'completed')
+                  AND lower(coalesce(status, '')) NOT IN ('cancelled', 'canceled', 'declined', 'rejected', 'delivered', 'completed', 'finished')
+                """,
                 [courier_user_id, *ACTIVE_COURIER_STATUSES],
             )
             row = await cur.fetchone()
@@ -447,7 +456,19 @@ class OrdersRepo:
         placeholders = ",".join("?" for _ in ACTIVE_COURIER_STATUSES)
         async with self.db.conn() as conn:
             cur = await conn.execute(
-                f"SELECT o.*, s.name AS shop_name FROM orders o JOIN shops s ON s.id=o.shop_id WHERE o.courier_user_id=? AND o.courier_status IN ({placeholders}) ORDER BY o.updated_at DESC LIMIT ? OFFSET ?",
+                f"""
+                SELECT o.*, s.name AS shop_name
+                FROM orders o
+                JOIN shops s ON s.id=o.shop_id
+                WHERE o.courier_user_id=?
+                  -- Активные заказы курьера: только статусы в процессе доставки.
+                  -- Исключаем отменённые/отклонённые/завершённые заказы по courier_status, merchant_status и legacy status.
+                  AND o.courier_status IN ({placeholders})
+                  AND lower(coalesce(o.merchant_status, '')) NOT IN ('cancelled', 'canceled', 'declined', 'rejected', 'completed')
+                  AND lower(coalesce(o.status, '')) NOT IN ('cancelled', 'canceled', 'declined', 'rejected', 'delivered', 'completed', 'finished')
+                ORDER BY o.updated_at DESC
+                LIMIT ? OFFSET ?
+                """,
                 [courier_user_id, *ACTIVE_COURIER_STATUSES, limit, offset],
             )
             rows = await cur.fetchall()
