@@ -6,11 +6,11 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 
 from app.db.database import Database
-from app.handlers_client.kb import kb_client_main
 from app.i18n.client.translator import t
 from app.repositories.client_profiles_repo import ClientProfilesRepo
 from app.services.chat_screen_controller import ChatScreenController
 from app.services.screen import clear_state_keep_screen, show_main_menu
+from app.services.client_main_menu import build_client_main_kb_dynamic
 from app.services.client_ui_renderer import render_client_screen
 from app.services.client_ui_state import remember_client_screen
 
@@ -102,7 +102,7 @@ async def save_full_name(message: Message, state: FSMContext, db: Database, loca
         db,
         "client",
         t(locale, "main.select_section"),
-        kb_client_main(locale),
+        await build_client_main_kb_dynamic(db, locale, message.from_user.id),
     )
 
 
@@ -125,7 +125,7 @@ async def save_phone(message: Message, state: FSMContext, db: Database, locale: 
         db,
         "client",
         t(locale, "main.select_section"),
-        kb_client_main(locale),
+        await build_client_main_kb_dynamic(db, locale, message.from_user.id),
     )
 
 
@@ -148,5 +148,5 @@ async def save_address(message: Message, state: FSMContext, db: Database, locale
         db,
         "client",
         t(locale, "main.select_section"),
-        kb_client_main(locale),
+        await build_client_main_kb_dynamic(db, locale, message.from_user.id),
     )

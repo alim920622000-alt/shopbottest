@@ -37,21 +37,12 @@ from app.services.badges import get_unread_order_ids_for_view
 from app.services.notification_center import build_client_center_payload, build_client_messages_payload
 from app.services.order_chat_access import can_access_order_chat, CLOSED_STATUSES
 from app.services.order_statuses import compose_client_status_key
-from app.services.chat_threads import THREAD_MERCHANT_CLIENT, normalize_thread_for_actor
+from app.services.chat_channels import CHANNEL_CLIENT_MERCHANT, map_channel_to_legacy_thread, map_legacy_thread_to_channel
+from app.services.client_main_menu import build_client_main_kb_dynamic
 
 
 async def _render_main(db: Database, locale: str, user_id: int | None) -> tuple[str, InlineKeyboardMarkup | None]:
-    has_arrived = False
-    unread_threads = 0
-    if user_id:
-        rows = await OrdersRepo(db).list_for_client(int(user_id))
-        has_arrived = any(str(r.get("courier_status") or "").strip().lower() == "arrived" and int(r.get("handoff_confirmed") or 0) == 0 for r in rows)
-        unread_threads = await ChatReadsRepo(db).count_unread_orders("client", int(user_id))
-    return t(locale, "main.select_section"), kb_client_main(
-        locale,
-        has_arrived_order=has_arrived,
-        chat_unread_threads=unread_threads,
-    )
+    return t(locale, "main.select_section"), await build_client_main_kb_dynamic(db, locale, user_id)
 
 
 async def render_client_screen(db: Database, state: FSMContext) -> tuple[str, InlineKeyboardMarkup | None]:
@@ -192,18 +183,20 @@ async def render_client_screen(db: Database, state: FSMContext) -> tuple[str, In
         order_id = int(payload.get("order_id") or data.get("chat_order_id") or 0)
         back_target = payload.get("back_target") or data.get("chat_back_target")
         # Поток всегда передаём явно, чтобы при восстановлении экрана не утекали чужие переписки.
-        thread = normalize_thread_for_actor("client", str(payload.get("thread") or data.get("chat_thread") or THREAD_MERCHANT_CLIENT))
+        legacy_thread = str(payload.get("thread") or "")
+        channel = str(payload.get("channel") or data.get("chat_channel") or map_legacy_thread_to_channel("client", legacy_thread or "merchant") or CHANNEL_CLIENT_MERCHANT)
+        thread = map_channel_to_legacy_thread("client", channel)
         orders = OrdersRepo(db)
         order = await orders.get_order(order_id)
         shop_info = await ShopsRepo(db).get(int(order["shop_id"])) if order else None
         business_type = shop_info["business_type"] if shop_info else "shop"
         chat = ChatRepo(db)
-        total_messages = await chat.count_messages(order_id, thread=thread)
+        total_messages = await chat.count_messages(order_id, channel=channel)
         total_pages = max(1, calc_total_pages(total_messages, PAGE_SIZE))
         page = int(payload.get("page") or data.get("chat_page") or total_pages)
         page = max(1, min(page, total_pages))
         offset = (total_pages - page) * PAGE_SIZE
-        messages = await chat.list_messages(order_id, thread=thread, limit=PAGE_SIZE, offset=offset)
+        messages = await chat.list_messages(order_id, channel=channel, limit=PAGE_SIZE, offset=offset)
         text = build_chat_screen_text(
             order_id,
             messages,

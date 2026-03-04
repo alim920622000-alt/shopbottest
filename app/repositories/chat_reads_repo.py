@@ -9,34 +9,34 @@ class ChatReadsRepo:
     def __init__(self, db: Database):
         self.db = db
 
-    async def get_last_read_at(self, order_id: int, viewer_role: str, viewer_user_id: int) -> str | None:
+    async def get_last_read_at(self, order_id: int, viewer_role: str, viewer_user_id: int, channel: str) -> str | None:
         async with self.db.conn() as conn:
             cur = await conn.execute(
                 """
                 SELECT last_read_at
                 FROM order_chat_reads
-                WHERE order_id=? AND viewer_role=? AND viewer_user_id=?
+                WHERE order_id=? AND viewer_role=? AND viewer_user_id=? AND channel=?
                 """,
-                (order_id, viewer_role, viewer_user_id),
+                (order_id, viewer_role, viewer_user_id, channel),
             )
             row = await cur.fetchone()
             return str(row["last_read_at"]) if row else None
 
-    async def mark_read(self, order_id: int, viewer_role: str, viewer_user_id: int) -> None:
+    async def mark_read(self, order_id: int, viewer_role: str, viewer_user_id: int, channel: str) -> None:
         async with self.db.conn() as conn:
             await conn.execute(
                 """
-                INSERT INTO order_chat_reads(order_id, viewer_role, viewer_user_id, last_read_at)
-                VALUES (?, ?, ?, datetime('now'))
-                ON CONFLICT(order_id, viewer_role, viewer_user_id) DO UPDATE SET
+                INSERT INTO order_chat_reads(order_id, viewer_role, viewer_user_id, channel, last_read_at)
+                VALUES (?, ?, ?, ?, datetime('now'))
+                ON CONFLICT(order_id, viewer_role, viewer_user_id, channel) DO UPDATE SET
                     last_read_at=datetime('now')
                 """,
-                (order_id, viewer_role, viewer_user_id),
+                (order_id, viewer_role, viewer_user_id, channel),
             )
             await conn.commit()
 
-    async def get_unread_count_for_order(self, order_id: int, viewer_role: str, viewer_user_id: int) -> int:
-        last_read_at = await self.get_last_read_at(order_id, viewer_role, viewer_user_id)
+    async def get_unread_count_for_order(self, order_id: int, viewer_role: str, viewer_user_id: int, channel: str) -> int:
+        last_read_at = await self.get_last_read_at(order_id, viewer_role, viewer_user_id, channel)
         last_read_at = last_read_at or "1970-01-01"
         async with self.db.conn() as conn:
             cur = await conn.execute(
@@ -44,10 +44,11 @@ class ChatReadsRepo:
                 SELECT COUNT(*) as cnt
                 FROM order_chat_messages
                 WHERE order_id=?
+                  AND channel=?
                   AND NOT (sender_role = ? AND sender_user_id = ?)
                   AND created_at > ?
                 """,
-                (order_id, viewer_role, viewer_user_id, last_read_at),
+                (order_id, channel, viewer_role, viewer_user_id, last_read_at),
             )
             row = await cur.fetchone()
             return int(row["cnt"]) if row else 0
@@ -67,6 +68,7 @@ class ChatReadsRepo:
                 FROM order_chat_messages m
                 LEFT JOIN order_chat_reads r
                     ON r.order_id = m.order_id
+                    AND r.channel = m.channel
                     AND r.viewer_role = ?
                     AND r.viewer_user_id = ?
                 -- фильтры доступа: не показываем чужие чаты
@@ -104,6 +106,7 @@ class ChatReadsRepo:
                 FROM order_chat_messages m
                 LEFT JOIN order_chat_reads r
                     ON r.order_id = m.order_id
+                    AND r.channel = m.channel
                     AND r.viewer_role = ?
                     AND r.viewer_user_id = ?
                 -- фильтры доступа: не показываем чужие чаты
@@ -126,8 +129,9 @@ class ChatReadsRepo:
                 FROM (
                     SELECT m.order_id
                     FROM order_chat_messages m
-                    LEFT JOIN order_chat_reads r
-                        ON r.order_id = m.order_id
+                LEFT JOIN order_chat_reads r
+                    ON r.order_id = m.order_id
+                        AND r.channel = m.channel
                         AND r.viewer_role = ?
                         AND r.viewer_user_id = ?
                     -- фильтры доступа: не показываем чужие чаты

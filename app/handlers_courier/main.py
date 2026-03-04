@@ -21,9 +21,13 @@ from app.repositories.orders_repo import OrdersRepo
 from app.repositories.settings_repo import SettingsRepo
 from app.repositories.zones_repo import ZonesRepo
 from app.services.chat_ui import PAGE_SIZE as CHAT_PAGE_SIZE, build_chat_screen_kb, build_chat_screen_text, calc_total_pages
-from app.services.chat_threads import (
+from app.services.chat_channels import (
+    CHANNEL_CLIENT_COURIER,
+    CHANNEL_MERCHANT_COURIER,
     THREAD_COURIER_CLIENT,
     THREAD_MERCHANT_CLIENT,
+    map_channel_to_legacy_thread,
+    map_legacy_thread_to_channel,
     normalize_thread_for_actor,
 )
 from app.services.courier_capacity import MODE_FREE, MODE_MEDIUM, MODE_STRICT, can_accept_order, get_courier_capacity_mode
@@ -400,19 +404,20 @@ async def _render_chat(cq: CallbackQuery, db: Database, state: FSMContext, order
     reads = ChatReadsRepo(db)
     data = await state.get_data()
     # Явно фиксируем поток, чтобы при переключении ролей не смешивались переписки.
-    thread = normalize_thread_for_actor("courier", str(data.get("chat_thread") or THREAD_COURIER))
-    total_messages = await chat.count_messages(order_id, thread=thread)
+    channel = str(data.get("chat_channel") or CHANNEL_CLIENT_COURIER)
+    thread = map_channel_to_legacy_thread("courier", channel)
+    total_messages = await chat.count_messages(order_id, channel=channel)
     total_pages = max(1, calc_total_pages(total_messages, CHAT_PAGE_SIZE))
     current_page = max(1, min(page, total_pages))
     offset = (total_pages - current_page) * CHAT_PAGE_SIZE
-    messages = await chat.list_messages(order_id, thread=thread, limit=CHAT_PAGE_SIZE, offset=offset)
-    await reads.mark_read(order_id, "courier", cq.from_user.id)
+    messages = await chat.list_messages(order_id, channel=channel, limit=CHAT_PAGE_SIZE, offset=offset)
+    await reads.mark_read(order_id, "courier", cq.from_user.id, channel)
 
     text = build_chat_screen_text(order_id, messages, False, str(order.get("business_type") or "shop"), "ru", "courier", shop_name=order.get("shop_name"))
     kb = build_chat_screen_kb(order_id, current_page, total_pages, "cr", _chat_nav_rows(order_id, source, source_page, thread))
     await _save_current_view(state, "order_chat", {"order_id": order_id, "page": current_page, "source": source, "source_page": source_page})
     await state.set_state(CourierStates.order_chat)
-    await state.update_data(chat_order_id=order_id, chat_page=current_page, chat_source=source, chat_source_page=source_page, chat_thread=thread)
+    await state.update_data(chat_order_id=order_id, chat_page=current_page, chat_source=source, chat_source_page=source_page, chat_channel=channel)
     await _safe_edit_message_text(cq.message, text, kb)
 
 
@@ -433,12 +438,13 @@ async def _render_chat_from_message(message: Message, db: Database, state: FSMCo
 
     chat = ChatRepo(db)
     data = await state.get_data()
-    thread = normalize_thread_for_actor("courier", str(data.get("chat_thread") or THREAD_COURIER))
-    total_messages = await chat.count_messages(order_id, thread=thread)
+    channel = str(data.get("chat_channel") or CHANNEL_CLIENT_COURIER)
+    thread = map_channel_to_legacy_thread("courier", channel)
+    total_messages = await chat.count_messages(order_id, channel=channel)
     total_pages = max(1, calc_total_pages(total_messages, CHAT_PAGE_SIZE))
     page = max(1, min(page, total_pages))
     offset = (total_pages - page) * CHAT_PAGE_SIZE
-    messages = await chat.list_messages(order_id, thread=thread, limit=CHAT_PAGE_SIZE, offset=offset)
+    messages = await chat.list_messages(order_id, channel=channel, limit=CHAT_PAGE_SIZE, offset=offset)
     text = build_chat_screen_text(order_id, messages, False, str(order.get("business_type") or "shop"), "ru", "courier", shop_name=order.get("shop_name"))
     kb = build_chat_screen_kb(order_id, page, total_pages, "cr", _chat_nav_rows(order_id, source, source_page, thread))
     await state.update_data(chat_page=page)
@@ -809,8 +815,9 @@ async def order_chat(cq: CallbackQuery, db: Database, state: FSMContext):
         # Для курьера по умолчанию открыт поток с магазином/рестораном.
         pref = THREAD_COURIER
     pref = normalize_thread_for_actor("courier", pref)
+    channel = map_legacy_thread_to_channel("courier", pref)
     await ChatPrefsRepo(db).set(int(order_id), "courier", cq.from_user.id, pref)
-    await state.update_data(chat_thread=pref)
+    await state.update_data(chat_channel=channel)
     await _push_and_render(
         state,
         "order",
@@ -841,7 +848,7 @@ async def order_chat_switch_thread(cq: CallbackQuery, db: Database, state: FSMCo
     source = str(data.get("chat_source") or "active")
     source_page = int(data.get("chat_source_page") or 0)
     await ChatPrefsRepo(db).set(int(order_id), "courier", cq.from_user.id, thread)
-    await state.update_data(chat_thread=thread)
+    await state.update_data(chat_channel=map_legacy_thread_to_channel("courier", thread))
     await _render_chat(cq, db, state, int(order_id), page=10**9, source=source, source_page=source_page)
     await cq.answer()
 
@@ -871,10 +878,10 @@ async def order_chat_message(message: Message, db: Database, state: FSMContext):
         await message.answer("Чат недоступен.")
         return
 
-    thread = normalize_thread_for_actor("courier", str(data.get("chat_thread") or THREAD_COURIER))
-    await ChatRepo(db).add_message(order_id, message.from_user.id, "courier", text, thread=thread)
-    await ChatReadsRepo(db).mark_read(order_id, "courier", message.from_user.id)
-    total = await ChatRepo(db).count_messages(order_id, thread=thread)
+    channel = str(data.get("chat_channel") or CHANNEL_CLIENT_COURIER)
+    await ChatRepo(db).add_message(order_id, message.from_user.id, "courier", text, channel=channel)
+    await ChatReadsRepo(db).mark_read(order_id, "courier", message.from_user.id, channel)
+    total = await ChatRepo(db).count_messages(order_id, channel=channel)
     await state.update_data(chat_page=max(1, calc_total_pages(total, CHAT_PAGE_SIZE)))
     await _render_chat_from_message(message, db, state)
 

@@ -30,6 +30,7 @@ from app.services.order_chat_access import can_access_order_chat
 from app.utils.tg_safe import safe_delete_cq_message
 from app.services.pagination import calc_page, pager_row
 from app.services.badges import get_unread_order_ids_for_view
+from app.services.chat_channels import CHANNEL_CLIENT_MERCHANT, CHANNEL_MERCHANT_COURIER, map_channel_to_legacy_thread, map_legacy_thread_to_channel
 
 router = Router()
 
@@ -71,8 +72,8 @@ def make_chat_render_fn(db: Database, state: FSMContext):
         order_id = int(data.get("chat_order_id") or 0)
         page = int(data.get("chat_page") or 1)
         back_target = data.get("chat_back_target") or "a:chat"
-        thread = str(data.get("chat_thread") or THREAD_MERCHANT)
-        return await build_chat_payload(db, order_id, page=page, back_target=back_target, thread=thread)
+        channel = str(data.get("chat_channel") or CHANNEL_CLIENT_MERCHANT)
+        return await build_chat_payload(db, order_id, page=page, back_target=back_target, channel=channel)
 
     return render
 
@@ -128,14 +129,15 @@ async def build_chat_payload(
     order_id: int,
     page: int,
     back_target: str,
-    thread: str = THREAD_MERCHANT,
+    channel: str = CHANNEL_CLIENT_MERCHANT,
 ) -> tuple[str, InlineKeyboardMarkup]:
     chat = ChatRepo(db)
-    total_messages = await chat.count_messages(order_id, thread=thread)
+    total_messages = await chat.count_messages(order_id, channel=channel)
     total_pages = calc_total_pages(total_messages, PAGE_SIZE)
     page = max(1, min(page, total_pages))
     offset = (total_pages - page) * PAGE_SIZE
-    messages = await chat.list_messages(order_id, thread=thread, limit=PAGE_SIZE, offset=offset)
+    messages = await chat.list_messages(order_id, channel=channel, limit=PAGE_SIZE, offset=offset)
+    thread = map_channel_to_legacy_thread("merchant", channel)
 
     order = await OrdersRepo(db).get_order(order_id)
     shop_info = await ShopsRepo(db).get(order["shop_id"]) if order else None
@@ -161,8 +163,8 @@ async def build_chat_payload(
 
 async def render_chat(cq: CallbackQuery, db: Database, order_id: int, page: int, back_target: str, state: FSMContext | None = None) -> None:
     data = await state.get_data() if state else {}
-    thread = str(data.get("chat_thread") or THREAD_MERCHANT)
-    text, kb = await build_chat_payload(db, order_id, page, back_target, thread=thread)
+    channel = str(data.get("chat_channel") or CHANNEL_CLIENT_MERCHANT)
+    text, kb = await build_chat_payload(db, order_id, page, back_target, channel=channel)
 
     try:
         if cq.message:
@@ -217,7 +219,8 @@ async def open_chat_by_order_id(
     await state.set_state(AdminShopChatStates.active)
     pref = await ChatPrefsRepo(db).get(order_id, "merchant", cq.from_user.id)
     thread = pref or THREAD_MERCHANT
-    await state.update_data(chat_order_id=order_id, chat_back_target=back_target, chat_thread=thread)
+    channel = map_legacy_thread_to_channel("merchant", thread)
+    await state.update_data(chat_order_id=order_id, chat_back_target=back_target, chat_channel=channel)
     if is_chat_reminder_text(cq.message.text if cq.message else None):
         # Для напоминания удаляем сообщение и рисуем чат новым экраном.
         await safe_delete_cq_message(cq)
@@ -234,13 +237,13 @@ async def open_chat_by_order_id(
         await state.update_data(chat_message_id=message_id)
     else:
         chat = ChatRepo(db)
-        total_messages = await chat.count_messages(order_id, thread=thread)
+        total_messages = await chat.count_messages(order_id, channel=channel)
         total_pages = max(1, calc_total_pages(total_messages, PAGE_SIZE))
         await state.update_data(chat_page=total_pages)
         await state.update_data(chat_message_id=cq.message.message_id)
         await set_screen_message_id(state, db, "admin_shop", cq.message.chat.id, cq.message.message_id)
         await render_chat(cq, db, order_id, page=10**9, back_target=back_target, state=state)
-    await ChatReadsRepo(db).mark_read(order_id, "admin_shop", cq.from_user.id)
+    await ChatReadsRepo(db).mark_read(order_id, "admin_shop", cq.from_user.id, channel)
     await cq.answer()
 
 
@@ -256,7 +259,7 @@ async def open_chat(cq: CallbackQuery, state: FSMContext, db: Database):
 
 
 @router.callback_query(F.data.startswith("a:chat_thread:"))
-async def switch_chat_thread(cq: CallbackQuery, state: FSMContext, db: Database):
+async def switch_chat_channel(cq: CallbackQuery, state: FSMContext, db: Database):
     _, _, order_id_str, thread = cq.data.split(":", 3)
     order_id = int(order_id_str)
     if not await is_shop_admin(db, cq.from_user.id):
@@ -273,7 +276,7 @@ async def switch_chat_thread(cq: CallbackQuery, state: FSMContext, db: Database)
         await cq.answer("Чат закрыт.", show_alert=True)
         return
     await ChatPrefsRepo(db).set(order_id, "merchant", cq.from_user.id, thread)
-    await state.update_data(chat_thread=thread)
+    await state.update_data(chat_channel=map_legacy_thread_to_channel("merchant", thread))
     data = await state.get_data()
     back_target = data.get("chat_back_target") or "a:chat"
     await render_chat(cq, db, order_id, page=10**9, back_target=back_target, state=state)
@@ -343,15 +346,15 @@ async def send_chat_message(message: Message, state: FSMContext, db: Database):
         return
 
     chat = ChatRepo(db)
-    thread = str(data.get("chat_thread") or THREAD_MERCHANT)
-    await chat.add_message(order_id, message.from_user.id, "admin", text, thread=thread)
+    channel = str(data.get("chat_channel") or CHANNEL_CLIENT_MERCHANT)
+    await chat.add_message(order_id, message.from_user.id, "admin", text, channel=channel)
 
     await cancel_chat_reminder(db, order_id, message.from_user.id, "admin_shop")
-    if thread == THREAD_MERCHANT and order.get("client_user_id"):
+    if channel == CHANNEL_CLIENT_MERCHANT and order.get("client_user_id"):
         await schedule_chat_reminder(db, order_id, int(order["client_user_id"]), "client", text)
-    elif thread == THREAD_COURIER and order.get("courier_user_id"):
+    elif channel == CHANNEL_MERCHANT_COURIER and order.get("courier_user_id"):
         await schedule_chat_reminder(db, order_id, int(order["courier_user_id"]), "courier", text)
-    total_messages = await chat.count_messages(order_id, thread=thread)
+    total_messages = await chat.count_messages(order_id, channel=channel)
     total_pages = max(1, calc_total_pages(total_messages, PAGE_SIZE))
     await state.update_data(chat_page=total_pages)
 

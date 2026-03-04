@@ -15,44 +15,44 @@ class ChatRepo:
         sender_user_id: int,
         sender_role: str,
         message_text: str,
-        thread: str = "merchant",
+        channel: str = "client_merchant",
     ) -> int:
         async with self.db.conn() as conn:
             cur = await conn.execute(
                 """
-                INSERT INTO order_chat_messages(order_id, sender_user_id, sender_role, message_text, thread)
+                INSERT INTO order_chat_messages(order_id, sender_user_id, sender_role, message_text, channel)
                 VALUES (?, ?, ?, ?, ?)
                 """,
-                (order_id, sender_user_id, sender_role, message_text, thread),
+                (order_id, sender_user_id, sender_role, message_text, channel),
             )
             await conn.commit()
             return int(cur.lastrowid)
 
-    async def list_messages(self, order_id: int, thread: str = "merchant", limit: int = 20, offset: int = 0) -> Sequence[dict]:
+    async def list_messages(self, order_id: int, channel: str, limit: int = 20, offset: int = 0) -> Sequence[dict]:
         async with self.db.conn() as conn:
             cur = await conn.execute(
                 """
-                SELECT sender_user_id, sender_role, message_text, created_at, thread
+                SELECT sender_user_id, sender_role, message_text, created_at, channel
                 FROM order_chat_messages
-                WHERE order_id=? AND thread=?
+                WHERE order_id=? AND channel=?
                 ORDER BY created_at DESC
                 LIMIT ?
                 OFFSET ?
                 """,
-                (order_id, thread, limit, offset),
+                (order_id, channel, limit, offset),
             )
             rows = await cur.fetchall()
             return [dict(r) for r in rows][::-1]
 
-    async def count_messages(self, order_id: int, thread: str = "merchant") -> int:
+    async def count_messages(self, order_id: int, channel: str) -> int:
         async with self.db.conn() as conn:
             cur = await conn.execute(
                 """
                 SELECT COUNT(*) as cnt
                 FROM order_chat_messages
-                WHERE order_id=? AND thread=?
+                WHERE order_id=? AND channel=?
                 """,
-                (order_id, thread),
+                (order_id, channel),
             )
             row = await cur.fetchone()
             return int(row["cnt"]) if row else 0

@@ -69,11 +69,11 @@ from app.services.client_ui_state import remember_client_screen
 from app.services.chat_reminders import is_chat_reminder_text
 from app.utils.tg_safe import safe_delete_cq_message
 from app.services.pagination import calc_page, pager_row
+from app.services.client_main_menu import build_client_main_kb_dynamic
 
 PAGE_SIZE = 8
 from app.i18n.client.translator import t
 from app.handlers_client.kb import (
-    kb_client_main,
     kb_order_menu,
     kb_cart_menu,
     kb_back,
@@ -232,10 +232,10 @@ async def client_home(cq: CallbackQuery, db: Database, state: FSMContext, locale
             db=db,
             bot_kind="client",
             text=t(locale, "main.select_section"),
-            reply_markup=kb_client_main(locale),
+            reply_markup=await build_client_main_kb_dynamic(db, locale, cq.from_user.id),
         )
     else:
-        await cq.message.edit_text(t(locale, "main.select_section"), reply_markup=kb_client_main(locale))
+        await cq.message.edit_text(t(locale, "main.select_section"), reply_markup=await build_client_main_kb_dynamic(db, locale, cq.from_user.id))
     await cq.answer()
 
 @router.callback_query(F.data == "c:order_menu")
@@ -688,7 +688,7 @@ async def back(cq: CallbackQuery, db: Database, state: FSMContext, locale: str =
         await clear_state_keep_screen(state, db, "client", cq.from_user.id)
 
     if target == "main":
-        await cq.message.edit_text(t(eff_locale, "main.select_section"), reply_markup=kb_client_main(eff_locale))
+        await cq.message.edit_text(t(eff_locale, "main.select_section"), reply_markup=await build_client_main_kb_dynamic(db, eff_locale, cq.from_user.id))
         await cq.answer()
         return
 

@@ -133,6 +133,7 @@ CREATE TABLE IF NOT EXISTS order_chat_messages (
     sender_role TEXT NOT NULL,
     message_text TEXT NOT NULL,
     thread TEXT NOT NULL DEFAULT 'merchant',
+    channel TEXT NOT NULL DEFAULT 'client_merchant',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
 );
@@ -152,8 +153,9 @@ CREATE TABLE IF NOT EXISTS order_chat_reads (
     order_id INTEGER NOT NULL,
     viewer_role TEXT NOT NULL,
     viewer_user_id INTEGER NOT NULL,
+    channel TEXT NOT NULL DEFAULT 'client_merchant',
     last_read_at DATETIME NOT NULL,
-    PRIMARY KEY (order_id, viewer_role, viewer_user_id),
+    PRIMARY KEY (order_id, viewer_role, viewer_user_id, channel),
     FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
 );
 
@@ -248,6 +250,7 @@ CREATE INDEX IF NOT EXISTS idx_search_synonyms_term ON search_synonyms(term);
 CREATE INDEX IF NOT EXISTS idx_promotions_shop ON promotions(shop_id);
 CREATE INDEX IF NOT EXISTS idx_promo_items_promo ON promotion_items(promo_id);
 CREATE INDEX IF NOT EXISTS idx_chat_order ON order_chat_messages(order_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_chat_order_channel ON order_chat_messages(order_id, channel, created_at);
 CREATE INDEX IF NOT EXISTS idx_chat_reads_viewer ON order_chat_reads(viewer_role, viewer_user_id);
 CREATE INDEX IF NOT EXISTS idx_order_seen_viewer ON order_seen(viewer_role, viewer_user_id);
 CREATE INDEX IF NOT EXISTS idx_chat_reminders_due ON chat_message_reminders(recipient_kind, status, scheduled_at);
