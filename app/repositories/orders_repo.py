@@ -376,7 +376,15 @@ class OrdersRepo:
             if not courier:
                 return 0
             accept_all = int(courier["accept_all_zones"] or 0) == 1
-            q = "SELECT COUNT(*) AS cnt FROM orders o WHERE o.courier_status='searching'"
+            # Для курьера «доступными» считаем только реально принимаемые заказы:
+            # courier_status=searching и без отмены/завершения по статусам точки/legacy-статусу.
+            q = """
+                SELECT COUNT(*) AS cnt
+                FROM orders o
+                WHERE o.courier_status='searching'
+                  AND lower(coalesce(o.merchant_status, '')) NOT IN ('completed', 'canceled', 'cancelled', 'declined')
+                  AND lower(coalesce(o.status, '')) NOT IN ('delivered', 'canceled', 'cancelled', 'finished', 'declined')
+            """
             params: list = []
             if not accept_all:
                 q += """
@@ -403,6 +411,8 @@ class OrdersRepo:
                 FROM orders o
                 JOIN shops s ON s.id=o.shop_id
                 WHERE o.courier_status='searching'
+                  AND lower(coalesce(o.merchant_status, '')) NOT IN ('completed', 'canceled', 'cancelled', 'declined')
+                  AND lower(coalesce(o.status, '')) NOT IN ('delivered', 'canceled', 'cancelled', 'finished', 'declined')
             """
             params: list = []
             if not accept_all:

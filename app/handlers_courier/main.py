@@ -135,7 +135,15 @@ async def _render_menu(message: Message | CallbackQuery, db: Database, user_id: 
         await message.message.edit_text(text, reply_markup=kb)
 
 
-async def _render_orders_list(cq: CallbackQuery, db: Database, state: FSMContext, mode: str, page: int = 0) -> None:
+async def _render_orders_list(
+    cq: CallbackQuery,
+    db: Database,
+    state: FSMContext,
+    mode: str,
+    page: int = 0,
+    header_notice: str | None = None,
+    new_order_id: int | None = None,
+) -> None:
     orders_repo = OrdersRepo(db)
     if mode == "available":
         title = "Доступные заказы"
@@ -161,10 +169,14 @@ async def _render_orders_list(cq: CallbackQuery, db: Database, state: FSMContext
         )
         return
 
-    kb_rows = [
-        [InlineKeyboardButton(text=f"Заказ #{r['id']}", callback_data=f"cr:order:{r['id']}:{mode}:{pi.page}")]
-        for r in rows
-    ]
+    kb_rows = []
+    for r in rows:
+        order_id = int(r["id"])
+        # Для сценария с новым заказом подсвечиваем конкретный ID в списке.
+        title = f"Заказ #{order_id}"
+        if new_order_id and order_id == int(new_order_id):
+            title = f"🆕 {title}"
+        kb_rows.append([InlineKeyboardButton(text=title, callback_data=f"cr:order:{order_id}:{mode}:{pi.page}")])
     if mode == "active" and total == 1 and rows:
         await _push_and_render(state, mode, "order", {"order_id": int(rows[0]["id"]), "source": "active", "page": pi.page})
         await _render_order_card(cq, db, state, int(rows[0]["id"]), "active", pi.page)
@@ -175,7 +187,25 @@ async def _render_orders_list(cq: CallbackQuery, db: Database, state: FSMContext
         kb_rows.append(build_pagination_controls(pi.page, pi.total_pages, f"cr:{mode}:page"))
     kb_rows.append(_back_row())
     await _save_current_view(state, mode, {"page": pi.page})
-    await cq.message.edit_text(title, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb_rows))
+    text = title
+    if header_notice:
+        text = f"{header_notice}\n\n{title}"
+    await cq.message.edit_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb_rows))
+
+
+def _parse_order_callback_data(data: str) -> tuple[int, str, int] | None:
+    parts = data.split(":")
+    if len(parts) == 5 and parts[:2] == ["cr", "order"]:
+        _, _, order_id, source, page = parts
+    elif len(parts) == 3 and parts[:2] == ["cr", "order"]:
+        # Поддержка старого callback_data вида cr:order:<id>.
+        _, _, order_id = parts
+        source, page = "available", "0"
+    else:
+        return None
+    if not order_id.isdigit() or not str(page).isdigit():
+        return None
+    return int(order_id), str(source), int(page)
 
 
 def _is_order_closed(order: dict) -> bool:
@@ -459,6 +489,16 @@ async def back(cq: CallbackQuery, db: Database, state: FSMContext):
     stack = list(data.get("back_stack") or ["menu"])
     if len(stack) > 1:
         stack.pop()
+    elif data.get("notif_return_stack"):
+        # Восстанавливаем экран до авто-показа уведомления о новом заказе.
+        stack = list(data.get("notif_return_stack") or ["menu"])
+        await state.update_data(
+            notif_return_stack=None,
+            notif_return_views=None,
+            back_stack=stack,
+            views=dict(data.get("notif_return_views") or {}),
+        )
+        data = await state.get_data()
     target = stack[-1] if stack else "menu"
     await state.update_data(back_stack=stack)
 
@@ -534,7 +574,13 @@ async def history_page(cq: CallbackQuery, db: Database, state: FSMContext):
 
 @router.callback_query(F.data.startswith("cr:order:"))
 async def order_card(cq: CallbackQuery, db: Database, state: FSMContext):
-    _, _, order_id, source, page = cq.data.split(":")
+    parsed = _parse_order_callback_data(cq.data)
+    if not parsed:
+        await cq.answer("Кнопка устарела, обновляю список…")
+        await _push_and_render(state, "menu", "available", {"page": 0})
+        await _render_orders_list(cq, db, state, "available", 0)
+        return
+    order_id, source, page = parsed
     # Явно сохраняем предыдущий экран, чтобы кнопка «Назад» вернула в нужный список.
     await _save_current_view(state, source, {"page": int(page)})
     await _push_and_render(state, source, "order", {"order_id": int(order_id), "source": source, "page": int(page)})
