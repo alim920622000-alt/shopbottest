@@ -2,8 +2,11 @@ import logging
 import os
 
 from aiogram import Bot
-from aiogram.fsm.storage.base import BaseStorage
+from aiogram.fsm.storage.base import BaseStorage, StorageKey
+from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+
+from app.services.screen import show_screen
 
 from app.db.database import Database
 from app.repositories.admins_repo import AdminsRepo
@@ -75,8 +78,6 @@ async def notify_admins_new_order(
     if order and order.get("total_amount") is not None:
         lines.append(f"Сумма: {order['total_amount']}")
     lines.append(f"Получение: {_format_fulfillment_type_ru(order.get('fulfillment_type') if order else None)}")
-    text = "\n".join(lines)
-    reply_markup = _build_admin_keyboard(order_id, business_type)
 
     bot = Bot(token=token)
     try:
@@ -130,9 +131,9 @@ async def notify_admins_order_canceled(db: Database, order_id: int, shop_id: int
     lines = [f"❌ Клиент отменил заказ #{order_id}"]
     if order and order.get("total_amount") is not None:
         lines.append(f"Сумма: {order['total_amount']}")
-
     text = "\n".join(lines)
     reply_markup = _build_admin_keyboard(order_id, business_type)
+
 
     bot = Bot(token=token)
     try:
@@ -150,7 +151,7 @@ async def notify_admins_order_canceled(db: Database, order_id: int, shop_id: int
         await bot.session.close()
 
 
-async def notify_couriers_new_order(db: Database, order_id: int) -> None:
+async def notify_couriers_new_order(db: Database, order_id: int, storage: BaseStorage) -> None:
     token = os.getenv("COURIER_BOT_TOKEN", "").strip()
     if not token:
         return
@@ -167,11 +168,55 @@ async def notify_couriers_new_order(db: Database, order_id: int) -> None:
             if not any(int(r["id"]) == int(order_id) for r in visible):
                 continue
             try:
-                await bot.send_message(
-                    uid,
-                    f"🆕 Новый заказ #{order_id}\nДоступен для принятия.",
-                    reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="Открыть заказ", callback_data=f"cr:order:{order_id}")]]),
+                state = FSMContext(storage=storage, key=StorageKey(bot_id=bot.id, chat_id=uid, user_id=uid))
+                data = await state.get_data()
+                # Сохраняем предыдущее состояние экрана курьера, чтобы можно было вернуться кнопкой «Назад».
+                await state.update_data(
+                    notif_return_stack=list(data.get("back_stack") or ["menu"]),
+                    notif_return_views=dict(data.get("views") or {}),
                 )
+                available_count = len(visible)
+                if available_count <= 1:
+                    order = await OrdersRepo(db).get_order(int(order_id))
+                    if not order:
+                        continue
+                    text = (
+                        f"Заказ #{order['id']}\n"
+                        f"Магазин: {order.get('shop_name') or '—'}\n"
+                        f"Статус точки: {order.get('merchant_status')}\n"
+                        f"Статус курьера: {order.get('courier_status')}\n"
+                        f"Сумма: {order.get('total_amount')}"
+                    )
+                    kb = InlineKeyboardMarkup(inline_keyboard=[
+                        [InlineKeyboardButton(text="✅ Принять доставку", callback_data=f"cr:accept:{order_id}:available:0")],
+                        [InlineKeyboardButton(text="⬅️ Назад", callback_data="cr:back")],
+                        [InlineKeyboardButton(text="🏠 Главная", callback_data="cr:home")],
+                    ])
+                    await state.update_data(
+                        back_stack=["view:available", "view:order"],
+                        views={"available": {"page": 0}, "order": {"order_id": int(order_id), "source": "available", "page": 0}},
+                    )
+                    await show_screen(bot, uid, state, db, "courier", text, kb)
+                else:
+                    rows = []
+                    for row in visible[:10]:
+                        oid = int(row["id"])
+                        title = f"Заказ #{oid}"
+                        if oid == int(order_id):
+                            title = f"🆕 {title}"
+                        rows.append([InlineKeyboardButton(text=title, callback_data=f"cr:order:{oid}:available:0")])
+                    rows.append([InlineKeyboardButton(text="⬅️ Назад", callback_data="cr:back")])
+                    text = f"Появился новый заказ #{order_id}\n\nДоступные заказы"
+                    await state.update_data(back_stack=["view:available"], views={"available": {"page": 0}})
+                    await show_screen(
+                        bot,
+                        uid,
+                        state,
+                        db,
+                        "courier",
+                        text,
+                        InlineKeyboardMarkup(inline_keyboard=rows),
+                    )
             except Exception:
                 logger.warning("Не удалось отправить пуш курьеру %s по заказу %s", uid, order_id, exc_info=True)
     finally:

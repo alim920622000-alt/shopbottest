@@ -6,7 +6,6 @@ from math import ceil
 from app.utils.tz import fmt_hm
 
 from aiogram import Bot
-from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.base import StorageKey, BaseStorage
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
@@ -15,7 +14,6 @@ from app.db.database import Database
 from app.repositories.chat_reads_repo import ChatReadsRepo
 from app.repositories.order_seen_repo import OrderSeenRepo
 from app.repositories.admin_nav_repo import AdminNavRepo
-from app.repositories.notif_center_repo import NotifCenterRepo
 from app.services.client_ui_state import remember_client_screen
 from app.services.chat_screen_controller import ChatScreenController
 from app.services.screen import show_screen
@@ -37,15 +35,6 @@ def get_notif_center_lock(bot_kind: str, chat_id: int) -> asyncio.Lock:
         lock = asyncio.Lock()
         _notif_center_locks[key] = lock
     return lock
-
-
-def _is_edit_missing_error(exc: TelegramBadRequest) -> bool:
-    error_text = str(exc).lower()
-    return "message to edit not found" in error_text or "message can't be edited" in error_text
-
-
-def _is_message_not_modified(exc: TelegramBadRequest) -> bool:
-    return "message is not modified" in str(exc).lower()
 
 
 def _calc_total_pages(total: int, page_size: int = PAGE_SIZE) -> int:
@@ -285,31 +274,13 @@ async def show_notification_center(
     await state.update_data(user_id=user_id)
     await state.update_data({NOTIF_SCREEN_KEY: "center"})
     text, kb = await build_admin_center_payload(db, role, user_id)
+    # Центр уведомлений всегда показываем через UIScreen, без отдельного notif_message.
     lock = get_notif_center_lock(bot_kind, user_id)
     async with lock:
-        repo = NotifCenterRepo(db)
-        message_id = await repo.get_message_id(bot_kind, user_id)
-        if message_id:
-            try:
-                await bot.edit_message_text(
-                    text=text,
-                    chat_id=user_id,
-                    message_id=message_id,
-                    reply_markup=kb,
-                )
-                await repo.set_message_id(bot_kind, user_id, message_id)
-                return
-            except TelegramBadRequest as exc:
-                if _is_message_not_modified(exc):
-                    await repo.set_message_id(bot_kind, user_id, message_id)
-                    return
-                if not _is_edit_missing_error(exc):
-                    raise
         if bot_kind == "admin_shop":
-            message_id = await show_screen(bot, user_id, state, db, "admin_shop", text, kb)
+            await show_screen(bot, user_id, state, db, "admin_shop", text, kb)
         else:
-            message_id = await show_screen(bot, user_id, state, db, "admin_restaurant", text, kb)
-        await repo.set_message_id(bot_kind, user_id, message_id)
+            await show_screen(bot, user_id, state, db, "admin_restaurant", text, kb)
 
 
 async def show_notification_center_for_user(
