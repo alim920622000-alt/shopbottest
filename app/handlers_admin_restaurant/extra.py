@@ -429,13 +429,20 @@ async def render_chat(cq: CallbackQuery, state: FSMContext, db: Database, order_
         error_text = str(exc).lower()
         if "message is not modified" in error_text:
             return
-        if "message to edit not found" not in error_text:
-            raise
 
-    # Если исходное сообщение уже недоступно для редактирования, отправляем новый экран.
-    msg = await cq.bot.send_message(cq.from_user.id, text, reply_markup=kb)
-    await state.update_data(chat_message_id=msg.message_id)
-    await set_screen_message_id(state, db, "admin_restaurant", msg.chat.id, msg.message_id)
+    # В админ-боте экран чата должен рендериться только через UIScreens,
+    # поэтому при любой ошибке edit (кроме "message is not modified")
+    # переключаемся на show_screen вместо send_message.
+    message_id = await show_screen(
+        bot=cq.bot,
+        chat_id=cq.message.chat.id if cq.message else cq.from_user.id,
+        state=state,
+        db=db,
+        bot_kind="admin_restaurant",
+        text=text,
+        reply_markup=kb,
+    )
+    await state.update_data(chat_message_id=message_id)
 
 
 async def open_chat_by_order_id(

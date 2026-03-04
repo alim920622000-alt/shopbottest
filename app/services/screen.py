@@ -83,8 +83,12 @@ async def show_screen(
     if screen_message_id:
         try:
             await bot.delete_message(chat_id=chat_id, message_id=screen_message_id)
-        except TelegramBadRequest:
-            pass
+        except TelegramBadRequest as exc:
+            error_text = str(exc).lower()
+            if "message to delete not found" not in error_text:
+                # Любую другую ошибку удаления также игнорируем, чтобы не ломать
+                # одноэкранный рендер: новый screen всё равно должен быть отправлен.
+                pass
         except Exception:
             pass
 
