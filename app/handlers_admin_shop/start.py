@@ -6,7 +6,7 @@ from aiogram.fsm.context import FSMContext
 from app.db.database import Database
 from app.handlers_admin_shop.utils import is_shop_admin
 from app.repositories.chat_reads_repo import ChatReadsRepo
-from app.repositories.order_seen_repo import OrderSeenRepo
+from app.repositories.orders_repo import OrdersRepo
 from app.services.screen import clear_state_keep_screen
 from app.services.chat_screen_controller import ChatScreenController
 from app.services.notification_center import remember_admin_prev_target
@@ -33,8 +33,9 @@ def kb_admin_main(chat_unread_threads: int = 0, new_orders_count: int = 0):
 
 async def build_admin_shop_main_kb(db: Database, user_id: int) -> InlineKeyboardMarkup:
     unread = await ChatReadsRepo(db).count_unread_orders("admin_shop", user_id)
-    new_orders = await OrderSeenRepo(db).count_new_orders("admin_shop", user_id)
-    return kb_admin_main(chat_unread_threads=unread, new_orders_count=new_orders)
+    # В главном меню считаем активные заказы без off-by-one и без зависимости от флага seen.
+    active_orders = await OrdersRepo(db).count_active_for_admin(user_id, "shop")
+    return kb_admin_main(chat_unread_threads=unread, new_orders_count=active_orders)
 
 
 @router.message(CommandStart())
