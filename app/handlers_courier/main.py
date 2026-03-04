@@ -4,6 +4,7 @@ import logging
 import random
 
 from aiogram import F, Router
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -160,6 +161,7 @@ async def _render_orders_list(cq: CallbackQuery, db: Database, state: FSMContext
         for r in rows
     ]
     if mode == "active" and total == 1 and rows:
+        await _push_and_render(state, mode, "order", {"order_id": int(rows[0]["id"]), "source": "active", "page": pi.page})
         await _render_order_card(cq, db, state, int(rows[0]["id"]), "active", pi.page)
         return
     if not kb_rows:
@@ -185,9 +187,6 @@ async def _build_order_card(order: dict, source: str, page: int) -> tuple[str, I
         f"Статус курьера: {order.get('courier_status')}",
         f"Сумма: {order.get('total_amount')}",
     ]
-    if order.get("handoff_code"):
-        lines.append(f"Код выдачи: {order['handoff_code']}")
-
     rows: list[list[InlineKeyboardButton]] = []
     closed = _is_order_closed(order)
     courier_status = str(order.get("courier_status") or "").strip().lower()
@@ -331,14 +330,25 @@ def _phone_request_keyboard() -> ReplyKeyboardMarkup:
 
 def _chat_nav_rows(order_id: int, source: str, source_page: int, thread: str) -> list[list[InlineKeyboardButton]]:
     switch_to = THREAD_COURIER if thread == THREAD_MERCHANT else THREAD_MERCHANT
-    switch_text = "✍️ Написать клиенту" if thread == THREAD_MERCHANT else "✍️ Написать магазину/ресторану"
+    switch_text = "✍️ Написать клиенту" if thread == THREAD_COURIER else "✍️ Написать магазину/ресторану"
     return [
         [InlineKeyboardButton(text=switch_text, callback_data=f"cr:chat_thread:{order_id}:{switch_to}")],
-        [InlineKeyboardButton(text="✍️ Написать сообщение", callback_data=f"cr:chat_send:{order_id}:{source}:{source_page}")],
         [InlineKeyboardButton(text="🔄 Обновить", callback_data=f"cr:chat_refresh:{order_id}")],
         [InlineKeyboardButton(text="⬅️ Назад", callback_data="cr:back")],
         _home_row(),
     ]
+
+
+async def _safe_edit_message_text(message: Message, text: str, kb: InlineKeyboardMarkup) -> bool:
+    """Безопасно обновляет экран и тихо игнорирует отсутствие изменений."""
+    try:
+        await message.edit_text(text, reply_markup=kb)
+        return True
+    except TelegramBadRequest as exc:
+        error_text = str(exc).lower()
+        if "message is not modified" in error_text:
+            return False
+        raise
 
 
 async def _render_chat(cq: CallbackQuery, db: Database, state: FSMContext, order_id: int, page: int, source: str, source_page: int) -> None:
@@ -354,7 +364,7 @@ async def _render_chat(cq: CallbackQuery, db: Database, state: FSMContext, order
     chat = ChatRepo(db)
     reads = ChatReadsRepo(db)
     data = await state.get_data()
-    thread = str(data.get("chat_thread") or THREAD_MERCHANT)
+    thread = str(data.get("chat_thread") or THREAD_COURIER)
     total_messages = await chat.count_messages(order_id, thread=thread)
     total_pages = max(1, calc_total_pages(total_messages, CHAT_PAGE_SIZE))
     current_page = max(1, min(page, total_pages))
@@ -365,8 +375,9 @@ async def _render_chat(cq: CallbackQuery, db: Database, state: FSMContext, order
     text = build_chat_screen_text(order_id, messages, False, str(order.get("business_type") or "shop"), "ru", "courier", shop_name=order.get("shop_name"))
     kb = build_chat_screen_kb(order_id, current_page, total_pages, "cr", _chat_nav_rows(order_id, source, source_page, thread))
     await _save_current_view(state, "order_chat", {"order_id": order_id, "page": current_page, "source": source, "source_page": source_page})
+    await state.set_state(CourierStates.order_chat)
     await state.update_data(chat_order_id=order_id, chat_page=current_page, chat_source=source, chat_source_page=source_page, chat_thread=thread)
-    await cq.message.edit_text(text, reply_markup=kb)
+    await _safe_edit_message_text(cq.message, text, kb)
 
 
 async def _render_chat_from_message(message: Message, db: Database, state: FSMContext) -> None:
@@ -386,7 +397,7 @@ async def _render_chat_from_message(message: Message, db: Database, state: FSMCo
 
     chat = ChatRepo(db)
     data = await state.get_data()
-    thread = str(data.get("chat_thread") or THREAD_MERCHANT)
+    thread = str(data.get("chat_thread") or THREAD_COURIER)
     total_messages = await chat.count_messages(order_id, thread=thread)
     total_pages = max(1, calc_total_pages(total_messages, CHAT_PAGE_SIZE))
     page = max(1, min(page, total_pages))
@@ -741,7 +752,8 @@ async def order_chat(cq: CallbackQuery, db: Database, state: FSMContext):
     _, _, order_id, page, source, source_page = cq.data.split(":")
     pref = await ChatPrefsRepo(db).get(int(order_id), "courier", cq.from_user.id)
     if not pref:
-        pref = THREAD_MERCHANT
+        # Для курьера по умолчанию открыт поток с магазином/рестораном.
+        pref = THREAD_COURIER
         await ChatPrefsRepo(db).set(int(order_id), "courier", cq.from_user.id, pref)
     await state.update_data(chat_thread=pref)
     await _push_and_render(
@@ -764,16 +776,29 @@ async def order_chat_page(cq: CallbackQuery, db: Database, state: FSMContext):
     await cq.answer()
 
 
-@router.callback_query(F.data.startswith("cr:chat_send:"))
-async def order_chat_send(cq: CallbackQuery, state: FSMContext):
-    _, _, order_id, source, source_page = cq.data.split(":")
-    await state.update_data(chat_order_id=int(order_id), chat_source=source, chat_source_page=int(source_page))
-    await state.set_state(CourierStates.order_chat)
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="⬅️ Назад", callback_data=f"cr:chat:{order_id}:1:{source}:{source_page}")],
-        _home_row(),
-    ])
-    await cq.message.answer("Введите сообщение для чата заказа", reply_markup=kb)
+@router.callback_query(F.data.startswith("cr:chat_thread:"))
+async def order_chat_switch_thread(cq: CallbackQuery, db: Database, state: FSMContext):
+    _, _, order_id, thread = cq.data.split(":", 3)
+    if thread not in {THREAD_MERCHANT, THREAD_COURIER}:
+        await cq.answer("Неизвестный режим чата", show_alert=True)
+        return
+    data = await state.get_data()
+    source = str(data.get("chat_source") or "active")
+    source_page = int(data.get("chat_source_page") or 0)
+    await ChatPrefsRepo(db).set(int(order_id), "courier", cq.from_user.id, thread)
+    await state.update_data(chat_thread=thread)
+    await _render_chat(cq, db, state, int(order_id), page=10**9, source=source, source_page=source_page)
+    await cq.answer()
+
+
+@router.callback_query(F.data.startswith("cr:chat_refresh:"))
+async def order_chat_refresh(cq: CallbackQuery, db: Database, state: FSMContext):
+    order_id = int(cq.data.split(":", 2)[2])
+    data = await state.get_data()
+    source = str(data.get("chat_source") or "active")
+    source_page = int(data.get("chat_source_page") or 0)
+    page = int(data.get("chat_page") or 10**9)
+    await _render_chat(cq, db, state, order_id, page=page, source=source, source_page=source_page)
     await cq.answer()
 
 
@@ -791,7 +816,7 @@ async def order_chat_message(message: Message, db: Database, state: FSMContext):
         await message.answer("Чат недоступен.")
         return
 
-    thread = str(data.get("chat_thread") or THREAD_MERCHANT)
+    thread = str(data.get("chat_thread") or THREAD_COURIER)
     await ChatRepo(db).add_message(order_id, message.from_user.id, "courier", text, thread=thread)
     await ChatReadsRepo(db).mark_read(order_id, "courier", message.from_user.id)
     total = await ChatRepo(db).count_messages(order_id, thread=thread)

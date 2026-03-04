@@ -168,8 +168,12 @@ async def render_chat(cq: CallbackQuery, db: Database, order_id: int, page: int,
         if cq.message:
             await cq.message.edit_text(text, reply_markup=kb)
             return
-    except TelegramBadRequest:
-        pass
+    except TelegramBadRequest as exc:
+        error_text = str(exc).lower()
+        if "message is not modified" in error_text:
+            return
+        if "message to edit not found" not in error_text:
+            raise
 
     # если редактировать нельзя — рисуем новый экран
     msg = await cq.bot.send_message(cq.from_user.id, text, reply_markup=kb)

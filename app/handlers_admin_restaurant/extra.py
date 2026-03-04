@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from aiogram import Router, F
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, Message
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
@@ -421,7 +422,20 @@ async def render_chat(cq: CallbackQuery, state: FSMContext, db: Database, order_
     data = await state.get_data() if state else {}
     thread = str(data.get("chat_thread") or THREAD_MERCHANT)
     text, kb = await build_chat_payload(db, order_id, page, back_target, thread=thread)
-    await cq.message.edit_text(text, reply_markup=kb)
+    try:
+        await cq.message.edit_text(text, reply_markup=kb)
+        return
+    except TelegramBadRequest as exc:
+        error_text = str(exc).lower()
+        if "message is not modified" in error_text:
+            return
+        if "message to edit not found" not in error_text:
+            raise
+
+    # Если исходное сообщение уже недоступно для редактирования, отправляем новый экран.
+    msg = await cq.bot.send_message(cq.from_user.id, text, reply_markup=kb)
+    await state.update_data(chat_message_id=msg.message_id)
+    await set_screen_message_id(state, db, "admin_restaurant", msg.chat.id, msg.message_id)
 
 
 async def open_chat_by_order_id(
