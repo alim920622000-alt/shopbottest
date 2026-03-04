@@ -19,6 +19,7 @@ from app.repositories.client_profiles_repo import ClientProfilesRepo
 from app.repositories.couriers_repo import CouriersRepo
 from app.repositories.orders_repo import OrdersRepo
 from app.repositories.settings_repo import SettingsRepo
+from app.repositories.ui_screen_repo import UiScreenRepo
 from app.repositories.zones_repo import ZonesRepo
 from app.services.chat_ui import PAGE_SIZE as CHAT_PAGE_SIZE, build_chat_screen_kb, build_chat_screen_text, calc_total_pages
 from app.services.chat_channels import (
@@ -33,6 +34,7 @@ from app.services.chat_channels import (
 from app.services.courier_capacity import MODE_FREE, MODE_MEDIUM, MODE_STRICT, can_accept_order, get_courier_capacity_mode
 from app.services.order_chat_access import can_access_order_chat
 from app.services.pagination import calc_page
+from app.services.screen import set_screen_message_id
 
 router = Router()
 ZONE_PAGE_SIZE = 8
@@ -177,10 +179,10 @@ async def _render_orders_list(
     for r in rows:
         order_id = int(r["id"])
         # Для сценария с новым заказом подсвечиваем конкретный ID в списке.
-        title = f"Заказ #{order_id}"
+        order_title = f"Заказ #{order_id}"
         if new_order_id and order_id == int(new_order_id):
-            title = f"🆕 {title}"
-        kb_rows.append([InlineKeyboardButton(text=title, callback_data=f"cr:order:{order_id}:{mode}:{pi.page}")])
+            order_title = f"🆕 {order_title}"
+        kb_rows.append([InlineKeyboardButton(text=order_title, callback_data=f"cr:order:{order_id}:{mode}:{pi.page}")])
     if mode == "active" and total == 1 and rows:
         await _push_and_render(state, mode, "order", {"order_id": int(rows[0]["id"]), "source": "active", "page": pi.page})
         await _render_order_card(cq, db, state, int(rows[0]["id"]), "active", pi.page)
@@ -418,7 +420,8 @@ async def _render_chat(cq: CallbackQuery, db: Database, state: FSMContext, order
     await _save_current_view(state, "order_chat", {"order_id": order_id, "page": current_page, "source": source, "source_page": source_page})
     await state.set_state(CourierStates.order_chat)
     await state.update_data(chat_order_id=order_id, chat_page=current_page, chat_source=source, chat_source_page=source_page, chat_channel=channel)
-    await _safe_edit_message_text(cq.message, text, kb)
+    if await _safe_edit_message_text(cq.message, text, kb):
+        await set_screen_message_id(state, db, "courier", cq.from_user.id, cq.message.message_id)
 
 
 async def _render_chat_from_message(message: Message, db: Database, state: FSMContext) -> None:
@@ -448,7 +451,32 @@ async def _render_chat_from_message(message: Message, db: Database, state: FSMCo
     text = build_chat_screen_text(order_id, messages, False, str(order.get("business_type") or "shop"), "ru", "courier", shop_name=order.get("shop_name"))
     kb = build_chat_screen_kb(order_id, page, total_pages, "cr", _chat_nav_rows(order_id, source, source_page, thread))
     await state.update_data(chat_page=page)
-    await message.answer(text, reply_markup=kb)
+
+    # Для курьерского чата поддерживаем однооконный режим:
+    # редактируем сохранённый screen вместо отправки нового сообщения.
+    screen_id = await UiScreenRepo(db).get("courier", message.from_user.id)
+    if not screen_id:
+        screen_id = (await state.get_data()).get("screen_message_id")
+    if not screen_id:
+        logger.info("[COURIER_CHAT] screen_message_id не найден, используем текущее сообщение=%s", message.message_id)
+        screen_id = message.message_id
+
+    logger.info(
+        "[COURIER_CHAT] редактируем экран чата message_id=%s (после отправки сообщения курьером)",
+        screen_id,
+    )
+    try:
+        await message.bot.edit_message_text(
+            chat_id=message.chat.id,
+            message_id=int(screen_id),
+            text=text,
+            reply_markup=kb,
+        )
+    except TelegramBadRequest as exc:
+        if "message is not modified" in str(exc).lower():
+            return
+        raise
+    await set_screen_message_id(state, db, "courier", message.from_user.id, int(screen_id))
 
 
 @router.callback_query(F.data == "cr:noop")
