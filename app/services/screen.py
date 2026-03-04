@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from aiogram import Bot
 from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardMarkup
@@ -9,6 +11,7 @@ from app.db.database import Database
 from app.repositories.ui_screen_repo import UiScreenRepo
 
 SCREEN_MESSAGE_ID_KEY = "screen_message_id"
+logger = logging.getLogger(__name__)
 
 
 async def get_screen_message_id(
@@ -16,16 +19,24 @@ async def get_screen_message_id(
     db: Database,
     bot_kind: str,
     chat_id: int,
+    use_fsm_fallback: bool = True,
 ) -> int | None:
-    data = await state.get_data()
-    screen_message_id = data.get(SCREEN_MESSAGE_ID_KEY)
-    if screen_message_id:
-        return int(screen_message_id)
     repo = UiScreenRepo(db)
-    screen_message_id = await repo.get(bot_kind, chat_id)
-    if screen_message_id:
-        await state.update_data({SCREEN_MESSAGE_ID_KEY: screen_message_id})
-    return screen_message_id
+    screen_message_id_db = await repo.get(bot_kind, chat_id)
+    if screen_message_id_db:
+        await state.update_data({SCREEN_MESSAGE_ID_KEY: screen_message_id_db})
+        return int(screen_message_id_db)
+
+    if not use_fsm_fallback:
+        return None
+
+    # Источником истины для screen_message_id является таблица ui_screens,
+    # FSM используется только как временный fallback.
+    data = await state.get_data()
+    screen_message_id_fsm = data.get(SCREEN_MESSAGE_ID_KEY)
+    if screen_message_id_fsm:
+        return int(screen_message_id_fsm)
+    return None
 
 
 async def set_screen_message_id(
@@ -78,16 +89,41 @@ async def show_screen(
     bot_kind: str,
     text: str,
     reply_markup: InlineKeyboardMarkup | None,
+    screen_name: str | None = None,
+    use_fsm_fallback: bool = True,
 ) -> int:
-    screen_message_id = await get_screen_message_id(state, db, bot_kind, chat_id)
+    repo = UiScreenRepo(db)
+    db_message_id = await repo.get(bot_kind, chat_id)
+    state_data = await state.get_data()
+    fsm_message_id = state_data.get(SCREEN_MESSAGE_ID_KEY)
+    logger.debug(
+        "[SCREEN] bot=%s chat=%s screen=%s db_id=%s fsm_id=%s",
+        bot_kind,
+        chat_id,
+        screen_name or state_data.get("ui_screen") or "unknown",
+        db_message_id,
+        fsm_message_id,
+    )
+
+    screen_message_id = db_message_id
+    if not screen_message_id and use_fsm_fallback:
+        screen_message_id = await get_screen_message_id(
+            state,
+            db,
+            bot_kind,
+            chat_id,
+            use_fsm_fallback=True,
+        )
+
     if screen_message_id:
         try:
             await bot.delete_message(chat_id=chat_id, message_id=screen_message_id)
         except TelegramBadRequest as exc:
             error_text = str(exc).lower()
-            if "message to delete not found" not in error_text:
-                # Любую другую ошибку удаления также игнорируем, чтобы не ломать
-                # одноэкранный рендер: новый screen всё равно должен быть отправлен.
+            if (
+                "message to delete not found" in error_text
+                or "message can't be deleted" in error_text
+            ):
                 pass
         except Exception:
             pass

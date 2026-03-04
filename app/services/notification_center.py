@@ -278,9 +278,29 @@ async def show_notification_center(
     lock = get_notif_center_lock(bot_kind, user_id)
     async with lock:
         if bot_kind == "admin_shop":
-            await show_screen(bot, user_id, state, db, "admin_shop", text, kb)
+            await show_screen(
+                bot,
+                user_id,
+                state,
+                db,
+                "admin_shop",
+                text,
+                kb,
+                screen_name="center",
+                use_fsm_fallback=False,
+            )
         else:
-            await show_screen(bot, user_id, state, db, "admin_restaurant", text, kb)
+            await show_screen(
+                bot,
+                user_id,
+                state,
+                db,
+                "admin_restaurant",
+                text,
+                kb,
+                screen_name="center",
+                use_fsm_fallback=False,
+            )
 
 
 async def show_notification_center_for_user(
