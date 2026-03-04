@@ -3,7 +3,7 @@
 
 TEXTS: dict[str, str] = {
     # Асосий меню
-    "main.order": "🛍 Буюртма",
+    "main.order": "🛍 Буюртма Бериш",
     "main.orders": "📦 Буюртмалар",
     "main.chat": "💬 Чат",
     "main.cabinet": "👤 Кабинет",
