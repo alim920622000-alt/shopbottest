@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from typing import Optional
-
 from app.db.database import Database
 from app.i18n.client.translator import _normalize_locale
 

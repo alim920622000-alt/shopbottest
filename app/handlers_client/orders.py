@@ -11,6 +11,8 @@ from aiogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardBut
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 
+from app.repositories.client_profiles_repo import ClientProfilesRepo
+
 from app.config import CANCEL_WINDOW_MINUTES
 from app.db.database import Database
 from app.handlers_client.kb import kb_orders_list, kb_chat_orders, kb_back
@@ -359,7 +361,11 @@ async def order_card(cq: CallbackQuery, db: Database, state: FSMContext, locale:
     shop_name = shop_info["name"] if shop_info else f"#{o['shop_id']}"
     o["shop_phone"] = (shop_info or {}).get("phone")
     o["business_type"] = (shop_info or {}).get("business_type") or o.get("business_type")
-    courier_profile = await ClientProfilesRepo(db).get(int(o.get("courier_user_id") or 0)) or {}
+    courier_profile = {}
+    courier_id = o.get("courier_user_id")  # или order.get(...)
+    
+    if courier_id:
+        courier_profile = await ClientProfilesRepo(db).get(int(courier_id)) or {}
     o["courier_name"] = courier_profile.get("full_name")
     o["courier_phone"] = courier_profile.get("phone")
 
@@ -422,7 +428,11 @@ async def cancel_order(cq: CallbackQuery, db: Database, state: FSMContext, local
     shop_name = shop_info["name"] if shop_info else f"#{o['shop_id']}"
     o["shop_phone"] = (shop_info or {}).get("phone")
     o["business_type"] = (shop_info or {}).get("business_type") or o.get("business_type")
-    courier_profile = await ClientProfilesRepo(db).get(int(o.get("courier_user_id") or 0)) or {}
+    courier_profile = {}
+    courier_id = o.get("courier_user_id")  # или order.get(...)
+    
+    if courier_id:
+        courier_profile = await ClientProfilesRepo(db).get(int(courier_id)) or {}
     o["courier_name"] = courier_profile.get("full_name")
     o["courier_phone"] = courier_profile.get("phone")
     await _render_order_card(cq, state, db, locale, o, items, shop_name)
@@ -482,7 +492,11 @@ async def arrival_done(cq: CallbackQuery, db: Database, locale: str = "ru"):
     shop_name = shop_info["name"] if shop_info else f"#{updated['shop_id']}"
     updated["shop_phone"] = (shop_info or {}).get("phone")
     updated["business_type"] = (shop_info or {}).get("business_type") or updated.get("business_type")
-    courier_profile = await ClientProfilesRepo(db).get(int(updated.get("courier_user_id") or 0)) or {}
+    courier_profile = {}
+    courier_id = updated.get("courier_user_id")
+    
+    if courier_id:
+        courier_profile = await ClientProfilesRepo(db).get(int(courier_id)) or {}
     updated["courier_name"] = courier_profile.get("full_name")
     updated["courier_phone"] = courier_profile.get("phone")
     text = _build_order_text(locale, updated, items, shop_name, updated.get("shop_phone"))
