@@ -32,6 +32,7 @@ from app.services.chat_channels import (
     normalize_thread_for_actor,
 )
 from app.services.courier_capacity import MODE_FREE, MODE_MEDIUM, MODE_STRICT, can_accept_order, get_courier_capacity_mode
+from app.services.order_card_formatter import build_courier_order_card
 from app.services.order_chat_access import can_access_order_chat
 from app.services.pagination import calc_page
 from app.services.screen import set_screen_message_id
@@ -220,17 +221,11 @@ def _is_order_closed(order: dict) -> bool:
     return courier_status in {"delivered", "completed", "canceled", "cancelled"} or merchant_status in {"completed", "cancelled", "canceled"}
 
 
-async def _build_order_card(order: dict, source: str, page: int) -> tuple[str, InlineKeyboardMarkup]:
-    lines = [
-        f"Заказ #{order['id']}",
-        f"Магазин: {order.get('shop_name') or '—'}",
-        f"Статус точки: {order.get('merchant_status')}",
-        f"Статус курьера: {order.get('courier_status')}",
-        f"Сумма: {order.get('total_amount')}",
-    ]
+async def _build_order_card(order: dict, items: list[dict], source: str, page: int) -> tuple[str, InlineKeyboardMarkup]:
+    courier_status = str(order.get("courier_status") or "").strip().lower()
+    text = build_courier_order_card("ru", order, items, show_client_block=courier_status in {"picked_up", "arrived"})
     rows: list[list[InlineKeyboardButton]] = []
     closed = _is_order_closed(order)
-    courier_status = str(order.get("courier_status") or "").strip().lower()
     merchant_status = str(order.get("merchant_status") or "").strip().lower()
 
     if not closed and courier_status == "searching":
@@ -245,7 +240,7 @@ async def _build_order_card(order: dict, source: str, page: int) -> tuple[str, I
         rows.append([InlineKeyboardButton(text="💬 Чат по заказу", callback_data=f"cr:chat:{order['id']}:1:{source}:{page}")])
     rows.append(_back_row())
     rows.append(_home_row())
-    return "\n".join(lines), InlineKeyboardMarkup(inline_keyboard=rows)
+    return text, InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def _mode_label(mode: int) -> str:
@@ -270,9 +265,19 @@ async def _render_order_card(cq: CallbackQuery, db: Database, state: FSMContext,
     if not o:
         await cq.answer("Заказ не найден", show_alert=True)
         return False
-    text, kb = await _build_order_card(o, source, page)
+    items = list(await OrdersRepo(db).get_order_items(order_id))
+    shop = await ShopsRepo(db).get(int(o.get("shop_id") or 0)) if o.get("shop_id") else None
+    client = await ClientProfilesRepo(db).get(int(o.get("client_user_id") or 0)) if o.get("client_user_id") else None
+    order_for_card = dict(o)
+    order_for_card["shop_name"] = order_for_card.get("shop_name") or (shop or {}).get("name") or "—"
+    order_for_card["business_type"] = (shop or {}).get("business_type") or "shop"
+    order_for_card["pickup_address"] = (shop or {}).get("address") or order_for_card.get("shop_name") or "—"
+    order_for_card["delivery_address"] = (client or {}).get("address") or "—"
+    order_for_card["client_name"] = (client or {}).get("full_name") or "—"
+    order_for_card["client_phone"] = (client or {}).get("phone") or "—"
+    text, kb = await _build_order_card(order_for_card, items, source, page)
     await _save_current_view(state, "order", {"order_id": order_id, "source": source, "page": page})
-    await cq.message.edit_text(text, reply_markup=kb)
+    await cq.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
     return True
 
 
@@ -315,7 +320,7 @@ async def _render_cabinet(cq: CallbackQuery, db: Database, state: FSMContext) ->
     kb_rows.append(_back_row())
     kb = InlineKeyboardMarkup(inline_keyboard=kb_rows)
     await _save_current_view(state, "cabinet")
-    await cq.message.edit_text(text, reply_markup=kb)
+    await cq.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
 
 
 async def _render_zones(cq: CallbackQuery, db: Database, state: FSMContext, page: int = 0) -> None:
