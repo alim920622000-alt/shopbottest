@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import html
 from datetime import datetime, timedelta
 from app.utils.tz import utcnow, ensure_utc
 import random
@@ -32,7 +33,7 @@ from app.services.screen import clear_state_keep_screen, show_screen
 from app.services.chat_screen_controller import ChatScreenController
 from app.services.client_ui_state import remember_client_screen
 from app.services.notification_center import parse_notif_context, NOTIF_SRC_MSGS
-from app.services.order_statuses import compose_client_status_key
+from app.services.order_card_ux import business_emoji, format_order_hhmm, map_status_to_ux, should_show_client_courier_phone
 from app.services.order_chat_access import can_access_order_chat, CLOSED_STATUSES
 from app.services.chat_channels import (
     CHANNEL_CLIENT_COURIER,
@@ -45,6 +46,7 @@ from app.services.chat_channels import (
 )
 from app.services.badges import get_unread_order_ids_for_view
 from app.handlers_client.catalog import render_cart
+from app.services.receipt import render_receipt_pre_from_order_items
 from app.i18n.client.translator import t
 from app.utils.tg_safe import safe_delete_cq_message
 from app.services.pagination import calc_page, pager_row
@@ -122,21 +124,48 @@ def _can_cancel_order(order: dict | None, now: datetime | None = None) -> bool:
     return now - created_at <= timedelta(minutes=CANCEL_WINDOW_MINUTES)
 
 
-def _build_order_text(locale: str, order: dict, items: list[dict], shop_name: str) -> str:
-    comment = (order.get("comment") or "").strip()
-    comment_line = comment or t(locale, "cabinet.empty_value")
+def build_client_order_card_text(locale: str, order: dict, items: list[dict], shop_name: str, shop_phone: str | None = None) -> str:
+    status_emoji, status_label = map_status_to_ux(order.get("merchant_status"), order.get("courier_status"))
+    biz_emoji = business_emoji(order.get("business_type"))
+    time_hhmm = format_order_hhmm(order.get("created_at"))
+
+    safe_shop_name = html.escape(str(shop_name or f"#{order.get('shop_id') or ''}"))
+    safe_shop_phone = html.escape(str(shop_phone or "—"))
+    safe_courier_name = html.escape(str(order.get("courier_name") or "—"))
+    safe_courier_phone = html.escape(str(order.get("courier_phone") or "—"))
+    safe_comment = html.escape((order.get("comment") or "").strip() or t(locale, "cabinet.empty_value"))
+
     lines = [
-        t(locale, "orders.item_tpl", order_id=order["id"]),
-        t(locale, "order.shop", shop_name=shop_name),
-        t(locale, "order.status", status=t(locale, compose_client_status_key(order.get("merchant_status"), order.get("courier_status")))),
-        t(locale, "order.total", total=order["total_amount"]),
-        t(locale, "order.comment", comment=comment_line),
+        f"{biz_emoji} Заказ #{order['id']}  ({status_emoji} {status_label})  {time_hhmm}",
         "",
-        t(locale, "order.items_title"),
+        f"{biz_emoji} {safe_shop_name}",
+        f"📞 {safe_shop_phone}",
+        "",
     ]
-    for it in items:
-        lines.append(f"- {it['name']} x{it['quantity']} = {it['price_at_moment']}")
+
+    if status_emoji == "🟡":
+        pass
+    elif status_emoji == "⏳":
+        lines.append(t(locale, "order.card.courier_assigning"))
+        lines.append("")
+    else:
+        lines.append(t(locale, "order.card.courier_title", name=safe_courier_name))
+        if should_show_client_courier_phone(order.get("merchant_status"), order.get("courier_status")):
+            lines.append(f"📞 {safe_courier_phone}")
+        lines.append("")
+
+    lines += [
+        t(locale, "order.card.comment_title"),
+        safe_comment,
+        "",
+        render_receipt_pre_from_order_items(items, float(order.get("total_amount") or 0)),
+    ]
     return "\n".join(lines)
+
+
+def _build_order_text(locale: str, order: dict, items: list[dict], shop_name: str, shop_phone: str | None = None) -> str:
+    return build_client_order_card_text(locale, order, items, shop_name, shop_phone)
+
 
 
 async def _render_order_card(
@@ -149,7 +178,7 @@ async def _render_order_card(
     shop_name: str,
 ) -> None:
     back_cb = "c:history" if order["status"] in DONE_STATUSES else "c:orders"
-    text = _build_order_text(locale, order, items, shop_name)
+    text = _build_order_text(locale, order, items, shop_name, order.get("shop_phone"))
     can_cancel = _can_cancel_order(order)
     can_chat = await can_access_order_chat(db, order)
     can_repeat = str(order.get("status") or "").strip().lower() in CLOSED_STATUSES
@@ -165,9 +194,10 @@ async def _render_order_card(
             bot_kind="client",
             text=text,
             reply_markup=reply_markup,
+            parse_mode="HTML",
         )
     else:
-        await cq.message.edit_text(text, reply_markup=reply_markup)
+        await cq.message.edit_text(text, reply_markup=reply_markup, parse_mode="HTML")
 
 
 def kb_chat_nav_rows(locale: str, order_id: int, thread: str, back_target: str | None = None) -> list[list[InlineKeyboardButton]]:
@@ -327,6 +357,11 @@ async def order_card(cq: CallbackQuery, db: Database, state: FSMContext, locale:
     shop = ShopsRepo(db)
     shop_info = await shop.get(int(o["shop_id"]))
     shop_name = shop_info["name"] if shop_info else f"#{o['shop_id']}"
+    o["shop_phone"] = (shop_info or {}).get("phone")
+    o["business_type"] = (shop_info or {}).get("business_type") or o.get("business_type")
+    courier_profile = await ClientProfilesRepo(db).get(int(o.get("courier_user_id") or 0)) or {}
+    o["courier_name"] = courier_profile.get("full_name")
+    o["courier_phone"] = courier_profile.get("phone")
 
     await _render_order_card(cq, state, db, locale, o, items, shop_name)
     await cq.answer()
@@ -385,6 +420,11 @@ async def cancel_order(cq: CallbackQuery, db: Database, state: FSMContext, local
     shop = ShopsRepo(db)
     shop_info = await shop.get(int(o["shop_id"]))
     shop_name = shop_info["name"] if shop_info else f"#{o['shop_id']}"
+    o["shop_phone"] = (shop_info or {}).get("phone")
+    o["business_type"] = (shop_info or {}).get("business_type") or o.get("business_type")
+    courier_profile = await ClientProfilesRepo(db).get(int(o.get("courier_user_id") or 0)) or {}
+    o["courier_name"] = courier_profile.get("full_name")
+    o["courier_phone"] = courier_profile.get("phone")
     await _render_order_card(cq, state, db, locale, o, items, shop_name)
 
 
@@ -440,8 +480,13 @@ async def arrival_done(cq: CallbackQuery, db: Database, locale: str = "ru"):
     items = await repo.get_order_items(order_id)
     shop_info = await ShopsRepo(db).get(int(updated["shop_id"]))
     shop_name = shop_info["name"] if shop_info else f"#{updated['shop_id']}"
-    text = _build_order_text(locale, updated, items, shop_name)
-    await cq.message.edit_text(text, reply_markup=kb_order_card(locale, order_id, "c:history", can_cancel=False, can_chat=False, can_repeat=True))
+    updated["shop_phone"] = (shop_info or {}).get("phone")
+    updated["business_type"] = (shop_info or {}).get("business_type") or updated.get("business_type")
+    courier_profile = await ClientProfilesRepo(db).get(int(updated.get("courier_user_id") or 0)) or {}
+    updated["courier_name"] = courier_profile.get("full_name")
+    updated["courier_phone"] = courier_profile.get("phone")
+    text = _build_order_text(locale, updated, items, shop_name, updated.get("shop_phone"))
+    await cq.message.edit_text(text, reply_markup=kb_order_card(locale, order_id, "c:history", can_cancel=False, can_chat=False, can_repeat=True), parse_mode="HTML")
 
 @router.callback_query(F.data.startswith("c:chat:p:"))
 async def chat_list_page(cq: CallbackQuery, db: Database, state: FSMContext, locale: str = "ru"):

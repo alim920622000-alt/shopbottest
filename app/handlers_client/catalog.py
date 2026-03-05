@@ -1,45 +1,6 @@
 import logging
 import re
-import html
-
-def _money_s(amount: float) -> str:
-    return f"{amount:.2f} с."
-    
-def _render_receipt_pre(
-    items: list[dict],
-    total: float,
-    total_label: str = "ИТОГО",
-    width: int = 28,
-) -> str:
-    rows: list[tuple[str, str]] = []
-    for it in items:
-        qty = int(it["quantity"])
-        name = str(it["name"])
-        line_total = float(it["price"]) * qty
-        left = f"{qty} x {name}"
-        right = _money_s(line_total)
-        rows.append((left, right))
-
-    total_left = total_label
-    total_right = _money_s(total)
-
-    max_left = max([len(total_left)] + [len(l) for l, _ in rows])
-    max_right = max([len(total_right)] + [len(r) for _, r in rows])
-    line_width = max(width, max_left + 2 + max_right)
-    sep = "-" * line_width
-
-    def line(left: str, right: str) -> str:
-        dots = line_width - len(left) - len(right) - 2
-        if dots < 1:
-            dots = 1
-        return f"{left} {'.' * dots} {right}"
-
-    lines = [sep]
-    lines += [line(l, r) for l, r in rows]
-    lines += [sep, line(total_left, total_right)]
-
-    body = "\n".join(lines)
-    return f"<pre>{html.escape(body)}</pre>"
+from app.services.receipt import render_receipt_pre as _render_receipt_pre
 
     
 from aiogram import Router, F

@@ -1,3 +1,4 @@
+import html
 from aiogram import Router, F
 from aiogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.fsm.context import FSMContext
@@ -6,6 +7,7 @@ from app.handlers_admin_restaurant.start import build_admin_restaurant_main_kb
 from app.db.database import Database
 from app.handlers_admin_restaurant.utils import get_admin_restaurant_ids
 from app.repositories.orders_repo import OrdersRepo
+from app.repositories.client_profiles_repo import ClientProfilesRepo
 from app.repositories.order_seen_repo import OrderSeenRepo
 from app.services.chat_reminders import is_chat_reminder_text
 from app.services.order_chat_access import can_access_order_chat
@@ -14,6 +16,8 @@ from app.services.screen import clear_state_keep_screen, show_screen
 from app.utils.tg_safe import safe_delete_cq_message
 from app.services.pagination import calc_page, pager_row
 from app.services.order_ui_status import admin_order_sort_key, admin_order_status_emoji
+from app.services.receipt import render_receipt_pre_from_order_items
+from app.services.order_card_ux import admin_action_line, business_emoji, format_order_hhmm, map_status_to_ux
 
 PAGE_SIZE = 8
 
@@ -73,32 +77,35 @@ async def build_order_card_payload(
         return (
             "Заказ не найден.",
             InlineKeyboardMarkup(
-                inline_keyboard=[
-                    [
-                        InlineKeyboardButton(text="🏠 Главная", callback_data="r:home"),
-                        InlineKeyboardButton(text="🔙 Назад", callback_data=back_target),
-                    ]
-                ]
+                inline_keyboard=[[
+                    InlineKeyboardButton(text="🏠 Главная", callback_data="r:home"),
+                    InlineKeyboardButton(text="🔙 Назад", callback_data=back_target),
+                ]]
             ),
         )
 
     items = await orders.get_order_items(order_id)
-    comment = (o.get("comment") or "").strip()
-    comment_line = comment or "— не добавлен —"
+    profile = await ClientProfilesRepo(db).get(int(o.get("client_user_id") or 0)) or {}
     shop_info = await __import__("app.repositories.shops_repo", fromlist=["ShopsRepo"]).ShopsRepo(db).get(int(o["shop_id"]))
-    reserve = "Да" if int((shop_info or {}).get("allow_prepare_before_courier") or 0) == 1 else "Нет"
+    emoji = business_emoji((shop_info or {}).get("business_type") or "restaurant")
+    status_emoji, status_label = map_status_to_ux(o.get("merchant_status"), o.get("courier_status"))
     lines = [
-        f"Заказ #{o['id']}",
-        f"🛟 Резервные курьеры: {reserve}",
-        f"Статус (legacy): {o['status']}",
-        f"Сумма: {o['total_amount']}",
-        f"Получение: {_format_fulfillment_type(o.get('fulfillment_type'))}",
-        f"Комментарий: {comment_line}",
+        f"{emoji} Заказ #{o['id']}  ({status_emoji} {status_label})  {format_order_hhmm(o.get('created_at'))}",
         "",
-        "Состав:",
+        admin_action_line("restaurant", o.get("merchant_status"), o.get("courier_status")),
+        "",
+        f"{emoji} {html.escape(str((shop_info or {}).get('name') or o.get('shop_name') or ('#' + str(o['shop_id']))))}",
+        f"📞 {html.escape(str((shop_info or {}).get('phone') or '—'))}",
+        "",
+        f"👤 {html.escape(str(profile.get('full_name') or '—'))}",
+        f"📞 {html.escape(str(profile.get('phone') or '—'))}",
+        f"📍 {html.escape(str(profile.get('address') or '—'))}",
+        "",
+        "💬 Комментарий",
+        html.escape((o.get("comment") or "").strip() or "— не добавлен —"),
+        "",
+        render_receipt_pre_from_order_items(items, float(o.get("total_amount") or 0)),
     ]
-    for it in items:
-        lines.append(f"- {it['name']} x{it['quantity']} = {it['price_at_moment']}")
 
     can_chat = await can_access_order_chat(db, o)
     merchant_status = str(o.get("merchant_status") or "")
@@ -116,6 +123,7 @@ async def render_order_card_by_id(cq: CallbackQuery, db: Database, state: FSMCon
         bot_kind="admin_restaurant",
         text=text,
         reply_markup=kb,
+        parse_mode="HTML",
     )
     await OrderSeenRepo(db).mark_order_seen(order_id, "admin_restaurant", cq.from_user.id)
 
@@ -151,7 +159,7 @@ async def render_orders_list(cq: CallbackQuery, db: Database, restaurant_id: int
 
 async def render_order_card(cq: CallbackQuery, db: Database, order_id: int):
     text, kb = await build_order_card_payload(db, order_id, "r:orders")
-    await cq.message.edit_text(text, reply_markup=kb)
+    await cq.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
 
 
 @router.callback_query(F.data.startswith("r:orders:p:"))
@@ -208,10 +216,11 @@ async def order_card(cq: CallbackQuery, db: Database, state: FSMContext):
             bot_kind="admin_restaurant",
             text=text,
             reply_markup=kb,
+            parse_mode="HTML",
         )
     else:
         text, kb = await build_order_card_payload(db, order_id, back_target)
-        await cq.message.edit_text(text, reply_markup=kb)
+        await cq.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
     await OrderSeenRepo(db).mark_order_seen(order_id, "admin_restaurant", cq.from_user.id)
     await cq.answer()
 
@@ -228,7 +237,7 @@ async def set_status(cq: CallbackQuery, db: Database, state: FSMContext):
     data = await state.get_data()
     back_target = data.get("order_back_target") or "r:orders"
     text, kb = await build_order_card_payload(db, order_id, back_target)
-    await cq.message.edit_text(text, reply_markup=kb)
+    await cq.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
 
 
 @router.callback_query(F.data == "r:back:main")

@@ -15,6 +15,8 @@ from app.repositories.shops_repo import ShopsRepo
 from app.repositories.couriers_repo import CouriersRepo
 from app.services.notification_center import show_notification_center_for_user
 from app.services.courier_capacity import can_accept_order
+from app.handlers_courier.main import _build_order_card
+from app.repositories.client_profiles_repo import ClientProfilesRepo
 
 logger = logging.getLogger(__name__)
 
@@ -180,23 +182,16 @@ async def notify_couriers_new_order(db: Database, order_id: int, storage: BaseSt
                     order = await OrdersRepo(db).get_order(int(order_id))
                     if not order:
                         continue
-                    text = (
-                        f"Заказ #{order['id']}\n"
-                        f"Магазин: {order.get('shop_name') or '—'}\n"
-                        f"Статус точки: {order.get('merchant_status')}\n"
-                        f"Статус курьера: {order.get('courier_status')}\n"
-                        f"Сумма: {order.get('total_amount')}"
-                    )
-                    kb = InlineKeyboardMarkup(inline_keyboard=[
-                        [InlineKeyboardButton(text="✅ Принять доставку", callback_data=f"cr:accept:{order_id}:available:0")],
-                        [InlineKeyboardButton(text="⬅️ Назад", callback_data="cr:back")],
-                        [InlineKeyboardButton(text="🏠 Главная", callback_data="cr:home")],
-                    ])
+                    profile = await ClientProfilesRepo(db).get(int(order.get("client_user_id") or 0)) or {}
+                    order["client_full_name"] = profile.get("full_name")
+                    order["client_phone"] = profile.get("phone")
+                    order["delivery_address"] = profile.get("address")
+                    text, kb = await _build_order_card(order, "available", 0, db)
                     await state.update_data(
                         back_stack=["view:available", "view:order"],
                         views={"available": {"page": 0}, "order": {"order_id": int(order_id), "source": "available", "page": 0}},
                     )
-                    await show_screen(bot, uid, state, db, "courier", text, kb)
+                    await show_screen(bot, uid, state, db, "courier", text, kb, parse_mode="HTML")
                 else:
                     rows = []
                     for row in visible[:10]:

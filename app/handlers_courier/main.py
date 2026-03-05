@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import random
+import html
 
 from aiogram import F, Router
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError, TelegramNotFound
@@ -19,6 +20,7 @@ from app.repositories.client_profiles_repo import ClientProfilesRepo
 from app.repositories.couriers_repo import CouriersRepo
 from app.repositories.orders_repo import OrdersRepo
 from app.repositories.settings_repo import SettingsRepo
+from app.repositories.shops_repo import ShopsRepo
 from app.repositories.ui_screen_repo import UiScreenRepo
 from app.repositories.zones_repo import ZonesRepo
 from app.services.chat_ui import PAGE_SIZE as CHAT_PAGE_SIZE, build_chat_screen_kb, build_chat_screen_text, calc_total_pages
@@ -35,6 +37,8 @@ from app.services.courier_capacity import MODE_FREE, MODE_MEDIUM, MODE_STRICT, c
 from app.services.order_chat_access import can_access_order_chat
 from app.services.pagination import calc_page
 from app.services.screen import set_screen_message_id
+from app.services.receipt import render_receipt_pre_from_order_items
+from app.services.order_card_ux import business_emoji, courier_action_line, format_order_hhmm, map_status_to_ux
 
 router = Router()
 ZONE_PAGE_SIZE = 8
@@ -220,14 +224,42 @@ def _is_order_closed(order: dict) -> bool:
     return courier_status in {"delivered", "completed", "canceled", "cancelled"} or merchant_status in {"completed", "cancelled", "canceled"}
 
 
-async def _build_order_card(order: dict, source: str, page: int) -> tuple[str, InlineKeyboardMarkup]:
+async def _build_order_card(order: dict, source: str, page: int, db: Database | None = None) -> tuple[str, InlineKeyboardMarkup]:
+    status_emoji, status_label = map_status_to_ux(order.get("merchant_status"), order.get("courier_status"))
+    emoji = business_emoji(order.get("business_type"))
+    order_items: list[dict] = []
+    shop_phone = "—"
+    shop_address = "—"
+    if db is not None:
+        shop = await ShopsRepo(db).get(int(order.get("shop_id") or 0))
+        if shop:
+            shop_phone = str(shop.get("phone") or "—")
+            shop_address = str(shop.get("address") or "—")
+            order["business_type"] = shop.get("business_type") or order.get("business_type")
+        order_items = list(await OrdersRepo(db).get_order_items(int(order["id"])))
+
+    header = f"{emoji} Заказ #{order['id']}  ({status_emoji} {status_label})  {format_order_hhmm(order.get('created_at'))}"
     lines = [
-        f"Заказ #{order['id']}",
-        f"Магазин: {order.get('shop_name') or '—'}",
-        f"Статус точки: {order.get('merchant_status')}",
-        f"Статус курьера: {order.get('courier_status')}",
-        f"Сумма: {order.get('total_amount')}",
+        header,
+        "",
+        courier_action_line(order.get("merchant_status"), order.get("courier_status")),
+        "",
+        f"{emoji} {html.escape(str(order.get('shop_name') or '—'))}",
+        f"📞 {html.escape(shop_phone)}",
+        "",
+        f"📍 Забрать: {html.escape(shop_address)}",
+        "⬇️",
+        f"📍 Доставить: {html.escape(str(order.get('delivery_address') or '—'))}",
     ]
+    if status_emoji in {"🚚", "📍"}:
+        lines += [
+            "",
+            f"👤 {html.escape(str(order.get('client_full_name') or '—'))}",
+            f"📞 {html.escape(str(order.get('client_phone') or '—'))}",
+            f"📍 Доставить: {html.escape(str(order.get('delivery_address') or '—'))}",
+        ]
+    lines += ["", render_receipt_pre_from_order_items(order_items, float(order.get("total_amount") or 0))]
+
     rows: list[list[InlineKeyboardButton]] = []
     closed = _is_order_closed(order)
     courier_status = str(order.get("courier_status") or "").strip().lower()
@@ -270,9 +302,13 @@ async def _render_order_card(cq: CallbackQuery, db: Database, state: FSMContext,
     if not o:
         await cq.answer("Заказ не найден", show_alert=True)
         return False
-    text, kb = await _build_order_card(o, source, page)
+    profile = await ClientProfilesRepo(db).get(int(o.get("client_user_id") or 0)) or {}
+    o["client_full_name"] = profile.get("full_name")
+    o["client_phone"] = profile.get("phone")
+    o["delivery_address"] = profile.get("address")
+    text, kb = await _build_order_card(o, source, page, db)
     await _save_current_view(state, "order", {"order_id": order_id, "source": source, "page": page})
-    await cq.message.edit_text(text, reply_markup=kb)
+    await cq.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
     return True
 
 
@@ -315,7 +351,7 @@ async def _render_cabinet(cq: CallbackQuery, db: Database, state: FSMContext) ->
     kb_rows.append(_back_row())
     kb = InlineKeyboardMarkup(inline_keyboard=kb_rows)
     await _save_current_view(state, "cabinet")
-    await cq.message.edit_text(text, reply_markup=kb)
+    await cq.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
 
 
 async def _render_zones(cq: CallbackQuery, db: Database, state: FSMContext, page: int = 0) -> None:

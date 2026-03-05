@@ -184,6 +184,9 @@ TEXTS: dict[str, str] = {
     "chat.closed": "Chat yopilgan.",
     "cart.title.default": "🧺 Savat",
     "order.cancel": "❌ Буюртмани бекор қилиш",
+    "order.card.courier_assigning": "🛵 Курьер: назначается",
+    "order.card.courier_title": "🛵 Курьер: {name}",
+    "order.card.comment_title": "💬 Комментарий",  # TODO: перевести на локальный язык
     "order.comment": "Изоҳ: {comment}",
     "order.cancel.already": "Буюртма аллақачон бекор қилинган.",
     "order.cancel.unavailable": "Бекор қилиш мумкин эмас, буюртма ишловда.",

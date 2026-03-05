@@ -49,3 +49,21 @@ def compose_client_status_key(merchant_status: str | None, courier_status: str |
     if legacy == "delivered":
         return "order.status.delivered"
     return "order.status.new"
+
+
+def compose_ux_status(merchant_status: str | None, courier_status: str | None) -> tuple[str, str]:
+    merchant = (merchant_status or "").strip().lower()
+    courier = (courier_status or "").strip().lower()
+    if merchant == "canceled" or courier == "canceled":
+        return "❌", "Отменён"
+    if courier == "arrived":
+        return "📍", "Прибыл"
+    if courier == "picked_up":
+        return "🚚", "В пути"
+    if courier == "delivered" or merchant == "completed":
+        return "✅", "Доставлен"
+    if merchant == "ready":
+        return "🟢", "Готово"
+    if merchant in {"preparing", "accepted"}:
+        return "⏳", "Готовится"
+    return "🟡", "Новый"

@@ -22,7 +22,7 @@ from app.handlers_client.kb import (
     kb_cabinet,
     kb_language_select,
 )
-from app.handlers_client.orders import DONE_STATUSES, kb_order_card, kb_chat_nav_rows
+from app.handlers_client.orders import DONE_STATUSES, kb_order_card, kb_chat_nav_rows, build_client_order_card_text
 from app.i18n.client.translator import t
 from app.repositories.cart_repo import CartRepo
 from app.repositories.categories_repo import CategoriesRepo
@@ -36,7 +36,6 @@ from app.services.chat_ui import PAGE_SIZE, build_chat_screen_kb, build_chat_scr
 from app.services.badges import get_unread_order_ids_for_view
 from app.services.notification_center import build_client_center_payload, build_client_messages_payload
 from app.services.order_chat_access import can_access_order_chat, CLOSED_STATUSES
-from app.services.order_statuses import compose_client_status_key
 from app.services.chat_channels import CHANNEL_CLIENT_MERCHANT, map_channel_to_legacy_thread, map_legacy_thread_to_channel
 from app.services.client_main_menu import build_client_main_kb_dynamic
 
@@ -154,20 +153,16 @@ async def render_client_screen(db: Database, state: FSMContext) -> tuple[str, In
         items = await orders.get_order_items(order_id)
         shop = await ShopsRepo(db).get(int(order["shop_id"]))
         shop_name = shop["name"] if shop else f"#{order['shop_id']}"
-        lines = [
-            t(locale, "orders.item_tpl", order_id=order["id"]),
-            t(locale, "order.shop", shop_name=shop_name),
-            t(locale, "order.status", status=t(locale, compose_client_status_key(order.get('merchant_status'), order.get('courier_status')))),
-            t(locale, "order.total", total=order["total_amount"]),
-            "",
-            t(locale, "order.items_title"),
-        ]
-        for it in items:
-            lines.append(f"- {it['name']} x{it['quantity']} = {it['price_at_moment']}")
+        order["shop_phone"] = (shop or {}).get("phone")
+        order["business_type"] = (shop or {}).get("business_type") or order.get("business_type")
+        courier_profile = await ClientProfilesRepo(db).get(int(order.get("courier_user_id") or 0)) or {}
+        order["courier_name"] = courier_profile.get("full_name")
+        order["courier_phone"] = courier_profile.get("phone")
+        text = build_client_order_card_text(locale, order, items, shop_name, order.get("shop_phone"))
         back_cb = "c:history" if order["status"] in DONE_STATUSES else "c:orders"
         can_chat = await can_access_order_chat(db, order)
         can_repeat = str(order.get("status") or "").strip().lower() in CLOSED_STATUSES
-        return "\n".join(lines), kb_order_card(locale, order_id, back_cb, False, can_chat, can_repeat)
+        return text, kb_order_card(locale, order_id, back_cb, False, can_chat, can_repeat)
 
     if screen == "chat_list":
         if not user_id:

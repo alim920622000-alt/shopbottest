@@ -91,6 +91,7 @@ async def show_screen(
     reply_markup: InlineKeyboardMarkup | None,
     screen_name: str | None = None,
     use_fsm_fallback: bool = True,
+    parse_mode: str | None = None,
 ) -> int:
     repo = UiScreenRepo(db)
     db_message_id = await repo.get(bot_kind, chat_id)
@@ -128,7 +129,7 @@ async def show_screen(
         except Exception:
             pass
 
-    message = await bot.send_message(chat_id=chat_id, text=text, reply_markup=reply_markup)
+    message = await bot.send_message(chat_id=chat_id, text=text, reply_markup=reply_markup, parse_mode=parse_mode)
     await set_screen_message_id(state, db, bot_kind, chat_id, message.message_id)
     return message.message_id
 
@@ -153,17 +154,18 @@ async def show_main_menu(
     )
 
 
-async def safe_edit_text(cq, text: str, reply_markup: InlineKeyboardMarkup | None = None) -> None:
+async def safe_edit_text(cq, text: str, reply_markup: InlineKeyboardMarkup | None = None, parse_mode: str | None = None) -> None:
     # Безопасное обновление обычного или inline-сообщения.
     try:
         if cq.message is not None:
-            await cq.message.edit_text(text, reply_markup=reply_markup)
+            await cq.message.edit_text(text, reply_markup=reply_markup, parse_mode=parse_mode)
             return
         if cq.inline_message_id:
             await cq.bot.edit_message_text(
                 text=text,
                 inline_message_id=cq.inline_message_id,
                 reply_markup=reply_markup,
+                parse_mode=parse_mode,
             )
             return
         await cq.answer("Не удалось обновить сообщение")
