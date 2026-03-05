@@ -102,7 +102,7 @@ async def notif_return(cq: CallbackQuery, db: Database, state: FSMContext) -> No
         await cq.answer()
         return
     if target == "r:cats":
-        await render_categories(cq, db)
+        await render_categories(cq, db, state)
         await cq.answer()
         return
     if target.startswith("r:order:"):
