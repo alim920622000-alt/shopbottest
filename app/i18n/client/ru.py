@@ -197,7 +197,7 @@ TEXTS: dict[str, str] = {
     "order.status.new": "🆕 Новый",
     "order.status.preparing": "⏳ Готовится",
     "order.status.ready": "📦 Готов",
-    "order.status.picked_up": "🛵 Курьер забрал",
+    "order.status.picked_up": "🛵 В пути",
     "order.status.arrived": "📍 Курьер прибыл",
     "order.status.delivered": "✅ Доставлен",
     "order.status.canceled": "❌ Отменён",

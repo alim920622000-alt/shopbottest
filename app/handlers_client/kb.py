@@ -30,19 +30,29 @@ def kb_client_main(
     has_arrived_order: bool = False,
     chat_unread_threads: int = 0,
 ) -> InlineKeyboardMarkup:
+
     chat_text = t(locale, "main.chat")
     if chat_unread_threads > 0:
         chat_text = f"{chat_text} ({chat_unread_threads})"
+
     rows = [
         [InlineKeyboardButton(text=t(locale, "main.order"), callback_data="c:order_menu")],
         [InlineKeyboardButton(text=t(locale, "main.orders"), callback_data="c:orders")],
     ]
+
     if has_arrived_order:
-        rows.append([InlineKeyboardButton(text=t(locale, "nav.courier_arrived_button"), callback_data="c:orders")])
+        rows.insert(0, [
+            InlineKeyboardButton(
+                text=t(locale, "nav.courier_arrived_button"),
+                callback_data="c:orders"
+            )
+        ])
+
     rows.extend([
         [InlineKeyboardButton(text=chat_text, callback_data="c:chat")],
         [InlineKeyboardButton(text=t(locale, "main.cabinet"), callback_data="c:cabinet")],
     ])
+
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 

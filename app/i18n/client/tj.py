@@ -196,8 +196,8 @@ TEXTS: dict[str, str] = {
 
     "order.status.new": "🆕 Нав",
     "order.status.preparing": "⏳ Омода шуда истодааст",
-    "order.status.ready": "📦 Омода",
-    "order.status.picked_up": "🛵 Курер гирифт",
+    "order.status.ready": "📦 Тайёр",
+    "order.status.picked_up": "🛵 Курер дар рох",
     "order.status.arrived": "📍 Курер расид",
     "order.status.delivered": "✅ Расонида шуд",
     "order.status.canceled": "❌ Бекор шуд",

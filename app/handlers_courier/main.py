@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import random
 
+
 from aiogram import F, Router
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError, TelegramNotFound
 from aiogram.filters import CommandStart
@@ -21,6 +22,7 @@ from app.repositories.orders_repo import OrdersRepo
 from app.repositories.settings_repo import SettingsRepo
 from app.repositories.ui_screen_repo import UiScreenRepo
 from app.repositories.zones_repo import ZonesRepo
+from app.repositories.shops_repo import ShopsRepo
 from app.services.chat_ui import PAGE_SIZE as CHAT_PAGE_SIZE, build_chat_screen_kb, build_chat_screen_text, calc_total_pages
 from app.services.chat_channels import (
     CHANNEL_CLIENT_COURIER,
@@ -37,6 +39,21 @@ from app.services.order_chat_access import can_access_order_chat
 from app.services.pagination import calc_page
 from app.services.screen import set_screen_message_id
 
+from datetime import datetime
+
+def _fmt_hhmm(created_at) -> str:
+    if not created_at:
+        return ""
+    try:
+        if isinstance(created_at, str):
+            dt = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+        else:
+            dt = created_at
+        return dt.strftime("%H:%M")
+    except Exception:
+        return ""
+        
+        
 router = Router()
 ZONE_PAGE_SIZE = 8
 ORDERS_PAGE_SIZE = 10
@@ -148,6 +165,7 @@ async def _render_orders_list(
     state: FSMContext,
     mode: str,
     page: int = 0,
+    open_single: bool = True,   # ✅ добавили
     header_notice: str | None = None,
     new_order_id: int | None = None,
 ) -> None:
@@ -172,7 +190,9 @@ async def _render_orders_list(
         await _save_current_view(state, mode, {"page": 0})
         await cq.message.edit_text(
             "У вас нет активных заказов",
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=[_back_row(), _home_row()]),
+            reply_markup=InlineKeyboardMarkup(
+                inline_keyboard=[[ _home_row()[0], _back_row()[0] ]]
+            ),
         )
         return
 
@@ -184,7 +204,7 @@ async def _render_orders_list(
         if new_order_id and order_id == int(new_order_id):
             order_title = f"🆕 {order_title}"
         kb_rows.append([InlineKeyboardButton(text=order_title, callback_data=f"cr:order:{order_id}:{mode}:{pi.page}")])
-    if mode == "active" and total == 1 and rows:
+    if open_single and mode == "active" and total == 1 and rows:
         await _push_and_render(state, mode, "order", {"order_id": int(rows[0]["id"]), "source": "active", "page": pi.page})
         await _render_order_card(cq, db, state, int(rows[0]["id"]), "active", pi.page)
         return
@@ -238,10 +258,12 @@ async def _build_order_card(order: dict, items: list[dict], source: str, page: i
         rows.append([InlineKeyboardButton(text="✅ Завершить заказ", callback_data=f"cr:finish:{order['id']}:{source}:{page}")])
     if not closed and courier_status in {"assigned", "picked_up", "arrived"}:
         rows.append([InlineKeyboardButton(text="💬 Чат по заказу", callback_data=f"cr:chat:{order['id']}:1:{source}:{page}")])
-    rows.append(_back_row())
-    rows.append(_home_row())
+    rows.append([
+        _home_row()[0],
+        _back_row()[0]
+    ])
+    
     return text, InlineKeyboardMarkup(inline_keyboard=rows)
-
 
 def _mode_label(mode: int) -> str:
     if mode == MODE_MEDIUM:
@@ -270,6 +292,7 @@ async def _render_order_card(cq: CallbackQuery, db: Database, state: FSMContext,
     client = await ClientProfilesRepo(db).get(int(o.get("client_user_id") or 0)) if o.get("client_user_id") else None
     order_for_card = dict(o)
     order_for_card["shop_name"] = order_for_card.get("shop_name") or (shop or {}).get("name") or "—"
+    order_for_card["shop_phone"] = (shop or {}).get("phone") or ""
     order_for_card["business_type"] = (shop or {}).get("business_type") or "shop"
     order_for_card["pickup_address"] = (shop or {}).get("address") or order_for_card.get("shop_name") or "—"
     order_for_card["delivery_address"] = (client or {}).get("address") or "—"
@@ -380,8 +403,10 @@ def _chat_nav_rows(order_id: int, source: str, source_page: int, thread: str) ->
     return [
         [InlineKeyboardButton(text=switch_text, callback_data=f"cr:chat_thread:{order_id}:{switch_to}")],
         [InlineKeyboardButton(text="🔄 Обновить", callback_data=f"cr:chat_refresh:{order_id}")],
-        [InlineKeyboardButton(text="⬅️ Назад", callback_data="cr:back")],
-        _home_row(),
+        [
+            _home_row()[0],
+            InlineKeyboardButton(text="⬅️ Назад", callback_data="cr:back")
+        ]
     ]
 
 
@@ -551,7 +576,7 @@ async def back(cq: CallbackQuery, db: Database, state: FSMContext):
         await _render_orders_list(cq, db, state, "available", page)
     elif target == _current_view_key("active"):
         page = int((data.get("views") or {}).get("active", {}).get("page") or 0)
-        await _render_orders_list(cq, db, state, "active", page)
+        await _render_orders_list(cq, db, state, "active", page, open_single=False)
     elif target == _current_view_key("history"):
         page = int((data.get("views") or {}).get("history", {}).get("page") or 0)
         await _render_orders_list(cq, db, state, "history", page)
@@ -784,7 +809,7 @@ async def zone_rename_start(cq: CallbackQuery, state: FSMContext):
     if not _is_superadmin(cq.from_user.id):
         await cq.answer("Недостаточно прав", show_alert=True)
         return
-    _, _, _, zone_id, page = cq.data.split(":")
+    _, _, zone_id, page = cq.data.split(":")
     await state.update_data(zone_rename_id=int(zone_id), zone_page=int(page))
     await state.set_state(CourierStates.zone_rename)
     kb = InlineKeyboardMarkup(inline_keyboard=[_back_row(), _home_row()])
@@ -817,7 +842,7 @@ async def zone_toggle_active(cq: CallbackQuery, db: Database, state: FSMContext)
     if not _is_superadmin(cq.from_user.id):
         await cq.answer("Недостаточно прав", show_alert=True)
         return
-    _, _, _, zone_id, page = cq.data.split(":")
+    _, _, zone_id, page = cq.data.split(":")
     repo = ZonesRepo(db)
     zone_obj = await repo.get(int(zone_id))
     if not zone_obj:
@@ -834,7 +859,7 @@ async def zone_delete(cq: CallbackQuery, db: Database, state: FSMContext):
     if not _is_superadmin(cq.from_user.id):
         await cq.answer("Недостаточно прав", show_alert=True)
         return
-    _, _, _, zone_id, page = cq.data.split(":")
+    _, _, zone_id, page = cq.data.split(":")
     await ZonesRepo(db).set_active(int(zone_id), False)
     await _render_zones(cq, db, state, int(page))
     await cq.answer("Зона деактивирована")

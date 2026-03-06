@@ -1,5 +1,12 @@
 from __future__ import annotations
 
+from datetime import timezone
+from zoneinfo import ZoneInfo
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
+
+TZ_LOCAL = ZoneInfo("Asia/Dushanbe")
+
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from html import escape
@@ -11,6 +18,32 @@ from app.services.order_statuses import compose_client_status_key
 RECEIPT_WIDTH = 34
 
 
+def _time_hhmm(value: object) -> str:
+    if not value:
+        return ""
+
+    dt: datetime | None = None
+
+    if isinstance(value, datetime):
+        dt = value
+    elif isinstance(value, str):
+        s = value.strip()
+        try:
+            # поддержка "Z"
+            dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
+        except Exception:
+            return ""
+
+    if not dt:
+        return ""
+
+    # если нет tzinfo — считаем, что UTC (или поменяй на локальное, если у вас так)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+
+    return dt.astimezone(TZ_LOCAL).strftime("%H:%M")
+    
+    
 def _business_emoji(business_type: str | None) -> str:
     return "🍽️" if str(business_type or "").strip().lower() == "restaurant" else "🛒"
 
@@ -22,14 +55,6 @@ def _money(value: object) -> str:
         return str(value or 0)
 
 
-def _time_hhmm(value: object) -> str:
-    if isinstance(value, datetime):
-        return value.strftime("%H:%M")
-    if isinstance(value, str) and len(value) >= 16 and value[10] in {" ", "T"}:
-        return value[11:16]
-    return ""
-
-
 def _dotted(left: str, right: str) -> str:
     dots = max(1, RECEIPT_WIDTH - len(left) - len(right))
     return f"{left}{'.' * dots}{right}"
@@ -37,7 +62,10 @@ def _dotted(left: str, right: str) -> str:
 
 def build_receipt(items: list[dict], total: object) -> str:
     # Единый рендер чека через pre.
-    lines = ["<pre>", "--------------------------------"]
+    lines = [
+        "<pre>",
+        "--------------------------------"
+    ]
     for item in items:
         qty = int(item.get("quantity") or 0)
         name = escape(str(item.get("name") or "—"))
@@ -86,13 +114,15 @@ def build_admin_order_card(locale: str, order: dict, items: list[dict], shop_nam
     # Карточка админа.
     emoji = _business_emoji(order.get("business_type"))
     status = t(locale, compose_client_status_key(order.get("merchant_status"), order.get("courier_status")))
+    header = f"{emoji} Заказ #{order.get('id')}  ({status})"
+    hhmm = _time_hhmm(order.get("created_at"))
+    if hhmm:
+        header = f"{header}  {hhmm}"
     type_map = {"courier": "Доставка", "pickup": "Самовывоз", "dine_in": "В зале"}
     comment = escape(str((order.get("comment") or "").strip())) or t(locale, "checkout.comment_empty")
 
     lines = [
-        f"{emoji} Заказ #{order.get('id')}  ({status})",
-        "",
-        f"{emoji} {escape(str(shop_name or '—'))}",
+        header,
         "",
         f"👤 {escape(str(order.get('client_name') or '—'))}",
         f"📞 {escape(str(order.get('client_phone') or '—'))}",
@@ -114,12 +144,19 @@ def build_courier_order_card(locale: str, order: dict, items: list[dict], show_c
     # Карточка курьера.
     emoji = _business_emoji(order.get("business_type"))
     status = t(locale, compose_client_status_key(order.get("merchant_status"), order.get("courier_status")))
+    header = f"{emoji} Заказ #{order.get('id')}  ({status})"
+    hhmm = _time_hhmm(order.get("created_at"))
+    if hhmm:
+        header = f"{header}  {hhmm}"
     delivery_address = escape(str(order.get("delivery_address") or "—"))
-
+    shop_name = escape(str(order.get("shop_name") or "—"))
+    shop_phone = escape(str(order.get("shop_phone") or "").strip())
+    
     lines = [
-        f"{emoji} Заказ #{order.get('id')}  ({status})",
+        header,
         "",
         f"{emoji} {escape(str(order.get('shop_name') or '—'))}",
+        f"📞 {shop_phone}",
         "",
         f"📍 Забрать: {escape(str(order.get('pickup_address') or order.get('shop_name') or '—'))}",
         "⬇️",
@@ -131,7 +168,6 @@ def build_courier_order_card(locale: str, order: dict, items: list[dict], show_c
             "",
             f"👤 {escape(str(order.get('client_name') or '—'))}",
             f"📞 {escape(str(order.get('client_phone') or '—'))}",
-            f"📍 {delivery_address}",
         ])
 
     lines.extend(["", build_receipt(items, order.get("total_amount"))])
