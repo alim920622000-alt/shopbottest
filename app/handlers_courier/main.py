@@ -399,7 +399,7 @@ def _phone_request_keyboard() -> ReplyKeyboardMarkup:
 
 def _chat_nav_rows(order_id: int, source: str, source_page: int, thread: str) -> list[list[InlineKeyboardButton]]:
     switch_to = THREAD_COURIER if thread == THREAD_MERCHANT else THREAD_MERCHANT
-    switch_text = "✍️ Написать клиенту" if thread == THREAD_COURIER else "✍️ Написать магазину/ресторану"
+    switch_text = "✍️ Написать магазину/ресторану" if thread == THREAD_COURIER else "✍️ Написать клиенту"
     return [
         [InlineKeyboardButton(text=switch_text, callback_data=f"cr:chat_thread:{order_id}:{switch_to}")],
         [InlineKeyboardButton(text="🔄 Обновить", callback_data=f"cr:chat_refresh:{order_id}")],
