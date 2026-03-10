@@ -135,17 +135,32 @@ def build_pagination_controls(page: int, total_pages: int, base_cb: str) -> list
     return row
 
 
+def _menu_label(online: bool, emoji: str, text: str) -> str:
+    return f"{emoji} {text}" if online else text
+
+
 def _kb_menu(online: bool) -> InlineKeyboardMarkup:
-    status_text = "[Статус: На линии]" if online else "[Статус: Не на линии]"
+    status_text = "🟢 На линии" if online else "⚪ Не на линии"
     rows = [
-        [InlineKeyboardButton(text="🚚 Доступные", callback_data="cr:available")],
-        [InlineKeyboardButton(text="🧾 Мои активные", callback_data="cr:active")],
-        [InlineKeyboardButton(text="📚 История", callback_data="cr:history")],
-        [InlineKeyboardButton(text="🗺 Зоны", callback_data="cr:zone")],
-        [InlineKeyboardButton(text="👤 Кабинет", callback_data="cr:cabinet")],
+        [InlineKeyboardButton(text=_menu_label(online, "📦", "Доступные"), callback_data="cr:available")],
+        [InlineKeyboardButton(text=_menu_label(online, "🛵", "Мои активные"), callback_data="cr:active")],
+        [InlineKeyboardButton(text=_menu_label(online, "🕓", "История"), callback_data="cr:history")],
+        [InlineKeyboardButton(text=_menu_label(online, "🗺", "Зоны"), callback_data="cr:zone")],
+        [InlineKeyboardButton(text=_menu_label(online, "👤", "Кабинет"), callback_data="cr:cabinet")],
         [InlineKeyboardButton(text=status_text, callback_data="cr:toggle_online")],
     ]
     return InlineKeyboardMarkup(inline_keyboard=rows)
+
+##   status_text = "[Статус: На линии]" if online else "[Статус: Не на линии]"
+#    rows = [
+ #       [InlineKeyboardButton(text="📦 Доступные", callback_data="cr:available")],
+ #       [InlineKeyboardButton(text="🛵 Мои активные", callback_data="cr:active")],
+  #      [InlineKeyboardButton(text="🕓 История", callback_data="cr:history")],
+ #       [InlineKeyboardButton(text="🗺 Зоны", callback_data="cr:zone")],
+ #       [InlineKeyboardButton(text="👤 Кабинет", callback_data="cr:cabinet")],
+  #      [InlineKeyboardButton(text=status_text, callback_data="cr:toggle_online")],
+  #  ]
+  #  return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 async def _render_menu(message: Message | CallbackQuery, db: Database, user_id: int):
@@ -199,11 +214,26 @@ async def _render_orders_list(
     kb_rows = []
     for r in rows:
         order_id = int(r["id"])
+        shop_name = (r.get("shop_name") or "").strip()
         # Для сценария с новым заказом подсвечиваем конкретный ID в списке.
-        order_title = f"Заказ #{order_id}"
+        business_type = str(r.get("business_type") or "").strip().lower()
+
+        if business_type == "restaurant":
+            emoji = "🍽"
+        else:
+            emoji = "🛒"
+        
+        order_title = f"{emoji} {order_id} · {shop_name}"
+        
         if new_order_id and order_id == int(new_order_id):
             order_title = f"🆕 {order_title}"
-        kb_rows.append([InlineKeyboardButton(text=order_title, callback_data=f"cr:order:{order_id}:{mode}:{pi.page}")])
+        
+        kb_rows.append([
+            InlineKeyboardButton(
+                text=order_title,
+                callback_data=f"cr:order:{order_id}:{mode}:{pi.page}"
+            )
+        ])
     if open_single and mode == "active" and total == 1 and rows:
         await _push_and_render(state, mode, "order", {"order_id": int(rows[0]["id"]), "source": "active", "page": pi.page})
         await _render_order_card(cq, db, state, int(rows[0]["id"]), "active", pi.page)

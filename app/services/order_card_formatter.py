@@ -170,5 +170,9 @@ def build_courier_order_card(locale: str, order: dict, items: list[dict], show_c
             f"📞 {escape(str(order.get('client_phone') or '—'))}",
         ])
 
-    lines.extend(["", build_receipt(items, order.get("total_amount"))])
+    courier_status = order.get("courier_status")
+
+    if courier_status in ("assigned", "accepted", "picked_up", "delivering"):
+        lines.extend(["", build_receipt(items, order.get("total_amount"))])
+    
     return "\n".join(lines)

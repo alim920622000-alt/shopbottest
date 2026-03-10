@@ -1,7 +1,26 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+
 from app.i18n.client.translator import t
 
+def client_quick_menu(locale: str) -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [
+                KeyboardButton(text=t(locale, "client.quick_search")),
+                KeyboardButton(text=t(locale, "client.quick_cart")),
+            ],
+            [
+                KeyboardButton(text=t(locale, "client.quick_orders")),
+                KeyboardButton(text=t(locale, "client.quick_home")),
+            ],
+        ],
+        resize_keyboard=True,
+        is_persistent=False,
+        input_field_placeholder=t(locale, "client.quick_placeholder"),
+    )
+    
 def _pick_category_name(cat: dict, locale: str) -> str:
     if locale == "uz":
         return cat.get("name_uz") or cat.get("name_ru") or cat.get("name")

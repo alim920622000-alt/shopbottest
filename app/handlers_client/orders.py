@@ -397,14 +397,35 @@ def kb_arrival_second(locale: str, order_id: int) -> InlineKeyboardMarkup:
 
 
 async def _show_arrival_screen(cq: CallbackQuery, db: Database, locale: str, order: dict) -> None:
-    text = (
-        f"{t(locale, 'order.arrival.title')}\n"
-        f"{t(locale, 'orders.item_tpl', order_id=order['id'])}\n"
-        f"{t(locale, 'order.total', total=order['total_amount'])}\n"
-        f"{t(locale, 'order.arrival.code_label', code=(order.get('handoff_code') or '----'))}"
-    )
-    await cq.message.edit_text(text, reply_markup=kb_arrival_first(locale, int(order['id'])))
+    orders = OrdersRepo(db)
+    items = await orders.get_order_items(int(order["id"]))
 
+    shop = await ShopsRepo(db).get(int(order["shop_id"]))
+    shop_name = shop["name"] if shop else f"#{order['shop_id']}"
+
+    courier = await ClientProfilesRepo(db).get(int(order.get("courier_user_id") or 0)) if order.get("courier_user_id") else None
+
+    order_for_card = dict(order)
+    order_for_card["business_type"] = (shop or {}).get("business_type") or "shop"
+    order_for_card["courier_name"] = (courier or {}).get("full_name") or ""
+    order_for_card["courier_phone"] = (courier or {}).get("phone") or ""
+
+    text = build_client_order_card(
+        locale,
+        order_for_card,
+        list(items),
+        shop_name,
+        (shop or {}).get("phone") or "",
+    )
+
+    handoff_code = order.get("handoff_code") or "----"
+    text = f"{text}\n\n🔐 Код подтверждения: <b>{handoff_code}</b>"
+
+    await cq.message.edit_text(
+        text,
+        reply_markup=kb_arrival_first(locale, int(order["id"])),
+        parse_mode="HTML",
+    )
 
 @router.callback_query(F.data.startswith("c:arrival:confirm:"))
 async def arrival_confirm(cq: CallbackQuery, db: Database, locale: str = "ru"):

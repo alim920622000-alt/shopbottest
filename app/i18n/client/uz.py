@@ -2,6 +2,15 @@
 # Эслатма: агар калит топилмаса, RU fallback бўлиши керак (translator.py).
 
 TEXTS: dict[str, str] = {
+    # Быстрые кнопки
+    "client.quick_menu_title": "Тезкор меню",
+    "client.quick_search": "🔎 Қидирув",
+    "client.quick_cart": "🛒 Сават",
+    "client.quick_orders": "🧾 Буюртмалар",
+    "client.quick_home": "🏠 Бош саҳифа",
+    "client.quick_placeholder": "Маҳсулот номини киритинг ёки амални танланг",
+    "client.search_prompt": "Маҳсулот номини киритинг",
+    
     # Асосий меню
     "main.order": "🛍 Буюртма Бериш",
     "main.orders": "📦 Буюртмалар",
@@ -24,6 +33,7 @@ TEXTS: dict[str, str] = {
     "search.open_inline": "🔎 Inline очиш",
     "search.search": "🔎 Қидирув",
     "search.at_search": "🔎 @Қидирув",
+    "search.at_search_2": "🔎 Умный @Поиск",
 
     # Маҳсулот карточкаси
     "product.add_to_cart": "➕ Саватга қўшиш",
@@ -202,7 +212,7 @@ TEXTS: dict[str, str] = {
     "order.status.arrived": "📍 Курер етиб келди",
     "order.status.delivered": "✅ Етказилди",
     "order.status.canceled": "❌ Бекор қилинди",
-    "order.arrival.title": "🚨 Курер эшик олдида",
+    "order.arrival.title": "🔍 Илтимос, буюртмани текширинг.\n\nБарча маҳсулотлар жойида\nва тўғри келганини текшириб,\nкейин «Тасдиқлаш» тугмасини босинг.",
     "order.arrival.code_label": "Қабул қилиш коди: {code}",
     "order.arrival.confirm_button": "✅ Буюртмани олдим",
     "order.arrival.confirm_final": "✅ Тасдиқлаш",

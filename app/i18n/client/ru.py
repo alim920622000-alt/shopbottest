@@ -2,6 +2,15 @@
 # Важно: ключи должны использоваться в клавиатурах и экранах вместо "жёстких" строк.
 
 TEXTS: dict[str, str] = {
+    # Быстрые кнопки
+    "client.quick_menu_title": "Гавное Меню",
+    "client.quick_search": "🔎 Поиск",
+    "client.quick_cart": "🛒 Корзина",
+    "client.quick_orders": "🧾 Заказы",
+    "client.quick_home": "🏠 Главная",
+    "client.quick_placeholder": "Введите товар или выберите действие",
+    "client.search_prompt": "Введите название товара",
+    
     # Главное меню (kb_client_main)
     "main.order": "🛍 Заказать",
     "main.orders": "📦 Заказы",
@@ -24,6 +33,7 @@ TEXTS: dict[str, str] = {
     "search.open_inline": "🔎 Открыть inline",
     "search.search": "🔎 Поиск",
     "search.at_search": "🔎 @Поиск",
+    "search.at_search_2": "🔎 Умный @Поиск",
 
     # Карточка товара
     "product.add_to_cart": "➕ Добавить в корзину",
@@ -201,14 +211,14 @@ TEXTS: dict[str, str] = {
     "order.status.arrived": "📍 Курьер прибыл",
     "order.status.delivered": "✅ Доставлен",
     "order.status.canceled": "❌ Отменён",
-    "order.arrival.title": "🚨 Курьер у двери",
+    "order.arrival.title": "🔍 Пожалуйста, проверьте заказ.\n\nУбедитесь, что все товары\nдоставлены правильно и полностью.\n\nЕсли всё в порядке,\nнажмите кнопку «Подтвердить».",
     "order.arrival.code_label": "Код передачи: {code}",
     "order.arrival.confirm_button": "✅ Я получил заказ",
     "order.arrival.confirm_final": "✅ Подтвердить",
     "order.arrival.cancel": "↩️ Отмена",
     "order.arrival.back": "🔙 Назад к заказам",
     "order.arrival.done": "Заказ подтверждён.",
-    "nav.courier_arrived_button": "🚨 Курьер прибыл",
+    "nav.courier_arrived_button": "⚠  Курьер прибыл  ⚠",
 
     # Fallback
     "msg.unknown_command": "🤖 Я не понял команду. Используйте меню ниже 👇.",

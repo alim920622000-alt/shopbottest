@@ -2,6 +2,15 @@
 # Эзоҳ: агар калид нест, бояд ба RU fallback шавад (дар translator.py).
 
 TEXTS: dict[str, str] = {
+    #Быстрые кнопки
+    "client.quick_menu_title": "Менюи зуд",
+    "client.quick_search": "🔎 Ҷустуҷӯ",
+    "client.quick_cart": "🛒 Сабад",
+    "client.quick_orders": "🧾 Фармоишҳо",
+    "client.quick_home": "🏠 Саҳифаи асосӣ",
+    "client.quick_placeholder": "Номи маҳсулотро нависед ё амалро интихоб кунед",
+    "client.search_prompt": "Номи маҳсулотро ворид кунед",
+    
     # Менюи асосӣ
     "main.order": "🛍 Фармоиш Додан",
     "main.orders": "📦 Фармоишҳо",
@@ -24,6 +33,7 @@ TEXTS: dict[str, str] = {
     "search.open_inline": "🔎 Inline-ро кушодан",
     "search.search": "🔎 Ҷустуҷӯ (Поиск)",
     "search.at_search": "🔎 @Ҷустуҷӯ (@Поиск)",
+    "search.at_search_2": "🔎 Умный @Поиск",
 
     # Корти маҳсулот
     "product.add_to_cart": "➕ Ба сабад илова кардан",
@@ -201,14 +211,14 @@ TEXTS: dict[str, str] = {
     "order.status.arrived": "📍 Курер расид",
     "order.status.delivered": "✅ Расонида шуд",
     "order.status.canceled": "❌ Бекор шуд",
-    "order.arrival.title": "🚨 Курер назди дар аст",
+    "order.arrival.title": "🔍 Лутфан фармоишро тафтиш кунед.\n\nБоварӣ ҳосил кунед, ки ҳамаи маҳсулотҳо\nдуруст ва пурра оварда шудаанд.\n\nАгар ҳама чиз дуруст бошад,\nтугмаи «Тасдиқ» ро пахш кунед.",
     "order.arrival.code_label": "Рамзи қабул: {code}",
     "order.arrival.confirm_button": "✅ Ман фармоишро гирифтам",
     "order.arrival.confirm_final": "✅ Тасдиқ",
     "order.arrival.cancel": "↩️ Бекор",
     "order.arrival.back": "🔙 Ба фармоишҳо",
     "order.arrival.done": "Фармоиш тасдиқ шуд.",
-    "nav.courier_arrived_button": "🚨 Курер расид",
+    "nav.courier_arrived_button": "⚠  Курер расид  ⚠",
 
     # Fallback
     "msg.unknown_command": "🤖 Фармонро нафаҳмидам. Аз менюи поён истифода баред 👇.",
