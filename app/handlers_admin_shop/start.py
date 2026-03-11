@@ -25,8 +25,9 @@ def kb_admin_main(chat_unread_threads: int = 0, new_orders_count: int = 0):
         [InlineKeyboardButton(text=orders_text, callback_data="a:orders")],
         [InlineKeyboardButton(text="🧺 Продукты", callback_data="a:products")],
         [InlineKeyboardButton(text="🕓 История",  callback_data="a:history")],
-        [InlineKeyboardButton(text="🎁 Акции",    callback_data="a:promos")],
         [InlineKeyboardButton(text=chat_text,    callback_data="a:chat")],
+        [InlineKeyboardButton(text="🎁 Акции",    callback_data="a:promos")],
+        #[InlineKeyboardButton(text=chat_text,    callback_data="a:chat")],
         [InlineKeyboardButton(text="👤 Кабинет",  callback_data="a:cabinet")],
     ])
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import random
 
+
 from aiogram import F, Router
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError, TelegramNotFound
 from aiogram.filters import CommandStart
@@ -21,6 +22,7 @@ from app.repositories.orders_repo import OrdersRepo
 from app.repositories.settings_repo import SettingsRepo
 from app.repositories.ui_screen_repo import UiScreenRepo
 from app.repositories.zones_repo import ZonesRepo
+from app.repositories.shops_repo import ShopsRepo
 from app.services.chat_ui import PAGE_SIZE as CHAT_PAGE_SIZE, build_chat_screen_kb, build_chat_screen_text, calc_total_pages
 from app.services.chat_channels import (
     CHANNEL_CLIENT_COURIER,
@@ -32,10 +34,26 @@ from app.services.chat_channels import (
     normalize_thread_for_actor,
 )
 from app.services.courier_capacity import MODE_FREE, MODE_MEDIUM, MODE_STRICT, can_accept_order, get_courier_capacity_mode
+from app.services.order_card_formatter import build_courier_order_card
 from app.services.order_chat_access import can_access_order_chat
 from app.services.pagination import calc_page
 from app.services.screen import set_screen_message_id
 
+from datetime import datetime
+
+def _fmt_hhmm(created_at) -> str:
+    if not created_at:
+        return ""
+    try:
+        if isinstance(created_at, str):
+            dt = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+        else:
+            dt = created_at
+        return dt.strftime("%H:%M")
+    except Exception:
+        return ""
+        
+        
 router = Router()
 ZONE_PAGE_SIZE = 8
 ORDERS_PAGE_SIZE = 10
@@ -117,17 +135,32 @@ def build_pagination_controls(page: int, total_pages: int, base_cb: str) -> list
     return row
 
 
+def _menu_label(online: bool, emoji: str, text: str) -> str:
+    return f"{emoji} {text}" if online else text
+
+
 def _kb_menu(online: bool) -> InlineKeyboardMarkup:
-    status_text = "[Статус: На линии]" if online else "[Статус: Не на линии]"
+    status_text = "🟢 На линии" if online else "⚪ Не на линии"
     rows = [
-        [InlineKeyboardButton(text="🚚 Доступные", callback_data="cr:available")],
-        [InlineKeyboardButton(text="🧾 Мои активные", callback_data="cr:active")],
-        [InlineKeyboardButton(text="📚 История", callback_data="cr:history")],
-        [InlineKeyboardButton(text="🗺 Зоны", callback_data="cr:zone")],
-        [InlineKeyboardButton(text="👤 Кабинет", callback_data="cr:cabinet")],
+        [InlineKeyboardButton(text=_menu_label(online, "📦", "Доступные"), callback_data="cr:available")],
+        [InlineKeyboardButton(text=_menu_label(online, "🛵", "Мои активные"), callback_data="cr:active")],
+        [InlineKeyboardButton(text=_menu_label(online, "🕓", "История"), callback_data="cr:history")],
+        [InlineKeyboardButton(text=_menu_label(online, "🗺", "Зоны"), callback_data="cr:zone")],
+        [InlineKeyboardButton(text=_menu_label(online, "👤", "Кабинет"), callback_data="cr:cabinet")],
         [InlineKeyboardButton(text=status_text, callback_data="cr:toggle_online")],
     ]
     return InlineKeyboardMarkup(inline_keyboard=rows)
+
+##   status_text = "[Статус: На линии]" if online else "[Статус: Не на линии]"
+#    rows = [
+ #       [InlineKeyboardButton(text="📦 Доступные", callback_data="cr:available")],
+ #       [InlineKeyboardButton(text="🛵 Мои активные", callback_data="cr:active")],
+  #      [InlineKeyboardButton(text="🕓 История", callback_data="cr:history")],
+ #       [InlineKeyboardButton(text="🗺 Зоны", callback_data="cr:zone")],
+ #       [InlineKeyboardButton(text="👤 Кабинет", callback_data="cr:cabinet")],
+  #      [InlineKeyboardButton(text=status_text, callback_data="cr:toggle_online")],
+  #  ]
+  #  return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 async def _render_menu(message: Message | CallbackQuery, db: Database, user_id: int):
@@ -147,6 +180,7 @@ async def _render_orders_list(
     state: FSMContext,
     mode: str,
     page: int = 0,
+    open_single: bool = True,   # ✅ добавили
     header_notice: str | None = None,
     new_order_id: int | None = None,
 ) -> None:
@@ -171,19 +205,36 @@ async def _render_orders_list(
         await _save_current_view(state, mode, {"page": 0})
         await cq.message.edit_text(
             "У вас нет активных заказов",
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=[_back_row(), _home_row()]),
+            reply_markup=InlineKeyboardMarkup(
+                inline_keyboard=[[ _home_row()[0], _back_row()[0] ]]
+            ),
         )
         return
 
     kb_rows = []
     for r in rows:
         order_id = int(r["id"])
+        shop_name = (r.get("shop_name") or "").strip()
         # Для сценария с новым заказом подсвечиваем конкретный ID в списке.
-        order_title = f"Заказ #{order_id}"
+        business_type = str(r.get("business_type") or "").strip().lower()
+
+        if business_type == "restaurant":
+            emoji = "🍽"
+        else:
+            emoji = "🛒"
+        
+        order_title = f"{emoji} {order_id} · {shop_name}"
+        
         if new_order_id and order_id == int(new_order_id):
             order_title = f"🆕 {order_title}"
-        kb_rows.append([InlineKeyboardButton(text=order_title, callback_data=f"cr:order:{order_id}:{mode}:{pi.page}")])
-    if mode == "active" and total == 1 and rows:
+        
+        kb_rows.append([
+            InlineKeyboardButton(
+                text=order_title,
+                callback_data=f"cr:order:{order_id}:{mode}:{pi.page}"
+            )
+        ])
+    if open_single and mode == "active" and total == 1 and rows:
         await _push_and_render(state, mode, "order", {"order_id": int(rows[0]["id"]), "source": "active", "page": pi.page})
         await _render_order_card(cq, db, state, int(rows[0]["id"]), "active", pi.page)
         return
@@ -220,17 +271,11 @@ def _is_order_closed(order: dict) -> bool:
     return courier_status in {"delivered", "completed", "canceled", "cancelled"} or merchant_status in {"completed", "cancelled", "canceled"}
 
 
-async def _build_order_card(order: dict, source: str, page: int) -> tuple[str, InlineKeyboardMarkup]:
-    lines = [
-        f"Заказ #{order['id']}",
-        f"Магазин: {order.get('shop_name') or '—'}",
-        f"Статус точки: {order.get('merchant_status')}",
-        f"Статус курьера: {order.get('courier_status')}",
-        f"Сумма: {order.get('total_amount')}",
-    ]
+async def _build_order_card(order: dict, items: list[dict], source: str, page: int) -> tuple[str, InlineKeyboardMarkup]:
+    courier_status = str(order.get("courier_status") or "").strip().lower()
+    text = build_courier_order_card("ru", order, items, show_client_block=courier_status in {"picked_up", "arrived"})
     rows: list[list[InlineKeyboardButton]] = []
     closed = _is_order_closed(order)
-    courier_status = str(order.get("courier_status") or "").strip().lower()
     merchant_status = str(order.get("merchant_status") or "").strip().lower()
 
     if not closed and courier_status == "searching":
@@ -243,10 +288,12 @@ async def _build_order_card(order: dict, source: str, page: int) -> tuple[str, I
         rows.append([InlineKeyboardButton(text="✅ Завершить заказ", callback_data=f"cr:finish:{order['id']}:{source}:{page}")])
     if not closed and courier_status in {"assigned", "picked_up", "arrived"}:
         rows.append([InlineKeyboardButton(text="💬 Чат по заказу", callback_data=f"cr:chat:{order['id']}:1:{source}:{page}")])
-    rows.append(_back_row())
-    rows.append(_home_row())
-    return "\n".join(lines), InlineKeyboardMarkup(inline_keyboard=rows)
-
+    rows.append([
+        _home_row()[0],
+        _back_row()[0]
+    ])
+    
+    return text, InlineKeyboardMarkup(inline_keyboard=rows)
 
 def _mode_label(mode: int) -> str:
     if mode == MODE_MEDIUM:
@@ -270,9 +317,20 @@ async def _render_order_card(cq: CallbackQuery, db: Database, state: FSMContext,
     if not o:
         await cq.answer("Заказ не найден", show_alert=True)
         return False
-    text, kb = await _build_order_card(o, source, page)
+    items = list(await OrdersRepo(db).get_order_items(order_id))
+    shop = await ShopsRepo(db).get(int(o.get("shop_id") or 0)) if o.get("shop_id") else None
+    client = await ClientProfilesRepo(db).get(int(o.get("client_user_id") or 0)) if o.get("client_user_id") else None
+    order_for_card = dict(o)
+    order_for_card["shop_name"] = order_for_card.get("shop_name") or (shop or {}).get("name") or "—"
+    order_for_card["shop_phone"] = (shop or {}).get("phone") or ""
+    order_for_card["business_type"] = (shop or {}).get("business_type") or "shop"
+    order_for_card["pickup_address"] = (shop or {}).get("address") or order_for_card.get("shop_name") or "—"
+    order_for_card["delivery_address"] = (client or {}).get("address") or "—"
+    order_for_card["client_name"] = (client or {}).get("full_name") or "—"
+    order_for_card["client_phone"] = (client or {}).get("phone") or "—"
+    text, kb = await _build_order_card(order_for_card, items, source, page)
     await _save_current_view(state, "order", {"order_id": order_id, "source": source, "page": page})
-    await cq.message.edit_text(text, reply_markup=kb)
+    await cq.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
     return True
 
 
@@ -315,7 +373,7 @@ async def _render_cabinet(cq: CallbackQuery, db: Database, state: FSMContext) ->
     kb_rows.append(_back_row())
     kb = InlineKeyboardMarkup(inline_keyboard=kb_rows)
     await _save_current_view(state, "cabinet")
-    await cq.message.edit_text(text, reply_markup=kb)
+    await cq.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
 
 
 async def _render_zones(cq: CallbackQuery, db: Database, state: FSMContext, page: int = 0) -> None:
@@ -371,12 +429,14 @@ def _phone_request_keyboard() -> ReplyKeyboardMarkup:
 
 def _chat_nav_rows(order_id: int, source: str, source_page: int, thread: str) -> list[list[InlineKeyboardButton]]:
     switch_to = THREAD_COURIER if thread == THREAD_MERCHANT else THREAD_MERCHANT
-    switch_text = "✍️ Написать клиенту" if thread == THREAD_COURIER else "✍️ Написать магазину/ресторану"
+    switch_text = "✍️ Написать магазину/ресторану" if thread == THREAD_COURIER else "✍️ Написать клиенту"
     return [
         [InlineKeyboardButton(text=switch_text, callback_data=f"cr:chat_thread:{order_id}:{switch_to}")],
         [InlineKeyboardButton(text="🔄 Обновить", callback_data=f"cr:chat_refresh:{order_id}")],
-        [InlineKeyboardButton(text="⬅️ Назад", callback_data="cr:back")],
-        _home_row(),
+        [
+            _home_row()[0],
+            InlineKeyboardButton(text="⬅️ Назад", callback_data="cr:back")
+        ]
     ]
 
 
@@ -546,7 +606,7 @@ async def back(cq: CallbackQuery, db: Database, state: FSMContext):
         await _render_orders_list(cq, db, state, "available", page)
     elif target == _current_view_key("active"):
         page = int((data.get("views") or {}).get("active", {}).get("page") or 0)
-        await _render_orders_list(cq, db, state, "active", page)
+        await _render_orders_list(cq, db, state, "active", page, open_single=False)
     elif target == _current_view_key("history"):
         page = int((data.get("views") or {}).get("history", {}).get("page") or 0)
         await _render_orders_list(cq, db, state, "history", page)
@@ -779,7 +839,7 @@ async def zone_rename_start(cq: CallbackQuery, state: FSMContext):
     if not _is_superadmin(cq.from_user.id):
         await cq.answer("Недостаточно прав", show_alert=True)
         return
-    _, _, _, zone_id, page = cq.data.split(":")
+    _, _, zone_id, page = cq.data.split(":")
     await state.update_data(zone_rename_id=int(zone_id), zone_page=int(page))
     await state.set_state(CourierStates.zone_rename)
     kb = InlineKeyboardMarkup(inline_keyboard=[_back_row(), _home_row()])
@@ -812,7 +872,7 @@ async def zone_toggle_active(cq: CallbackQuery, db: Database, state: FSMContext)
     if not _is_superadmin(cq.from_user.id):
         await cq.answer("Недостаточно прав", show_alert=True)
         return
-    _, _, _, zone_id, page = cq.data.split(":")
+    _, _, zone_id, page = cq.data.split(":")
     repo = ZonesRepo(db)
     zone_obj = await repo.get(int(zone_id))
     if not zone_obj:
@@ -829,7 +889,7 @@ async def zone_delete(cq: CallbackQuery, db: Database, state: FSMContext):
     if not _is_superadmin(cq.from_user.id):
         await cq.answer("Недостаточно прав", show_alert=True)
         return
-    _, _, _, zone_id, page = cq.data.split(":")
+    _, _, zone_id, page = cq.data.split(":")
     await ZonesRepo(db).set_active(int(zone_id), False)
     await _render_zones(cq, db, state, int(page))
     await cq.answer("Зона деактивирована")

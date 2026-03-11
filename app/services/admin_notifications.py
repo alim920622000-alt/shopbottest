@@ -15,6 +15,8 @@ from app.repositories.shops_repo import ShopsRepo
 from app.repositories.couriers_repo import CouriersRepo
 from app.services.notification_center import show_notification_center_for_user
 from app.services.courier_capacity import can_accept_order
+from app.repositories.client_profiles_repo import ClientProfilesRepo
+from app.services.order_card_formatter import build_courier_order_card
 
 logger = logging.getLogger(__name__)
 
@@ -165,6 +167,13 @@ async def notify_couriers_new_order(db: Database, order_id: int, storage: BaseSt
             if not can_accept:
                 continue
             visible = await OrdersRepo(db).list_available_for_courier(uid)
+            print("COURIER_NOTIFY", {
+            "uid": uid,
+            "order_id": order_id,
+            "can_accept": can_accept,
+            "visible_ids": [int(r["id"]) for r in visible],
+            "available_count": len(visible),
+        })
             if not any(int(r["id"]) == int(order_id) for r in visible):
                 continue
             try:
@@ -177,34 +186,74 @@ async def notify_couriers_new_order(db: Database, order_id: int, storage: BaseSt
                 )
                 available_count = len(visible)
                 if available_count <= 1:
+                    print("COURIER_NOTIFY_SINGLE_BRANCH", {
+                        "uid": uid,
+                        "order_id": order_id,
+                    })
                     order = await OrdersRepo(db).get_order(int(order_id))
                     if not order:
                         continue
-                    text = (
-                        f"Заказ #{order['id']}\n"
-                        f"Магазин: {order.get('shop_name') or '—'}\n"
-                        f"Статус точки: {order.get('merchant_status')}\n"
-                        f"Статус курьера: {order.get('courier_status')}\n"
-                        f"Сумма: {order.get('total_amount')}"
-                    )
+                    
+                    items = list(await OrdersRepo(db).get_order_items(int(order_id)))
+                    shop = await ShopsRepo(db).get(int(order.get("shop_id") or 0)) if order.get("shop_id") else None
+                    client = await ClientProfilesRepo(db).get(int(order.get("client_user_id") or 0)) if order.get("client_user_id") else None
+                    
+                    order_for_card = dict(order)
+                    order_for_card["shop_name"] = order_for_card.get("shop_name") or (shop or {}).get("name") or "—"
+                    order_for_card["shop_phone"] = (shop or {}).get("phone") or ""
+                    order_for_card["business_type"] = (shop or {}).get("business_type") or "shop"
+                    order_for_card["pickup_address"] = (shop or {}).get("address") or order_for_card.get("shop_name") or "—"
+                    order_for_card["delivery_address"] = (client or {}).get("address") or "—"
+                    order_for_card["client_name"] = (client or {}).get("full_name") or "—"
+                    order_for_card["client_phone"] = (client or {}).get("phone") or "—"
+                    
+                    text = build_courier_order_card("ru", order_for_card, items, show_client_block=False)
+                    
                     kb = InlineKeyboardMarkup(inline_keyboard=[
                         [InlineKeyboardButton(text="✅ Принять доставку", callback_data=f"cr:accept:{order_id}:available:0")],
-                        [InlineKeyboardButton(text="⬅️ Назад", callback_data="cr:back")],
-                        [InlineKeyboardButton(text="🏠 Главная", callback_data="cr:home")],
+                            [
+                                InlineKeyboardButton(text="🏠 Главная", callback_data="cr:home"),
+                                InlineKeyboardButton(text="⬅️ Назад", callback_data="cr:back"),
+                            ],
                     ])
                     await state.update_data(
                         back_stack=["view:available", "view:order"],
                         views={"available": {"page": 0}, "order": {"order_id": int(order_id), "source": "available", "page": 0}},
                     )
-                    await show_screen(bot, uid, state, db, "courier", text, kb)
+                    print("COURIER_NOTIFY_SINGLE_SHOW_SCREEN", {
+                        "uid": uid,
+                        "order_id": order_id,
+                        "text": text,
+                    })
+                    await show_screen(
+                        bot,
+                        uid,
+                        state,
+                        db,
+                        "courier",
+                        text,
+                        kb,
+                        parse_mode="HTML",
+                    )
                 else:
                     rows = []
                     for row in visible[:10]:
                         oid = int(row["id"])
-                        title = f"Заказ #{oid}"
+                        business_type = str(row.get("business_type") or "").strip().lower()
+                        emoji = "🍽" if business_type == "restaurant" else "🛒"
+                        shop_name = (row.get("shop_name") or "").strip() or "—"
+                    
+                        title = f"{emoji} Заказ #{oid} · {shop_name}"
                         if oid == int(order_id):
                             title = f"🆕 {title}"
-                        rows.append([InlineKeyboardButton(text=title, callback_data=f"cr:order:{oid}:available:0")])
+                    
+                        rows.append([
+                            InlineKeyboardButton(
+                                text=title,
+                                callback_data=f"cr:order:{oid}:available:0"
+                            )
+                        ])
+                    
                     rows.append([InlineKeyboardButton(text="⬅️ Назад", callback_data="cr:back")])
                     text = f"Появился новый заказ #{order_id}\n\nДоступные заказы"
                     await state.update_data(back_stack=["view:available"], views={"available": {"page": 0}})
@@ -217,7 +266,8 @@ async def notify_couriers_new_order(db: Database, order_id: int, storage: BaseSt
                         text,
                         InlineKeyboardMarkup(inline_keyboard=rows),
                     )
-            except Exception:
+            except Exception as e:
+                print("COURIER_NOTIFY_ERROR", uid, order_id, repr(e))
                 logger.warning("Не удалось отправить пуш курьеру %s по заказу %s", uid, order_id, exc_info=True)
     finally:
         await bot.session.close()

@@ -407,7 +407,7 @@ class OrdersRepo:
                 return []
             accept_all = int(courier["accept_all_zones"] or 0) == 1
             q = """
-                SELECT o.*, s.name AS shop_name
+                SELECT o.*, s.name AS shop_name, s.business_type
                 FROM orders o
                 JOIN shops s ON s.id=o.shop_id
                 WHERE o.courier_status='searching'
@@ -457,7 +457,7 @@ class OrdersRepo:
         async with self.db.conn() as conn:
             cur = await conn.execute(
                 f"""
-                SELECT o.*, s.name AS shop_name
+                SELECT o.*, s.name AS shop_name, s.business_type
                 FROM orders o
                 JOIN shops s ON s.id=o.shop_id
                 WHERE o.courier_user_id=?
@@ -491,7 +491,7 @@ class OrdersRepo:
         placeholders = ",".join("?" for _ in HISTORY_COURIER_STATUSES)
         async with self.db.conn() as conn:
             cur = await conn.execute(
-                f"SELECT o.*, s.name AS shop_name FROM orders o JOIN shops s ON s.id=o.shop_id WHERE o.courier_user_id=? AND o.courier_status IN ({placeholders}) ORDER BY o.updated_at DESC LIMIT ? OFFSET ?",
+                f"SELECT o.*, s.name AS shop_name, s.business_type FROM orders o JOIN shops s ON s.id=o.shop_id WHERE o.courier_user_id=? AND o.courier_status IN ({placeholders}) ORDER BY o.updated_at DESC LIMIT ? OFFSET ?",
                 [courier_user_id, *HISTORY_COURIER_STATUSES, limit, offset],
             )
             rows = await cur.fetchall()
