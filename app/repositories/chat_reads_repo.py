@@ -27,9 +27,9 @@ class ChatReadsRepo:
             await conn.execute(
                 """
                 INSERT INTO order_chat_reads(order_id, viewer_role, viewer_user_id, channel, last_read_at)
-                VALUES (?, ?, ?, ?, datetime('now'))
+                VALUES (?, ?, ?, ?, NOW())
                 ON CONFLICT(order_id, viewer_role, viewer_user_id, channel) DO UPDATE SET
-                    last_read_at=datetime('now')
+                    last_read_at=NOW()
                 """,
                 (order_id, viewer_role, viewer_user_id, channel),
             )
@@ -71,13 +71,12 @@ class ChatReadsRepo:
                     AND r.channel = m.channel
                     AND r.viewer_role = ?
                     AND r.viewer_user_id = ?
-                -- фильтры доступа: не показываем чужие чаты
                 {access_join}
                 WHERE NOT (m.sender_role = ? AND m.sender_user_id = ?)
                   AND m.created_at > COALESCE(r.last_read_at, '1970-01-01')
                   {access_where}
                 GROUP BY m.order_id
-                HAVING cnt > 0
+                HAVING COUNT(*) > 0
                 ORDER BY m.order_id DESC
                 LIMIT ? OFFSET ?
                 """,
@@ -109,7 +108,6 @@ class ChatReadsRepo:
                     AND r.channel = m.channel
                     AND r.viewer_role = ?
                     AND r.viewer_user_id = ?
-                -- фильтры доступа: не показываем чужие чаты
                 {access_join}
                 WHERE NOT (m.sender_role = ? AND m.sender_user_id = ?)
                   AND m.created_at > COALESCE(r.last_read_at, '1970-01-01')
@@ -129,18 +127,17 @@ class ChatReadsRepo:
                 FROM (
                     SELECT m.order_id
                     FROM order_chat_messages m
-                LEFT JOIN order_chat_reads r
-                    ON r.order_id = m.order_id
+                    LEFT JOIN order_chat_reads r
+                        ON r.order_id = m.order_id
                         AND r.channel = m.channel
                         AND r.viewer_role = ?
                         AND r.viewer_user_id = ?
-                    -- фильтры доступа: не показываем чужие чаты
                     {access_join}
                     WHERE NOT (m.sender_role = ? AND m.sender_user_id = ?)
                       AND m.created_at > COALESCE(r.last_read_at, '1970-01-01')
                       {access_where}
                     GROUP BY m.order_id
-                )
+                ) subq
                 """,
                 (viewer_role, viewer_user_id, viewer_role, viewer_user_id, *access_params),
             )
@@ -148,7 +145,6 @@ class ChatReadsRepo:
             return int(row["cnt"]) if row else 0
 
     def _build_access_filter(self, viewer_role: str, viewer_user_id: int) -> tuple[str, str, list]:
-        # Фильтры доступа, чтобы не показывать чужие чаты в центре уведомлений.
         if viewer_role == "client":
             return (
                 "JOIN orders o ON o.id = m.order_id",

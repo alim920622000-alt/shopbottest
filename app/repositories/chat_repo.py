@@ -14,16 +14,16 @@ class ChatRepo:
         order_id: int,
         sender_user_id: int,
         sender_role: str,
-        message_text: str,
+        text: str,
         channel: str = "client_merchant",
     ) -> int:
         async with self.db.conn() as conn:
             cur = await conn.execute(
                 """
-                INSERT INTO order_chat_messages(order_id, sender_user_id, sender_role, message_text, channel)
+                INSERT INTO order_chat_messages(order_id, sender_user_id, sender_role, text, channel)
                 VALUES (?, ?, ?, ?, ?)
                 """,
-                (order_id, sender_user_id, sender_role, message_text, channel),
+                (order_id, sender_user_id, sender_role, text, channel),
             )
             await conn.commit()
             return int(cur.lastrowid)
@@ -32,7 +32,7 @@ class ChatRepo:
         async with self.db.conn() as conn:
             cur = await conn.execute(
                 """
-                SELECT sender_user_id, sender_role, message_text, created_at, channel
+                SELECT sender_user_id, sender_role, text, created_at, channel
                 FROM order_chat_messages
                 WHERE order_id=? AND channel=?
                 ORDER BY created_at DESC
@@ -65,7 +65,7 @@ class ChatRepo:
             q = """
                 SELECT COUNT(*) AS cnt
                 FROM (
-                    SELECT DISTINCT o.id
+                    SELECT DISTINCT o.id, o.created_at
                     FROM orders o
                     JOIN order_chat_messages m ON m.order_id = o.id
                     WHERE o.client_user_id=?
@@ -76,7 +76,7 @@ class ChatRepo:
             q = """
                 SELECT COUNT(*) AS cnt
                 FROM (
-                    SELECT DISTINCT o.id
+                    SELECT DISTINCT o.id, o.created_at
                     FROM orders o
                     JOIN order_chat_messages m ON m.order_id = o.id
                     WHERE o.shop_id=?
@@ -100,7 +100,7 @@ class ChatRepo:
             return []
         if user_id:
             q = """
-                SELECT DISTINCT o.id
+                SELECT DISTINCT o.id, o.created_at
                 FROM orders o
                 JOIN order_chat_messages m ON m.order_id = o.id
                 WHERE o.client_user_id=?
@@ -110,7 +110,7 @@ class ChatRepo:
             params = (user_id, limit, offset)
         else:
             q = """
-                SELECT DISTINCT o.id
+                SELECT DISTINCT o.id, o.created_at
                 FROM orders o
                 JOIN order_chat_messages m ON m.order_id = o.id
                 WHERE o.shop_id=?
@@ -128,7 +128,7 @@ class ChatRepo:
             return []
         if user_id:
             q = """
-                SELECT DISTINCT o.id
+                SELECT DISTINCT o.id, o.created_at
                 FROM orders o
                 JOIN order_chat_messages m ON m.order_id = o.id
                 WHERE o.client_user_id=?
@@ -137,7 +137,7 @@ class ChatRepo:
             params = (user_id,)
         else:
             q = """
-                SELECT DISTINCT o.id
+                SELECT DISTINCT o.id, o.created_at
                 FROM orders o
                 JOIN order_chat_messages m ON m.order_id = o.id
                 WHERE o.shop_id=?

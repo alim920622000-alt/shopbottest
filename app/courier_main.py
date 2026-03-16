@@ -1,3 +1,4 @@
+import os
 import asyncio
 import logging
 
@@ -18,7 +19,7 @@ async def main():
         logger.error("COURIER_BOT_TOKEN не задан. Запуск courier-бота остановлен.")
         raise RuntimeError("COURIER_BOT_TOKEN is empty in .env")
 
-    db = Database(DBConfig(path=settings.db_path))
+    db = Database(DBConfig(path=settings.db_path, dsn=os.getenv("DB_DSN", "")))
     await db.init_schema()
 
     bot = Bot(token=token)

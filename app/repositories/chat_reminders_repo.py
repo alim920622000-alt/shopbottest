@@ -55,9 +55,9 @@ class ChatRemindersRepo:
                     order_id,
                     recipient_user_id,
                     recipient_kind,
-                    last_message_at.isoformat(timespec="seconds"),
+                    last_message_at,
                     last_message_preview,
-                    scheduled_at.isoformat(timespec="seconds"),
+                    scheduled_at,
                 ),
             )
             await connection.commit()
@@ -84,7 +84,7 @@ class ChatRemindersRepo:
                 WHERE recipient_kind=? AND status='pending' AND scheduled_at <= ?
                 ORDER BY scheduled_at ASC
                 """,
-                (recipient_kind, now.isoformat(timespec="seconds")),
+                (recipient_kind, now),
             )
             rows = await cursor.fetchall()
 

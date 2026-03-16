@@ -23,7 +23,7 @@ async def main():
     if not token:
         raise RuntimeError("CLIENT_BOT_TOKEN is empty in .env")
 
-    db = Database(DBConfig(path=os.getenv("DB_PATH", "shop.db")))
+    db = Database(DBConfig(path=os.getenv("DB_PATH", "shop.db"), dsn=os.getenv("DB_DSN", "")))
     await db.init_schema()
 
     bot = Bot(token=token)
