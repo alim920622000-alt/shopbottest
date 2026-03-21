@@ -155,3 +155,40 @@ class OrdersRepo:
             "added_count": added_count,
             "skipped_names": skipped_names,
         }
+
+    async def create_order_with_items(
+        self,
+        shop_id: int,
+        client_user_id: int,
+        items: list[tuple[int, int]],
+        comment: str = '',
+        fulfillment_type: str = 'courier',
+    ) -> int:
+        async with self.db.conn() as conn:
+            total = 0.0
+            collected = []
+            for product_id, quantity in items:
+                cur = await conn.execute(
+                    "SELECT price, shop_id FROM products WHERE id=? AND is_active=1",
+                    (product_id,),
+                )
+                row = await cur.fetchone()
+                if not row:
+                    raise ValueError(f"Товар {product_id} не найден")
+                price = float(row["price"])
+                total += price * quantity
+                collected.append((product_id, quantity, price))
+
+            cur2 = await conn.execute(
+                "INSERT INTO orders (shop_id, client_user_id, status, total_amount, comment, fulfillment_type, updated_at, merchant_status, courier_status) VALUES (?, ?, 'new', ?, ?, ?, CURRENT_TIMESTAMP, 'new', 'searching')",
+                (shop_id, client_user_id, total, comment, fulfillment_type),
+            )
+            order_id = int(cur2.lastrowid)
+
+            for product_id, quantity, price in collected:
+                await conn.execute(
+                    "INSERT INTO order_items (order_id, product_id, quantity, price_at_moment) VALUES (?, ?, ?, ?)",
+                    (order_id, product_id, quantity, price),
+                )
+            await conn.commit()
+        return order_id

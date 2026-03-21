@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.api.deps import get_current_user, get_db
+from app.api.deps import get_db
 from app.api.schemas import BusinessType, CursorPage
 from app.db.database import Database
 from app.repositories.categories_repo import CategoriesRepo
@@ -31,7 +31,6 @@ async def list_merchants(
     type: BusinessType = Query(...),
     limit: int = Query(default=20, ge=1, le=100),
     cursor: str | None = None,
-    _: object = Depends(get_current_user),
     db: Database = Depends(get_db),
 ) -> CursorPage:
     cursor_id = _parse_cursor(cursor)
@@ -47,7 +46,6 @@ async def list_categories(
     merchant_id: int,
     limit: int = Query(default=20, ge=1, le=100),
     cursor: str | None = None,
-    _: object = Depends(get_current_user),
     db: Database = Depends(get_db),
 ) -> CursorPage:
     cursor_id = _parse_cursor(cursor)
@@ -65,7 +63,6 @@ async def list_category_items(
     merchant_id: int = Query(..., gt=0),
     limit: int = Query(default=20, ge=1, le=100),
     cursor: str | None = None,
-    _: object = Depends(get_current_user),
     db: Database = Depends(get_db),
 ) -> CursorPage:
     cursor_id = _parse_cursor(cursor)
@@ -91,7 +88,6 @@ async def search_products(
     type: BusinessType = Query(...),
     limit: int = Query(default=20, ge=1, le=100),
     cursor: str | None = None,
-    _: object = Depends(get_current_user),
     db: Database = Depends(get_db),
 ) -> CursorPage:
     cursor_id = _parse_cursor(cursor)

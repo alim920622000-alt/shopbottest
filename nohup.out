@@ -1,0 +1,2520 @@
+INFO:     Started server process [1673923]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:36272 - "GET /catalog/merchants?type=shop HTTP/1.1" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 410, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/applications.py", line 1134, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 119, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 105, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 424, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 312, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/app/api/routes/catalog.py", line 37, in list_merchants
+    items = list(await ShopsRepo(db).list_active(type))
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/app/repositories/shops_repo.py", line 30, in list_active
+    async with self.db.conn() as conn:
+  File "/usr/lib/python3.12/contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/app/db/database.py", line 142, in conn
+    pool = await self._get_pool()
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/app/db/database.py", line 133, in _get_pool
+    self._pool = await asyncpg.create_pool(
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/pool.py", line 439, in _async__init__
+    await self._initialize()
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/pool.py", line 466, in _initialize
+    await first_ch.connect()
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/pool.py", line 153, in connect
+    self._con = await self._pool._get_new_connection()
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/pool.py", line 538, in _get_new_connection
+    con = await self._connect(
+          ^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 2443, in connect
+    return await connect_utils._connect(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connect_utils.py", line 1218, in _connect
+    conn = await _connect_addr(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connect_utils.py", line 1054, in _connect_addr
+    return await __connect_addr(params, True, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connect_utils.py", line 1102, in __connect_addr
+    await connected
+asyncpg.exceptions.InvalidAuthorizationSpecificationError: role "ubuntu" does not exist
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [1673923]
+INFO:     Started server process [1675341]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:56736 - "GET /catalog/merchants?type=shop HTTP/1.1" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 410, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/applications.py", line 1134, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 119, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 105, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 424, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 312, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/app/api/routes/catalog.py", line 37, in list_merchants
+    items = list(await ShopsRepo(db).list_active(type))
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/app/repositories/shops_repo.py", line 30, in list_active
+    async with self.db.conn() as conn:
+  File "/usr/lib/python3.12/contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/app/db/database.py", line 142, in conn
+    pool = await self._get_pool()
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/app/db/database.py", line 133, in _get_pool
+    self._pool = await asyncpg.create_pool(
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/pool.py", line 439, in _async__init__
+    await self._initialize()
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/pool.py", line 466, in _initialize
+    await first_ch.connect()
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/pool.py", line 153, in connect
+    self._con = await self._pool._get_new_connection()
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/pool.py", line 538, in _get_new_connection
+    con = await self._connect(
+          ^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 2443, in connect
+    return await connect_utils._connect(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connect_utils.py", line 1218, in _connect
+    conn = await _connect_addr(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connect_utils.py", line 1054, in _connect_addr
+    return await __connect_addr(params, True, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connect_utils.py", line 1102, in __connect_addr
+    await connected
+asyncpg.exceptions.InvalidAuthorizationSpecificationError: role "ubuntu" does not exist
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [1675341]
+INFO:     Started server process [1675991]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:39734 - "GET /catalog/merchants?type=shop HTTP/1.1" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/1/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/1/items?merchant_id=1&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/1/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/1/items?merchant_id=1&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/7/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/7/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/7/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/6/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/4/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/1/items?merchant_id=4&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/8/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/5/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/6/items?merchant_id=5&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/3/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [1675991]
+INFO:     Started server process [1679855]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:41532 - "GET /health HTTP/1.1" 200 OK
+INFO:     142.93.224.178:35018 - "POST /api/client/update?arch=amd64&commit=08059e95dacafe0bf6e5782f8e2c8ec9cd8c5a17&os=windows HTTP/1.1" 404 Not Found
+INFO:     62.89.211.92:0 - "POST /auth/telegram-widget HTTP/1.0" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "asyncpg/protocol/prepared_stmt.pyx", line 175, in asyncpg.protocol.protocol.PreparedStatementState._encode_bind_msg
+  File "asyncpg/protocol/codecs/base.pyx", line 251, in asyncpg.protocol.protocol.Codec.encode
+  File "asyncpg/protocol/codecs/base.pyx", line 153, in asyncpg.protocol.protocol.Codec.encode_scalar
+  File "asyncpg/pgproto/codecs/datetime.pyx", line 147, in asyncpg.pgproto.pgproto.timestamp_encode
+TypeError: expected a datetime.date or datetime.datetime instance, got 'str'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/ubuntu/teztaom/shopbottest/app/db/database.py", line 96, in execute
+    rows = await self._conn.fetch(pg_sql, *pg_params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 694, in fetch
+    return await self._execute(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 1873, in _execute
+    result, _ = await self.__execute(
+                ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 1970, in __execute
+    result, stmt = await self._do_execute(
+                   ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 2033, in _do_execute
+    result = await executor(stmt, None)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "asyncpg/protocol/protocol.pyx", line 184, in bind_execute
+  File "asyncpg/protocol/prepared_stmt.pyx", line 204, in asyncpg.protocol.protocol.PreparedStatementState._encode_bind_msg
+asyncpg.exceptions.DataError: invalid input for query argument $3: '2026-04-15T18:28:53.771124+00:00' (expected a datetime.date or datetime.datetime instance, got 'str')
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "asyncpg/protocol/prepared_stmt.pyx", line 175, in asyncpg.protocol.protocol.PreparedStatementState._encode_bind_msg
+  File "asyncpg/protocol/codecs/base.pyx", line 251, in asyncpg.protocol.protocol.Codec.encode
+  File "asyncpg/protocol/codecs/base.pyx", line 153, in asyncpg.protocol.protocol.Codec.encode_scalar
+  File "asyncpg/pgproto/codecs/datetime.pyx", line 147, in asyncpg.pgproto.pgproto.timestamp_encode
+TypeError: expected a datetime.date or datetime.datetime instance, got 'str'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 410, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/applications.py", line 1134, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 119, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 105, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 424, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 312, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/app/api/routes/auth.py", line 100, in auth_telegram_widget
+    return await _issue_tokens(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/app/api/routes/auth.py", line 81, in _issue_tokens
+    await conn.execute(
+  File "/home/ubuntu/teztaom/shopbottest/app/db/database.py", line 101, in execute
+    await self._conn.execute(pg_sql, *pg_params)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 357, in execute
+    _, status, _ = await self._execute(
+                   ^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 1873, in _execute
+    result, _ = await self.__execute(
+                ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 1970, in __execute
+    result, stmt = await self._do_execute(
+                   ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 2033, in _do_execute
+    result = await executor(stmt, None)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "asyncpg/protocol/protocol.pyx", line 184, in bind_execute
+  File "asyncpg/protocol/prepared_stmt.pyx", line 204, in asyncpg.protocol.protocol.PreparedStatementState._encode_bind_msg
+asyncpg.exceptions.DataError: invalid input for query argument $3: '2026-04-15T18:28:53.771124+00:00' (expected a datetime.date or datetime.datetime instance, got 'str')
+INFO:     62.89.211.92:0 - "POST /auth/telegram-widget HTTP/1.0" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "asyncpg/protocol/prepared_stmt.pyx", line 175, in asyncpg.protocol.protocol.PreparedStatementState._encode_bind_msg
+  File "asyncpg/protocol/codecs/base.pyx", line 251, in asyncpg.protocol.protocol.Codec.encode
+  File "asyncpg/protocol/codecs/base.pyx", line 153, in asyncpg.protocol.protocol.Codec.encode_scalar
+  File "asyncpg/pgproto/codecs/datetime.pyx", line 147, in asyncpg.pgproto.pgproto.timestamp_encode
+TypeError: expected a datetime.date or datetime.datetime instance, got 'str'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/ubuntu/teztaom/shopbottest/app/db/database.py", line 96, in execute
+    rows = await self._conn.fetch(pg_sql, *pg_params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 694, in fetch
+    return await self._execute(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 1873, in _execute
+    result, _ = await self.__execute(
+                ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 1970, in __execute
+    result, stmt = await self._do_execute(
+                   ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 2033, in _do_execute
+    result = await executor(stmt, None)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "asyncpg/protocol/protocol.pyx", line 184, in bind_execute
+  File "asyncpg/protocol/prepared_stmt.pyx", line 204, in asyncpg.protocol.protocol.PreparedStatementState._encode_bind_msg
+asyncpg.exceptions.DataError: invalid input for query argument $3: '2026-04-15T18:29:00.319126+00:00' (expected a datetime.date or datetime.datetime instance, got 'str')
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "asyncpg/protocol/prepared_stmt.pyx", line 175, in asyncpg.protocol.protocol.PreparedStatementState._encode_bind_msg
+  File "asyncpg/protocol/codecs/base.pyx", line 251, in asyncpg.protocol.protocol.Codec.encode
+  File "asyncpg/protocol/codecs/base.pyx", line 153, in asyncpg.protocol.protocol.Codec.encode_scalar
+  File "asyncpg/pgproto/codecs/datetime.pyx", line 147, in asyncpg.pgproto.pgproto.timestamp_encode
+TypeError: expected a datetime.date or datetime.datetime instance, got 'str'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 410, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/applications.py", line 1134, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 119, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 105, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 424, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 312, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/app/api/routes/auth.py", line 100, in auth_telegram_widget
+    return await _issue_tokens(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/app/api/routes/auth.py", line 81, in _issue_tokens
+    await conn.execute(
+  File "/home/ubuntu/teztaom/shopbottest/app/db/database.py", line 101, in execute
+    await self._conn.execute(pg_sql, *pg_params)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 357, in execute
+    _, status, _ = await self._execute(
+                   ^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 1873, in _execute
+    result, _ = await self.__execute(
+                ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 1970, in __execute
+    result, stmt = await self._do_execute(
+                   ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 2033, in _do_execute
+    result = await executor(stmt, None)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "asyncpg/protocol/protocol.pyx", line 184, in bind_execute
+  File "asyncpg/protocol/prepared_stmt.pyx", line 204, in asyncpg.protocol.protocol.PreparedStatementState._encode_bind_msg
+asyncpg.exceptions.DataError: invalid input for query argument $3: '2026-04-15T18:29:00.319126+00:00' (expected a datetime.date or datetime.datetime instance, got 'str')
+INFO:     62.89.211.92:0 - "POST /auth/telegram-widget HTTP/1.0" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "asyncpg/protocol/prepared_stmt.pyx", line 175, in asyncpg.protocol.protocol.PreparedStatementState._encode_bind_msg
+  File "asyncpg/protocol/codecs/base.pyx", line 251, in asyncpg.protocol.protocol.Codec.encode
+  File "asyncpg/protocol/codecs/base.pyx", line 153, in asyncpg.protocol.protocol.Codec.encode_scalar
+  File "asyncpg/pgproto/codecs/datetime.pyx", line 147, in asyncpg.pgproto.pgproto.timestamp_encode
+TypeError: expected a datetime.date or datetime.datetime instance, got 'str'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/ubuntu/teztaom/shopbottest/app/db/database.py", line 96, in execute
+    rows = await self._conn.fetch(pg_sql, *pg_params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 694, in fetch
+    return await self._execute(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 1873, in _execute
+    result, _ = await self.__execute(
+                ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 1970, in __execute
+    result, stmt = await self._do_execute(
+                   ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 2033, in _do_execute
+    result = await executor(stmt, None)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "asyncpg/protocol/protocol.pyx", line 184, in bind_execute
+  File "asyncpg/protocol/prepared_stmt.pyx", line 204, in asyncpg.protocol.protocol.PreparedStatementState._encode_bind_msg
+asyncpg.exceptions.DataError: invalid input for query argument $3: '2026-04-15T18:29:09.671165+00:00' (expected a datetime.date or datetime.datetime instance, got 'str')
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "asyncpg/protocol/prepared_stmt.pyx", line 175, in asyncpg.protocol.protocol.PreparedStatementState._encode_bind_msg
+  File "asyncpg/protocol/codecs/base.pyx", line 251, in asyncpg.protocol.protocol.Codec.encode
+  File "asyncpg/protocol/codecs/base.pyx", line 153, in asyncpg.protocol.protocol.Codec.encode_scalar
+  File "asyncpg/pgproto/codecs/datetime.pyx", line 147, in asyncpg.pgproto.pgproto.timestamp_encode
+TypeError: expected a datetime.date or datetime.datetime instance, got 'str'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 410, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/applications.py", line 1134, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 119, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 105, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 424, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 312, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/app/api/routes/auth.py", line 100, in auth_telegram_widget
+    return await _issue_tokens(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/app/api/routes/auth.py", line 81, in _issue_tokens
+    await conn.execute(
+  File "/home/ubuntu/teztaom/shopbottest/app/db/database.py", line 101, in execute
+    await self._conn.execute(pg_sql, *pg_params)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 357, in execute
+    _, status, _ = await self._execute(
+                   ^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 1873, in _execute
+    result, _ = await self.__execute(
+                ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 1970, in __execute
+    result, stmt = await self._do_execute(
+                   ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 2033, in _do_execute
+    result = await executor(stmt, None)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "asyncpg/protocol/protocol.pyx", line 184, in bind_execute
+  File "asyncpg/protocol/prepared_stmt.pyx", line 204, in asyncpg.protocol.protocol.PreparedStatementState._encode_bind_msg
+asyncpg.exceptions.DataError: invalid input for query argument $3: '2026-04-15T18:29:09.671165+00:00' (expected a datetime.date or datetime.datetime instance, got 'str')
+INFO:     62.89.211.92:0 - "POST /auth/telegram-widget HTTP/1.0" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "asyncpg/protocol/prepared_stmt.pyx", line 175, in asyncpg.protocol.protocol.PreparedStatementState._encode_bind_msg
+  File "asyncpg/protocol/codecs/base.pyx", line 251, in asyncpg.protocol.protocol.Codec.encode
+  File "asyncpg/protocol/codecs/base.pyx", line 153, in asyncpg.protocol.protocol.Codec.encode_scalar
+  File "asyncpg/pgproto/codecs/datetime.pyx", line 147, in asyncpg.pgproto.pgproto.timestamp_encode
+TypeError: expected a datetime.date or datetime.datetime instance, got 'str'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/ubuntu/teztaom/shopbottest/app/db/database.py", line 96, in execute
+    rows = await self._conn.fetch(pg_sql, *pg_params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 694, in fetch
+    return await self._execute(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 1873, in _execute
+    result, _ = await self.__execute(
+                ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 1970, in __execute
+    result, stmt = await self._do_execute(
+                   ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 2033, in _do_execute
+    result = await executor(stmt, None)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "asyncpg/protocol/protocol.pyx", line 184, in bind_execute
+  File "asyncpg/protocol/prepared_stmt.pyx", line 204, in asyncpg.protocol.protocol.PreparedStatementState._encode_bind_msg
+asyncpg.exceptions.DataError: invalid input for query argument $3: '2026-04-15T18:29:31.659112+00:00' (expected a datetime.date or datetime.datetime instance, got 'str')
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "asyncpg/protocol/prepared_stmt.pyx", line 175, in asyncpg.protocol.protocol.PreparedStatementState._encode_bind_msg
+  File "asyncpg/protocol/codecs/base.pyx", line 251, in asyncpg.protocol.protocol.Codec.encode
+  File "asyncpg/protocol/codecs/base.pyx", line 153, in asyncpg.protocol.protocol.Codec.encode_scalar
+  File "asyncpg/pgproto/codecs/datetime.pyx", line 147, in asyncpg.pgproto.pgproto.timestamp_encode
+TypeError: expected a datetime.date or datetime.datetime instance, got 'str'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 410, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/applications.py", line 1134, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 119, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 105, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 424, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 312, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/app/api/routes/auth.py", line 100, in auth_telegram_widget
+    return await _issue_tokens(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/app/api/routes/auth.py", line 81, in _issue_tokens
+    await conn.execute(
+  File "/home/ubuntu/teztaom/shopbottest/app/db/database.py", line 101, in execute
+    await self._conn.execute(pg_sql, *pg_params)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 357, in execute
+    _, status, _ = await self._execute(
+                   ^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 1873, in _execute
+    result, _ = await self.__execute(
+                ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 1970, in __execute
+    result, stmt = await self._do_execute(
+                   ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 2033, in _do_execute
+    result = await executor(stmt, None)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "asyncpg/protocol/protocol.pyx", line 184, in bind_execute
+  File "asyncpg/protocol/prepared_stmt.pyx", line 204, in asyncpg.protocol.protocol.PreparedStatementState._encode_bind_msg
+asyncpg.exceptions.DataError: invalid input for query argument $3: '2026-04-15T18:29:31.659112+00:00' (expected a datetime.date or datetime.datetime instance, got 'str')
+INFO:     62.89.211.92:0 - "POST /auth/telegram-widget HTTP/1.0" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "asyncpg/protocol/prepared_stmt.pyx", line 175, in asyncpg.protocol.protocol.PreparedStatementState._encode_bind_msg
+  File "asyncpg/protocol/codecs/base.pyx", line 251, in asyncpg.protocol.protocol.Codec.encode
+  File "asyncpg/protocol/codecs/base.pyx", line 153, in asyncpg.protocol.protocol.Codec.encode_scalar
+  File "asyncpg/pgproto/codecs/datetime.pyx", line 147, in asyncpg.pgproto.pgproto.timestamp_encode
+TypeError: expected a datetime.date or datetime.datetime instance, got 'str'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/ubuntu/teztaom/shopbottest/app/db/database.py", line 96, in execute
+    rows = await self._conn.fetch(pg_sql, *pg_params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 694, in fetch
+    return await self._execute(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 1873, in _execute
+    result, _ = await self.__execute(
+                ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 1970, in __execute
+    result, stmt = await self._do_execute(
+                   ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 2033, in _do_execute
+    result = await executor(stmt, None)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "asyncpg/protocol/protocol.pyx", line 184, in bind_execute
+  File "asyncpg/protocol/prepared_stmt.pyx", line 204, in asyncpg.protocol.protocol.PreparedStatementState._encode_bind_msg
+asyncpg.exceptions.DataError: invalid input for query argument $3: '2026-04-15T18:29:39.580267+00:00' (expected a datetime.date or datetime.datetime instance, got 'str')
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "asyncpg/protocol/prepared_stmt.pyx", line 175, in asyncpg.protocol.protocol.PreparedStatementState._encode_bind_msg
+  File "asyncpg/protocol/codecs/base.pyx", line 251, in asyncpg.protocol.protocol.Codec.encode
+  File "asyncpg/protocol/codecs/base.pyx", line 153, in asyncpg.protocol.protocol.Codec.encode_scalar
+  File "asyncpg/pgproto/codecs/datetime.pyx", line 147, in asyncpg.pgproto.pgproto.timestamp_encode
+TypeError: expected a datetime.date or datetime.datetime instance, got 'str'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 410, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/applications.py", line 1134, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 119, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 105, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 424, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 312, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/app/api/routes/auth.py", line 100, in auth_telegram_widget
+    return await _issue_tokens(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/app/api/routes/auth.py", line 81, in _issue_tokens
+    await conn.execute(
+  File "/home/ubuntu/teztaom/shopbottest/app/db/database.py", line 101, in execute
+    await self._conn.execute(pg_sql, *pg_params)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 357, in execute
+    _, status, _ = await self._execute(
+                   ^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 1873, in _execute
+    result, _ = await self.__execute(
+                ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 1970, in __execute
+    result, stmt = await self._do_execute(
+                   ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 2033, in _do_execute
+    result = await executor(stmt, None)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "asyncpg/protocol/protocol.pyx", line 184, in bind_execute
+  File "asyncpg/protocol/prepared_stmt.pyx", line 204, in asyncpg.protocol.protocol.PreparedStatementState._encode_bind_msg
+asyncpg.exceptions.DataError: invalid input for query argument $3: '2026-04-15T18:29:39.580267+00:00' (expected a datetime.date or datetime.datetime instance, got 'str')
+INFO:     141.227.138.64:0 - "POST /auth/telegram-widget HTTP/1.0" 401 Unauthorized
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [1679855]
+INFO:     Started server process [1682972]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:47026 - "GET /health HTTP/1.1" 200 OK
+INFO:     62.89.211.92:0 - "POST /auth/telegram-widget HTTP/1.0" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "asyncpg/protocol/prepared_stmt.pyx", line 175, in asyncpg.protocol.protocol.PreparedStatementState._encode_bind_msg
+  File "asyncpg/protocol/codecs/base.pyx", line 251, in asyncpg.protocol.protocol.Codec.encode
+  File "asyncpg/protocol/codecs/base.pyx", line 153, in asyncpg.protocol.protocol.Codec.encode_scalar
+  File "asyncpg/pgproto/codecs/datetime.pyx", line 152, in asyncpg.pgproto.pgproto.timestamp_encode
+TypeError: can't subtract offset-naive and offset-aware datetimes
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/ubuntu/teztaom/shopbottest/app/db/database.py", line 96, in execute
+    rows = await self._conn.fetch(pg_sql, *pg_params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 694, in fetch
+    return await self._execute(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 1873, in _execute
+    result, _ = await self.__execute(
+                ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 1970, in __execute
+    result, stmt = await self._do_execute(
+                   ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 2033, in _do_execute
+    result = await executor(stmt, None)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "asyncpg/protocol/protocol.pyx", line 184, in bind_execute
+  File "asyncpg/protocol/prepared_stmt.pyx", line 204, in asyncpg.protocol.protocol.PreparedStatementState._encode_bind_msg
+asyncpg.exceptions.DataError: invalid input for query argument $3: datetime.datetime(2026, 4, 15, 18, 31, 2... (can't subtract offset-naive and offset-aware datetimes)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "asyncpg/protocol/prepared_stmt.pyx", line 175, in asyncpg.protocol.protocol.PreparedStatementState._encode_bind_msg
+  File "asyncpg/protocol/codecs/base.pyx", line 251, in asyncpg.protocol.protocol.Codec.encode
+  File "asyncpg/protocol/codecs/base.pyx", line 153, in asyncpg.protocol.protocol.Codec.encode_scalar
+  File "asyncpg/pgproto/codecs/datetime.pyx", line 152, in asyncpg.pgproto.pgproto.timestamp_encode
+TypeError: can't subtract offset-naive and offset-aware datetimes
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 410, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/applications.py", line 1134, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 119, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 105, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 424, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 312, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/app/api/routes/auth.py", line 100, in auth_telegram_widget
+    return await _issue_tokens(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/app/api/routes/auth.py", line 81, in _issue_tokens
+    await conn.execute(
+  File "/home/ubuntu/teztaom/shopbottest/app/db/database.py", line 101, in execute
+    await self._conn.execute(pg_sql, *pg_params)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 357, in execute
+    _, status, _ = await self._execute(
+                   ^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 1873, in _execute
+    result, _ = await self.__execute(
+                ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 1970, in __execute
+    result, stmt = await self._do_execute(
+                   ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/asyncpg/connection.py", line 2033, in _do_execute
+    result = await executor(stmt, None)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "asyncpg/protocol/protocol.pyx", line 184, in bind_execute
+  File "asyncpg/protocol/prepared_stmt.pyx", line 204, in asyncpg.protocol.protocol.PreparedStatementState._encode_bind_msg
+asyncpg.exceptions.DataError: invalid input for query argument $3: datetime.datetime(2026, 4, 15, 18, 31, 2... (can't subtract offset-naive and offset-aware datetimes)
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [1682972]
+INFO:     Started server process [1683552]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:48148 - "GET /health HTTP/1.1" 200 OK
+INFO:     62.89.211.92:0 - "POST /auth/telegram-widget HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     127.0.0.1:37922 - "GET /openapi.json HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [1683552]
+INFO:     Started server process [1685807]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:36124 - "GET /openapi.json HTTP/1.1" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/7/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /profile HTTP/1.0" 401 Unauthorized
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/3/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/8/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/5/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/6/items?merchant_id=5&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "OPTIONS /catalog/merchants?type=shop&limit=50 HTTP/1.0" 405 Method Not Allowed
+INFO:     62.89.211.92:0 - "OPTIONS /catalog/merchants?type=shop&limit=50 HTTP/1.0" 405 Method Not Allowed
+INFO:     62.89.211.92:0 - "OPTIONS /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 405 Method Not Allowed
+INFO:     62.89.211.92:0 - "OPTIONS /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 405 Method Not Allowed
+INFO:     62.89.211.92:0 - "OPTIONS /catalog/merchants?type=shop&limit=50 HTTP/1.0" 405 Method Not Allowed
+INFO:     62.89.211.92:0 - "OPTIONS /catalog/merchants?type=shop&limit=50 HTTP/1.0" 405 Method Not Allowed
+INFO:     62.89.211.92:0 - "OPTIONS /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 405 Method Not Allowed
+INFO:     62.89.211.92:0 - "OPTIONS /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 405 Method Not Allowed
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/8/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     204.76.203.18:64272 - "GET / HTTP/1.1" 404 Not Found
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     176.65.148.81:38036 - "CONNECT cfdump.packetsdatabase.com%3A443 HTTP/1.1" 404 Not Found
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     204.76.203.18:28618 - "GET /bins/ HTTP/1.1" 404 Not Found
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /auth/logout HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /auth/telegram-widget HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /auth/logout HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /auth/telegram-widget HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /profile HTTP/1.0" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 410, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/applications.py", line 1134, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 119, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 105, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 424, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 312, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/app/api/routes/profile.py", line 34, in get_profile
+    profile = await repo.get(user["sub"])
+                             ~~~~^^^^^^^
+TypeError: 'CurrentUser' object is not subscriptable
+INFO:     62.89.211.92:0 - "GET /profile HTTP/1.0" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 410, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/applications.py", line 1134, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 119, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 105, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 424, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 312, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/app/api/routes/profile.py", line 34, in get_profile
+    profile = await repo.get(user["sub"])
+                             ~~~~^^^^^^^
+TypeError: 'CurrentUser' object is not subscriptable
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /profile HTTP/1.0" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 410, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/applications.py", line 1134, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 119, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 105, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 424, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 312, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/app/api/routes/profile.py", line 34, in get_profile
+    profile = await repo.get(user["sub"])
+                             ~~~~^^^^^^^
+TypeError: 'CurrentUser' object is not subscriptable
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /auth/logout HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /auth/telegram-widget HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /profile HTTP/1.0" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 410, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/applications.py", line 1134, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 119, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 105, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 424, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 312, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/app/api/routes/profile.py", line 34, in get_profile
+    profile = await repo.get(user["sub"])
+                             ~~~~^^^^^^^
+TypeError: 'CurrentUser' object is not subscriptable
+INFO:     62.89.211.92:0 - "GET /profile HTTP/1.0" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 410, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/applications.py", line 1134, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 119, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 105, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 424, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 312, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/app/api/routes/profile.py", line 34, in get_profile
+    profile = await repo.get(user["sub"])
+                             ~~~~^^^^^^^
+TypeError: 'CurrentUser' object is not subscriptable
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /profile HTTP/1.0" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 410, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/applications.py", line 1134, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 119, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 105, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 424, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 312, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/app/api/routes/profile.py", line 34, in get_profile
+    profile = await repo.get(user["sub"])
+                             ~~~~^^^^^^^
+TypeError: 'CurrentUser' object is not subscriptable
+INFO:     204.76.203.18:5720 - "GET /bin/ HTTP/1.1" 404 Not Found
+INFO:     204.76.203.18:1810 - "GET /backup/ HTTP/1.1" 404 Not Found
+INFO:     62.89.211.92:0 - "GET / HTTP/1.0" 404 Not Found
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /profile HTTP/1.0" 401 Unauthorized
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 401 Unauthorized
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /auth/logout HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /auth/telegram-widget HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/1/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/1/items?merchant_id=1&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders/1 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /orders HTTP/1.0" 403 Forbidden
+INFO:     62.89.211.92:0 - "POST /orders HTTP/1.0" 403 Forbidden
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /profile HTTP/1.0" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 410, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/applications.py", line 1134, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 119, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 105, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 424, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 312, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/app/api/routes/profile.py", line 34, in get_profile
+    profile = await repo.get(user["sub"])
+                             ~~~~^^^^^^^
+TypeError: 'CurrentUser' object is not subscriptable
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /orders HTTP/1.0" 403 Forbidden
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders/11 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/1/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/1/items?merchant_id=1&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /orders HTTP/1.0" 403 Forbidden
+INFO:     62.89.211.92:0 - "POST /orders HTTP/1.0" 403 Forbidden
+INFO:     62.89.211.92:0 - "POST /orders HTTP/1.0" 403 Forbidden
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /auth/logout HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/1/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/1/items?merchant_id=1&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /auth/telegram-widget HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /orders HTTP/1.0" 403 Forbidden
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [1685807]
+INFO:     Started server process [1718845]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:55342 - "GET /health HTTP/1.1" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /profile HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /orders HTTP/1.0" 403 Forbidden
+INFO:     127.0.0.1:40054 - "POST /orders HTTP/1.1" 401 Unauthorized
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [1718845]
+INFO:     Started server process [1720679]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:33538 - "GET /health HTTP/1.1" 200 OK
+Resetting connection with an active transaction <asyncpg.connection.Connection object at 0x7d8f8c519220>
+INFO:     62.89.211.92:0 - "POST /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+Resetting connection with an active transaction <asyncpg.connection.Connection object at 0x7d8f8c519220>
+INFO:     62.89.211.92:0 - "POST /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders/15 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /profile HTTP/1.0" 401 Unauthorized
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 401 Unauthorized
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /auth/logout HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /auth/telegram-widget HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+Resetting connection with an active transaction <asyncpg.connection.Connection object at 0x7d8f8c519220>
+INFO:     62.89.211.92:0 - "POST /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /profile HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /profile HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /profile HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+Resetting connection with an active transaction <asyncpg.connection.Connection object at 0x7d8f8c63e120>
+INFO:     62.89.211.92:0 - "POST /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /profile HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /profile HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+WARNING:  Invalid HTTP request received.
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /profile HTTP/1.0" 401 Unauthorized
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 401 Unauthorized
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /auth/logout HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /auth/telegram-widget HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders/134 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders/134 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /profile HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+Resetting connection with an active transaction <asyncpg.connection.Connection object at 0x7d8f8c51a8a0>
+INFO:     62.89.211.92:0 - "POST /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders/134 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders/134 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /profile HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /profile HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /profile HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [1720679]
+INFO:     Started server process [1732393]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:50144 - "GET /health HTTP/1.1" 200 OK
+INFO:     62.89.211.92:0 - "GET /profile HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders/239 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders/178 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders/170 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders/238 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders/237 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /profile HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /profile HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders/239 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders/238 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders/237 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders/237 HTTP/1.0" 401 Unauthorized
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [1732393]
+INFO:     Started server process [1733946]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:44176 - "GET /health HTTP/1.1" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /auth/logout HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /auth/telegram-widget HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [1733946]
+INFO:     Started server process [1736569]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:59370 - "GET /health HTTP/1.1" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /profile HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders/239 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders/237 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders/178 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders/134 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+Resetting connection with an active transaction <asyncpg.connection.Connection object at 0x7f32897756d0>
+INFO:     62.89.211.92:0 - "POST /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 401 Unauthorized
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /auth/logout HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /auth/telegram-widget HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+Resetting connection with an active transaction <asyncpg.connection.Connection object at 0x7f32897756d0>
+INFO:     62.89.211.92:0 - "POST /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+Resetting connection with an active transaction <asyncpg.connection.Connection object at 0x7f32897756d0>
+INFO:     62.89.211.92:0 - "POST /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+Resetting connection with an active transaction <asyncpg.connection.Connection object at 0x7f32897756d0>
+INFO:     62.89.211.92:0 - "POST /orders HTTP/1.0" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [1736569]
+INFO:     Started server process [1742320]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:37558 - "GET /health HTTP/1.1" 200 OK
+INFO:     62.89.211.92:0 - "POST /orders HTTP/1.0" 401 Unauthorized
+INFO:     62.89.211.92:0 - "POST /auth/telegram-widget HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /orders HTTP/1.0" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 410, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/applications.py", line 1134, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 119, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 105, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 424, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 312, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/app/api/routes/orders.py", line 148, in create_order
+    order_id = int(cur_order["id"])
+                   ~~~~~~~~~^^^^^^
+TypeError: '_AsyncPGCursor' object is not subscriptable
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [1742320]
+INFO:     Started server process [1743018]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:45980 - "GET /health HTTP/1.1" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /orders HTTP/1.0" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 410, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/applications.py", line 1134, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 119, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 105, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 424, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 312, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/app/api/routes/orders.py", line 141, in create_order
+    order_id = await conn.fetchval(
+                     ^^^^^^^^^^^^^
+AttributeError: '_AsyncPGConnection' object has no attribute 'fetchval'
+INFO:     62.89.211.92:0 - "POST /orders HTTP/1.0" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 410, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/applications.py", line 1134, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 119, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 105, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 424, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 312, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/app/api/routes/orders.py", line 141, in create_order
+    order_id = await conn.fetchval(
+                     ^^^^^^^^^^^^^
+AttributeError: '_AsyncPGConnection' object has no attribute 'fetchval'
+WARNING:  Invalid HTTP request received.
+INFO:     94.231.206.13:52491 - "GET / HTTP/1.1" 404 Not Found
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [1743018]
+INFO:     Started server process [1744847]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:55246 - "GET /health HTTP/1.1" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /profile HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/6/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/6/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/4/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/1/items?merchant_id=4&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     94.231.206.33:58037 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/1/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/1/items?merchant_id=1&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 401 Unauthorized
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /auth/logout HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /auth/telegram-widget HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/4/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/1/items?merchant_id=4&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/1/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/1/items?merchant_id=1&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/4/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/1/items?merchant_id=4&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+WARNING:  Invalid HTTP request received.
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /orders HTTP/1.0" 401 Unauthorized
+INFO:     62.89.211.92:0 - "POST /auth/refresh HTTP/1.0" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 410, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/applications.py", line 1134, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 119, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 105, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 424, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 312, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/app/api/routes/auth.py", line 127, in refresh_access_token
+    expires_at = datetime.fromisoformat(row["expires_at"])
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: fromisoformat: argument must be str
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /auth/logout HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /auth/telegram-widget HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/3/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/8/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/5/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/6/items?merchant_id=5&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/4/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/1/items?merchant_id=4&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/3/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/5/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/6/items?merchant_id=5&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/7/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/6/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/4/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/1/items?merchant_id=4&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /profile HTTP/1.0" 401 Unauthorized
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 401 Unauthorized
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /auth/refresh HTTP/1.0" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 410, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/applications.py", line 1134, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 119, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 105, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 424, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 312, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/app/api/routes/auth.py", line 127, in refresh_access_token
+    expires_at = datetime.fromisoformat(row["expires_at"])
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: fromisoformat: argument must be str
+INFO:     62.89.211.92:0 - "POST /auth/refresh HTTP/1.0" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 410, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/applications.py", line 1134, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 119, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 105, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 424, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 312, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/app/api/routes/auth.py", line 127, in refresh_access_token
+    expires_at = datetime.fromisoformat(row["expires_at"])
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: fromisoformat: argument must be str
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /auth/logout HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /auth/telegram-widget HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /profile HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /profile HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=100 HTTP/1.0" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [1744847]
+INFO:     Started server process [1756258]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     62.89.211.92:0 - "GET /orders HTTP/1.0" 200 OK
+INFO:     127.0.0.1:59830 - "GET /health HTTP/1.1" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /profile HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=20 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=20 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=20&cursor=253 HTTP/1.0" 200 OK
+INFO:     81.168.83.103:50017 - "GET /appsettings.json HTTP/1.0" 404 Not Found
+INFO:     62.89.211.92:0 - "GET /profile HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /auth/telegram-widget HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /orders HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=20 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=20&cursor=254 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /profile HTTP/1.0" 401 Unauthorized
+INFO:     62.89.211.92:0 - "GET /orders?limit=20 HTTP/1.0" 401 Unauthorized
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /auth/refresh HTTP/1.0" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 410, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/applications.py", line 1134, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 119, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 105, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 424, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 312, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/app/api/routes/auth.py", line 127, in refresh_access_token
+    expires_at = datetime.fromisoformat(row["expires_at"])
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: fromisoformat: argument must be str
+INFO:     62.89.211.92:0 - "POST /auth/refresh HTTP/1.0" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 410, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/applications.py", line 1134, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 119, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 105, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 424, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/venv/lib/python3.12/site-packages/fastapi/routing.py", line 312, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/teztaom/shopbottest/app/api/routes/auth.py", line 127, in refresh_access_token
+    expires_at = datetime.fromisoformat(row["expires_at"])
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: fromisoformat: argument must be str
+INFO:     62.89.211.92:0 - "GET /catalog/2/categories?limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/categories/3/items?merchant_id=2&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /auth/logout HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /auth/telegram-widget HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /orders?limit=20 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=shop&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "GET /catalog/merchants?type=restaurant&limit=50 HTTP/1.0" 200 OK
+INFO:     62.89.211.92:0 - "POST /orders HTTP/1.0" 422 Unprocessable Entity

@@ -5,6 +5,7 @@ import hashlib
 import hmac
 import json
 import os
+import secrets
 import time
 from typing import Any
 
@@ -13,6 +14,7 @@ from fastapi import HTTPException, status
 
 JWT_ALG = "HS256"
 JWT_EXPIRE_SECONDS = int(os.getenv("API_JWT_EXPIRE_SECONDS", "86400"))
+REFRESH_TOKEN_EXPIRE_SECONDS = int(os.getenv("API_REFRESH_EXPIRE_SECONDS", str(30 * 86400)))
 
 
 def _b64url_encode(raw: bytes) -> str:
@@ -29,6 +31,10 @@ def _get_secret() -> str:
     if not secret:
         raise RuntimeError("API_JWT_SECRET is empty. Set it in environment or .env")
     return secret
+
+
+def create_refresh_token() -> str:
+    return secrets.token_urlsafe(48)
 
 
 def create_access_token(payload: dict[str, Any]) -> str:

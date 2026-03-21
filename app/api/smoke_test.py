@@ -32,7 +32,7 @@ def _get(path: str, token: str) -> dict:
 
 
 def main() -> None:
-    auth = _post("/auth/telegram", {"telegram_user_id": TELEGRAM_USER_ID})
+    auth = _post("/auth/login", {"telegram_user_id": TELEGRAM_USER_ID})
     token = auth["access_token"]
     merchants = _get("/catalog/merchants?type=shop&limit=5", token)
     print("TOKEN:", token)

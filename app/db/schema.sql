@@ -17,6 +17,16 @@ CREATE TABLE IF NOT EXISTS users (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS refresh_tokens (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    token TEXT NOT NULL UNIQUE,
+    expires_at DATETIME NOT NULL,
+    revoked INTEGER NOT NULL DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS shop_admins (
     shop_id INTEGER NOT NULL,
     user_id INTEGER NOT NULL,
@@ -202,3 +212,6 @@ CREATE INDEX IF NOT EXISTS idx_order_seen_viewer ON order_seen(viewer_role, view
 CREATE INDEX IF NOT EXISTS idx_chat_reminders_due ON chat_message_reminders(recipient_kind, status, scheduled_at);
 CREATE INDEX IF NOT EXISTS idx_categories_business ON categories(business_type);
 CREATE UNIQUE INDEX IF NOT EXISTS uq_categories_business_name_norm ON categories(business_type, name_norm);
+
+CREATE INDEX IF NOT EXISTS idx_refresh_tokens_token ON refresh_tokens(token);
+CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON refresh_tokens(user_id);

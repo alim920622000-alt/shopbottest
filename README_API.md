@@ -33,7 +33,7 @@ python -m app.api.main
 ### 1) Получить токен
 
 ```bash
-curl -X POST "http://localhost:8000/auth/telegram" \
+curl -X POST "http://localhost:8000/auth/login" \
   -H "Content-Type: application/json" \
   -d '{"telegram_user_id":123456789}'
 ```
@@ -67,3 +67,6 @@ curl -X POST "http://localhost:8000/chats/1/messages" \
   -H "Content-Type: application/json" \
   -d '{"text":"Здравствуйте"}'
 ```
+
+
+Подробное описание аутентификации: `docs/api.md`.

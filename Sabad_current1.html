@@ -1,0 +1,1800 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Сабад.</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#f7f7f5;--bg2:#efefed;--text:#1a1a1a;--text2:#6b6b6b;--border:rgba(0,0,0,.10);--border2:rgba(0,0,0,.18);--border3:rgba(0,0,0,.28);--page:#D4D4D4;--radius:8px;--radius-lg:12px;--font:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;--green:#5DCAA5;--dark:#1e2a3a;--indigo:#2c3e6b}
+body.dark{--bg:#282828;--bg2:#333333;--text:#e0e0e0;--text2:#8e8ea0;--border:rgba(255,255,255,.08);--border2:rgba(255,255,255,.15);--border3:rgba(255,255,255,.25);--page:#444444;--dark:#333333}
+@keyframes tb-blink{0%,100%{transform:scaleY(1)}1.5%{transform:scaleY(0.08)}3%{transform:scaleY(1)}4.5%{transform:scaleY(0.08)}6%{transform:scaleY(1)}}
+@keyframes tb-look{
+  0%,8%{transform:translate(0,0)}
+  10%,16%{transform:translate(-3px,0)}
+  18%,28%{transform:translate(0,0)}
+  30%,36%{transform:translate(6px,0)}
+  38%,48%{transform:translate(0,0)}
+  50%,56%{transform:translate(-2px,-4px)}
+  58%,68%{transform:translate(0,0)}
+  70%,76%{transform:translate(5px,-4px)}
+  78%,100%{transform:translate(0,0)}
+}
+@keyframes tb-smile{0%,60%{d:path("M46,96 Q70,96 94,96")}68%,78%{d:path("M46,96 Q70,104 94,96")}86%,100%{d:path("M46,96 Q70,96 94,96")}}
+.tb-eye-l,.tb-eye-r{transform-origin:center;animation:tb-blink 10s ease-in-out infinite}
+.tb-pupil-l,.tb-pupil-r{animation:tb-look 10s ease-in-out infinite}
+.tb-mouth{animation:tb-smile 10s ease-in-out infinite}
+
+@keyframes yovar-blink{0%,100%{transform:scaleY(1)}1.5%{transform:scaleY(0.08)}3%{transform:scaleY(1)}4.5%{transform:scaleY(0.08)}6%{transform:scaleY(1)}}
+@keyframes yovar-look{
+  0%,8%{transform:translate(0,0)}
+  10%,16%{transform:translate(-3px,0)}
+  18%,28%{transform:translate(0,0)}
+  30%,36%{transform:translate(6px,0)}
+  38%,48%{transform:translate(0,0)}
+  50%,56%{transform:translate(-2px,4px)}
+  58%,68%{transform:translate(0,0)}
+  70%,76%{transform:translate(5px,4px)}
+  78%,100%{transform:translate(0,0)}
+}
+@keyframes yovar-smile{0%,60%{d:path("M46,96 Q70,96 94,96")}68%,78%{d:path("M46,96 Q70,104 94,96")}86%,100%{d:path("M46,96 Q70,96 94,96")}}
+.yovar-eye{transform-origin:center;animation:yovar-blink 10s ease-in-out infinite}
+.yovar-pupil{animation:yovar-look 10s ease-in-out infinite}
+.yovar-mouth{animation:yovar-smile 10s ease-in-out infinite}
+body{background:var(--page);font-family:var(--font);display:flex;justify-content:center;min-height:100vh;overflow-x:hidden;transition:background .3s}
+.app{position:relative;max-width:420px;width:100%;overflow:hidden;margin:0 auto}
+.screen{display:none;width:100%;padding:16px 16px 100px;min-height:100vh}
+.screen.active{display:block}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 0 18px}
+.logo{display:flex;align-items:center;gap:8px;font-size:20px;font-weight:500;color:var(--text);letter-spacing:-.5px}
+.logo span{color:#4DB830}
+.back-btn{display:flex;align-items:center;gap:6px;font-size:14px;font-weight:500;color:var(--text);cursor:pointer;border:none;background:none;font-family:var(--font)}
+.menu-btn{width:36px;height:36px;border-radius:10px;background:var(--bg);border:.5px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;cursor:pointer;flex-shrink:0}
+.menu-btn span{display:block;width:16px;height:1.5px;background:var(--text);border-radius:2px}
+.sb-overlay{position:fixed;inset:0;background:rgba(0,0,0,0);pointer-events:none;z-index:200;transition:background .3s}
+.sb-overlay.open{background:rgba(0,0,0,.45);pointer-events:all}
+.sidebar{position:fixed;top:0;left:-290px;width:270px;height:100%;background:var(--bg);z-index:201;transition:left .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;padding:0 0 24px}
+.sidebar.open{left:0}
+.sb-head{padding:18px 16px 14px;border-bottom:.5px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.sb-logo{display:flex;align-items:center;gap:8px;font-size:17px;font-weight:500;color:var(--text)}
+.sb-logo span{color:#4DB830}
+.sb-head-right{display:flex;align-items:center;gap:6px}
+.dark-btn{width:32px;height:32px;border-radius:50%;background:var(--bg2);border:.5px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;transition:all .2s}
+.sb-close{width:30px;height:30px;border-radius:50%;background:var(--bg2);border:.5px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;color:var(--text2)}
+.sb-user{padding:14px 16px;border-bottom:.5px solid var(--border);display:flex;align-items:center;gap:10px}
+.sb-avatar{width:42px;height:42px;border-radius:50%;background:var(--dark);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:500;color:var(--green);flex-shrink:0}
+.sb-name{font-size:14px;font-weight:500;color:var(--text)}
+.sb-phone{font-size:12px;color:var(--text2);margin-top:2px}
+.sb-sec{padding:10px 16px 4px;font-size:11px;font-weight:500;color:var(--text2);letter-spacing:.6px;text-transform:uppercase}
+.sb-item{display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;transition:background .15s;position:relative}
+.sb-item:hover{background:var(--bg2)}
+.sb-ico{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.ico-green{background:#E1F5EE}.ico-blue{background:#E6F1FB}.ico-orange{background:#FEF3E6}.ico-purple{background:#F0EAFB}.ico-red{background:#FDE8E8}
+.sb-item-label{font-size:14px;color:var(--text)}
+.sb-badge{margin-left:auto;min-width:18px;height:18px;border-radius:9px;background:#1D9E75;color:#fff;font-size:10px;font-weight:500;display:flex;align-items:center;justify-content:center;padding:0 4px}
+.sb-footer{margin-top:auto;padding:14px 16px 0;border-top:.5px solid var(--border)}
+.sb-pts{background:var(--dark);border-radius:10px;padding:11px 13px;display:flex;align-items:center;gap:10px}
+.sb-pts-lbl{font-size:11px;color:#7a9bb8}
+.sb-pts-val{font-size:15px;font-weight:600;color:#fff}
+.ai-banner{background:var(--dark);border-radius:18px;padding:16px;margin-bottom:18px;cursor:pointer;transition:opacity .15s;position:relative;overflow:hidden;box-shadow:0 6px 28px rgba(0,0,0,.25)}
+.ai-banner:hover{opacity:.93}
+.ai-banner::before{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(93,202,165,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(93,202,165,.04) 1px,transparent 1px);background-size:28px 28px;pointer-events:none}
+.ai-inner{position:relative;display:flex;align-items:flex-start;gap:12px}
+.ai-icon{width:52px;height:52px;border-radius:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ai-col{flex:1;min-width:0}
+.ai-lbl-row{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.ai-lbl{font-size:11px;color:var(--green);font-weight:500;letter-spacing:.8px;text-transform:uppercase}
+.ai-dot{width:5px;height:5px;border-radius:50%;background:var(--green);animation:blink 1.4s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.ai-tw{font-size:15px;font-weight:500;color:#fff;min-height:22px;line-height:1.4;margin-bottom:5px}
+.ai-cursor{display:inline-block;width:2px;height:16px;background:var(--green);vertical-align:middle;margin-left:2px;border-radius:1px;animation:caret .9s step-end infinite}
+@keyframes caret{0%,100%{opacity:1}50%{opacity:0}}
+.ai-sub{font-size:12px;color:#6b8aad}
+.ai-arr{margin-left:auto;width:26px;height:26px;border-radius:8px;background:rgba(93,202,165,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.search-bar{display:flex;align-items:center;gap:10px;background:var(--bg2);border:.5px solid var(--border);border-radius:var(--radius-lg);padding:10px 14px;margin-bottom:18px;cursor:pointer}
+.search-bar svg{width:15px;height:15px;color:var(--text2);flex-shrink:0}
+.search-bar span{font-size:14px;color:var(--text2);flex:1}
+.tabs{display:flex;gap:7px;margin-bottom:18px;overflow-x:auto}
+.tabs::-webkit-scrollbar{display:none}
+.tab{padding:6px 14px;border-radius:20px;font-size:13px;font-weight:500;cursor:pointer;border:.5px solid var(--border);color:var(--text2);background:var(--bg);white-space:nowrap;transition:all .15s}
+.tab.active{background:var(--text);color:var(--bg);border-color:var(--text)}
+.sec-title{font-size:13px;font-weight:500;color:var(--text2);margin-bottom:10px}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.card{background:var(--bg);border:.5px solid var(--border);border-radius:var(--radius-lg);padding:12px;cursor:pointer;transition:border-color .15s,box-shadow .15s;position:relative;box-shadow:0 4px 16px rgba(0,0,0,.13)}
+.card:hover{border-color:var(--border3);box-shadow:0 8px 28px rgba(0,0,0,.2)}
+.card-emoji{font-size:26px;margin-bottom:7px}
+.card-name{font-size:14px;font-weight:500;color:var(--text);margin-bottom:2px}
+.card-meta{font-size:12px;color:var(--text2)}
+.card-tag{display:inline-block;font-size:11px;padding:2px 7px;border-radius:4px;margin-top:5px}
+.tag-fast{background:#EAF3DE;color:#3B6D11}.tag-new{background:#E6F1FB;color:#185FA5}.tag-sale{background:#E1F5EE;color:#085041}
+.fav-btn{position:absolute;top:8px;right:8px;width:24px;height:24px;border-radius:50%;background:var(--bg2);border:.5px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;transition:all .2s}
+.fav-btn.active{background:#FDE8E8;border-color:#f9b4b4}
+.venue-hero{background:var(--dark);border-radius:var(--radius-lg);padding:18px;margin-bottom:14px;display:flex;align-items:center;gap:12px}
+.venue-emoji{font-size:38px}
+.venue-name{font-size:17px;font-weight:500;color:#fff;margin-bottom:3px}
+.venue-meta{font-size:12px;color:#7a9bb8}
+.menu-sec-title{font-size:13px;font-weight:500;color:var(--text2);margin-bottom:8px;border-bottom:.5px solid var(--border);padding-bottom:7px}
+.menu-item{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:.5px solid var(--border)}
+.menu-item:last-child{border-bottom:none}
+.menu-item-left{display:flex;align-items:center;gap:9px}
+.menu-item-name{font-size:14px;color:var(--text)}
+.menu-item-price{font-size:13px;font-weight:500;color:var(--text)}
+.add-btn{width:28px;height:28px;border-radius:50%;background:var(--dark);border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--green);font-size:18px;line-height:1;font-family:var(--font)}
+.order-card{border:.5px solid var(--border);border-radius:var(--radius-lg);padding:13px;margin-bottom:9px;background:var(--bg);box-shadow:0 4px 16px rgba(0,0,0,.11)}
+.order-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}
+.order-venue{font-size:14px;font-weight:500;color:var(--text)}
+.order-status{font-size:11px;padding:3px 9px;border-radius:20px;font-weight:500}
+.status-active{background:#E1F5EE;color:#085041}
+.status-done{background:var(--bg2);color:var(--text2)}
+.order-items{font-size:13px;color:var(--text2);margin-bottom:6px}
+.order-footer{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--text2)}
+.order-price{font-weight:500;color:var(--text)}
+.order-chat-btn{display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg2);border:.5px solid var(--border);border-radius:14px;font-size:11px;color:var(--text2);cursor:pointer;transition:all .15s}
+.order-chat-btn:hover{border-color:var(--border3);color:var(--text)}
+.profile-header{display:flex;align-items:center;gap:13px;padding:4px 0 18px}
+.profile-avatar{width:54px;height:54px;border-radius:50%;background:var(--dark);display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:500;color:var(--green);flex-shrink:0}
+.profile-name{font-size:16px;font-weight:500;color:var(--text)}
+.profile-phone{font-size:13px;color:var(--text2)}
+.profile-menu{border:.5px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;background:var(--bg)}
+.profile-row{display:flex;align-items:center;justify-content:space-between;padding:13px 14px;border-bottom:.5px solid var(--border);cursor:pointer}
+.profile-row:last-child{border-bottom:none}
+.profile-row:hover{background:var(--bg2)}
+.profile-row-left{display:flex;align-items:center;gap:10px}
+.profile-row-icon{width:30px;height:30px;border-radius:8px;background:var(--bg2);display:flex;align-items:center;justify-content:center;font-size:15px}
+.profile-row-label{font-size:14px;color:var(--text)}
+.profile-arrow{color:var(--text2);font-size:17px}
+.cart-item{display:flex;align-items:center;justify-content:space-between;background:var(--bg);border:.5px solid var(--border);border-radius:var(--radius-lg);padding:11px 13px;margin-bottom:8px}
+.cart-item-left{display:flex;align-items:center;gap:9px}
+.cart-item-emoji{font-size:22px}
+.cart-item-name{font-size:14px;font-weight:500;color:var(--text)}
+.cart-item-price{font-size:12px;color:var(--text2)}
+.qty-ctrl{display:flex;align-items:center;gap:7px}
+.qty-btn{width:27px;height:27px;border-radius:50%;border:.5px solid var(--border);background:var(--bg2);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text);font-family:var(--font)}
+.qty-val{font-size:14px;font-weight:500;color:var(--text);min-width:14px;text-align:center}
+.cart-summary{background:var(--bg);border:.5px solid var(--border);border-radius:var(--radius-lg);padding:13px;margin-bottom:14px}
+.cart-row{display:flex;justify-content:space-between;font-size:14px;color:var(--text2);margin-bottom:7px}
+.cart-row:last-child{margin-bottom:0;font-weight:600;color:var(--text);font-size:15px;border-top:.5px solid var(--border);padding-top:9px;margin-top:5px}
+.cart-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:300px;gap:11px}
+.cart-empty svg{width:46px;height:46px;color:var(--border2)}
+.cart-empty p{font-size:15px;color:var(--text2)}
+.comment-box{width:100%;padding:11px 13px;background:var(--bg);border:.5px solid var(--border);border-radius:var(--radius-lg);font-size:14px;color:var(--text);font-family:var(--font);outline:none;resize:none;margin-bottom:14px;line-height:1.45}
+.comment-box:focus{border-color:var(--border3)}
+.comment-box::placeholder{color:var(--text2)}
+.promo-row{display:flex;gap:8px;margin-bottom:14px}
+.promo-input{flex:1;padding:10px 13px;background:var(--bg2);border:.5px solid var(--border);border-radius:var(--radius);font-size:14px;color:var(--text);font-family:var(--font);outline:none}
+.promo-apply{padding:10px 14px;background:var(--dark);color:#fff;border:none;border-radius:var(--radius);font-size:14px;cursor:pointer;font-family:var(--font)}
+.btn-primary{width:100%;padding:13px;background:var(--dark);color:#fff;border:none;border-radius:var(--radius-lg);font-size:15px;font-weight:500;cursor:pointer;font-family:var(--font);transition:opacity .15s}
+.btn-primary:hover{opacity:.9}
+.checkout-step{margin-bottom:22px}
+.checkout-label{font-size:13px;font-weight:500;color:var(--text2);margin-bottom:9px}
+.checkout-field{width:100%;padding:11px 13px;background:var(--bg);border:.5px solid var(--border);border-radius:var(--radius);font-size:14px;color:var(--text);font-family:var(--font);outline:none;margin-bottom:7px}
+.checkout-field:focus{border-color:var(--border3)}
+.pay-options{display:flex;flex-direction:column;gap:7px}
+.pay-opt{display:flex;align-items:center;justify-content:space-between;padding:12px 13px;background:var(--bg);border:.5px solid var(--border);border-radius:var(--radius-lg);cursor:pointer;transition:border-color .15s}
+.pay-opt.selected{border-color:var(--green);background:#f0fbf6}
+.pay-opt-left{font-size:14px;color:var(--text)}
+.pay-check{width:19px;height:19px;border-radius:50%;border:1.5px solid var(--border2);display:flex;align-items:center;justify-content:center}
+.pay-opt.selected .pay-check{background:var(--green);border-color:var(--green)}
+.pay-check-inner{width:7px;height:7px;border-radius:50%;background:#fff}
+.success-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;text-align:center;gap:11px}
+.success-icon{width:62px;height:62px;border-radius:50%;background:#E1F5EE;display:flex;align-items:center;justify-content:center;font-size:27px}
+.success-title{font-size:19px;font-weight:600;color:var(--text)}
+.success-sub{font-size:14px;color:var(--text2);max-width:250px;line-height:1.5}
+.track-steps{width:100%;background:var(--bg);border:.5px solid var(--border);border-radius:var(--radius-lg);padding:13px;margin-top:8px}
+.track-step{display:flex;align-items:center;gap:11px;padding:7px 0;position:relative}
+.track-step:not(:last-child)::after{content:'';position:absolute;left:10px;top:30px;width:2px;height:18px;background:var(--border)}
+.step-dot{width:21px;height:21px;border-radius:50%;border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:9px;color:var(--text2)}
+.step-dot.done{background:var(--green);border-color:var(--green);color:#fff}
+.step-dot.active{background:var(--dark);border-color:var(--dark);color:#fff}
+.step-label{font-size:13px;color:var(--text2)}
+.step-label.active{color:var(--text);font-weight:500}
+.search-input-wrap{display:flex;align-items:center;gap:9px;background:var(--bg);border:.5px solid var(--border3);border-radius:var(--radius-lg);padding:10px 13px;margin-bottom:14px}
+.search-input-wrap input{flex:1;border:none;outline:none;font-size:14px;color:var(--text);font-family:var(--font);background:none}
+.sri{display:flex;align-items:center;gap:11px;padding:11px;background:var(--bg);border:.5px solid var(--border);border-radius:var(--radius-lg);margin-bottom:7px;cursor:pointer;transition:border-color .15s}
+.sri:hover{border-color:var(--border3)}
+.sri-emoji{font-size:26px;flex-shrink:0}
+.sri-name{font-size:14px;font-weight:500;color:var(--text)}
+.sri-meta{font-size:12px;color:var(--text2);margin-top:2px}
+.sri-price{font-size:13px;font-weight:500;color:var(--text)}
+.promo-banner{border-radius:var(--radius-lg);padding:16px;margin-bottom:10px;position:relative;overflow:hidden;cursor:pointer}
+.pb-green{background:linear-gradient(135deg,#1D9E75,#2ecc8f)}
+.pb-indigo{background:linear-gradient(135deg,#2c3e6b,#4a6fa5)}
+.pb-orange{background:linear-gradient(135deg,#e07b39,#f0a561)}
+.promo-title{font-size:15px;font-weight:600;color:#fff;margin-bottom:3px}
+.promo-desc{font-size:12px;color:rgba(255,255,255,.75);margin-bottom:10px}
+.promo-pill{display:inline-block;background:rgba(255,255,255,.2);border:1px dashed rgba(255,255,255,.5);border-radius:5px;padding:3px 11px;font-size:13px;font-weight:600;color:#fff;letter-spacing:.4px}
+.promo-badge{position:absolute;top:11px;right:13px;background:rgba(255,255,255,.2);border-radius:20px;padding:2px 9px;font-size:11px;color:#fff;font-weight:500}
+.promo-copied{position:absolute;bottom:11px;right:13px;font-size:11px;color:rgba(255,255,255,.9);opacity:0;transition:opacity .3s}
+.promo-copied.show{opacity:1}
+.notif-item{display:flex;gap:11px;padding:13px;background:var(--bg);border:.5px solid var(--border);border-radius:var(--radius-lg);margin-bottom:7px;cursor:pointer}
+.notif-item.unread{border-left:3px solid var(--green)}
+.notif-ico{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.notif-title{font-size:14px;font-weight:500;color:var(--text);margin-bottom:2px}
+.notif-body{font-size:12px;color:var(--text2);line-height:1.4}
+.notif-time{font-size:11px;color:var(--text2);margin-top:3px}
+.notif-dot{width:7px;height:7px;border-radius:50%;background:var(--green);flex-shrink:0;margin-top:4px}
+.fav-card{background:var(--bg);border:.5px solid var(--border);border-radius:var(--radius-lg);padding:13px;margin-bottom:9px;display:flex;align-items:center;gap:11px;cursor:pointer;transition:border-color .15s}
+.fav-card:hover{border-color:var(--border3)}
+.fav-card-emoji{font-size:30px;flex-shrink:0}
+.fav-card-name{font-size:14px;font-weight:500;color:var(--text);margin-bottom:2px}
+.fav-card-meta{font-size:12px;color:var(--text2)}
+.fav-remove{width:26px;height:26px;border-radius:50%;background:var(--bg2);border:.5px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;color:var(--text2)}
+.chat-agent{display:flex;align-items:center;gap:8px;padding:8px 0 13px;border-bottom:.5px solid var(--border);margin-bottom:13px}
+.chat-agent-av{width:34px;height:34px;border-radius:50%;background:#E1F5EE;display:flex;align-items:center;justify-content:center;font-size:15px}
+.chat-agent-name{font-size:14px;font-weight:500;color:var(--text)}
+.chat-agent-status{font-size:11px;color:var(--green)}
+.chat-order-info{background:var(--bg2);border-radius:var(--radius);padding:9px 12px;margin-bottom:13px;font-size:12px;color:var(--text2);border:.5px solid var(--border)}
+.chat-order-info strong{color:var(--text)}
+.chat-wrap{display:flex;flex-direction:column;height:calc(100vh - 260px)}
+.chat-messages{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:9px;padding-bottom:8px}
+.msg{max-width:78%;padding:9px 12px;border-radius:14px;font-size:14px;line-height:1.45}
+.msg.in{background:var(--bg);border:.5px solid var(--border);border-radius:14px 14px 14px 3px;color:var(--text);align-self:flex-start}
+.msg.out{background:var(--dark);color:#fff;border-radius:14px 14px 3px 14px;align-self:flex-end}
+.msg-time{font-size:10px;opacity:.5;margin-top:3px;text-align:right}
+.chat-quick{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:9px}
+.cq-btn{padding:5px 11px;background:var(--bg);border:.5px solid var(--border);border-radius:13px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap}
+.cq-btn:hover{border-color:var(--border3);color:var(--text)}
+.chat-input-row{display:flex;gap:7px;padding-top:10px;border-top:.5px solid var(--border);margin-top:auto}
+.chat-input{flex:1;padding:9px 13px;background:var(--bg2);border:.5px solid var(--border);border-radius:19px;font-size:14px;color:var(--text);font-family:var(--font);outline:none}
+.chat-send{width:36px;height:36px;border-radius:50%;background:var(--dark);border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+.chat-send svg{width:15px;height:15px;stroke:#fff}
+.onboard-wrap{display:flex;flex-direction:column;min-height:90vh;padding:28px 0 16px}
+.onboard-logo{font-size:30px;font-weight:500;color:var(--text);letter-spacing:-1px;margin-bottom:5px}
+.onboard-logo span{color:#4DB830}
+.onboard-tag{font-size:14px;color:var(--text2);margin-bottom:36px}
+.onboard-art{font-size:68px;text-align:center;margin-bottom:36px}
+.onboard-title{font-size:21px;font-weight:600;color:var(--text);margin-bottom:7px}
+.onboard-sub{font-size:14px;color:var(--text2);margin-bottom:24px;line-height:1.5}
+.phone-row{display:flex;gap:8px;margin-bottom:11px}
+.phone-pre{padding:12px 13px;background:var(--bg);border:.5px solid var(--border);border-radius:var(--radius);font-size:14px;color:var(--text);width:70px;text-align:center}
+.phone-inp{flex:1;padding:12px 13px;background:var(--bg);border:.5px solid var(--border);border-radius:var(--radius);font-size:14px;color:var(--text);font-family:var(--font);outline:none}
+.otp-row{display:flex;gap:9px;justify-content:center;margin-bottom:18px}
+.otp-box{width:50px;height:54px;background:var(--bg);border:.5px solid var(--border);border-radius:var(--radius);font-size:21px;font-weight:600;text-align:center;color:var(--text);font-family:var(--font);outline:none}
+.otp-box:focus{border-color:var(--green)}
+.onboard-note{font-size:12px;color:var(--text2);text-align:center;margin-bottom:22px}
+.onboard-note span{color:var(--text);cursor:pointer;text-decoration:underline}
+.skip-btn{text-align:center;font-size:13px;color:var(--text2);cursor:pointer;margin-top:11px}
+.toolbar-wrap{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:420px;padding:9px 15px 18px;z-index:50;pointer-events:none}
+.toolbar{pointer-events:all;background:var(--bg);border:.5px solid var(--border);border-radius:22px;display:flex;align-items:center;justify-content:space-around;padding:6px 3px;box-shadow:0 4px 24px rgba(0,0,0,.14)}
+.tb-btn{display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:7px 13px;border-radius:17px;transition:background .15s;position:relative;flex:1;border:none;background:transparent;font-family:var(--font)}
+.tb-btn:hover:not(.ai-tab){background:var(--bg2)}
+.tb-btn.active{background:var(--dark)}
+.tb-btn svg{width:20px;height:20px;display:block}
+.tb-btn.ai-tab svg{width:42px;height:42px}
+.tb-btn span{font-size:10px;font-weight:500}
+.tb-btn:not(.active):not(.ai-tab) svg{color:var(--text2)}
+.tb-btn:not(.active):not(.ai-tab) span{color:var(--text2)}
+.tb-btn.active svg{color:var(--green)}
+.tb-btn.active span{color:rgba(255,255,255,.7)}
+.tb-btn.ai-tab{background:transparent;border-radius:17px;padding:2px 10px}
+.tb-btn.ai-tab span{color:var(--text2);font-size:10px}
+.tb-btn.ai-tab.ai-open{background:var(--indigo)}
+.tb-btn.ai-tab.ai-open span{color:rgba(255,255,255,.75)}
+.tb-badge{position:absolute;top:4px;right:7px;width:15px;height:15px;background:#1D9E75;border-radius:50%;font-size:9px;color:#fff;font-weight:500;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg)}
+.tb-btn.active .tb-badge{border-color:var(--dark)}
+.settings-section{margin-bottom:20px}
+.settings-label{font-size:11px;font-weight:500;color:var(--text2);letter-spacing:.6px;text-transform:uppercase;margin-bottom:8px;padding:0 4px}
+.settings-menu{border:.5px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;background:var(--bg)}
+.settings-row{display:flex;align-items:center;justify-content:space-between;padding:13px 14px;border-bottom:.5px solid var(--border);cursor:pointer;transition:background .15s}
+.settings-row:last-child{border-bottom:none}
+.settings-row:hover{background:var(--bg2)}
+.settings-row-left{display:flex;align-items:center;gap:10px}
+.settings-row-icon{width:30px;height:30px;border-radius:8px;background:var(--bg2);display:flex;align-items:center;justify-content:center;font-size:15px}
+.settings-row-label{font-size:14px;color:var(--text)}
+.settings-row-sub{font-size:12px;color:var(--text2);margin-top:1px}
+.settings-row-right{display:flex;align-items:center;gap:6px}
+.settings-arrow{color:var(--text2);font-size:17px}
+.settings-check{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--border2);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.settings-check.active{background:var(--green);border-color:var(--green);color:#fff;font-size:11px}
+.add-address-btn{width:100%;padding:12px;background:var(--bg);border:.5px dashed var(--border2);border-radius:var(--radius-lg);font-size:14px;color:var(--text2);cursor:pointer;font-family:var(--font);margin-top:10px;transition:all .15s}
+.add-address-btn:hover{border-color:var(--green);color:var(--green)}
+.order-detail-card{background:var(--bg);border:.5px solid var(--border);border-radius:var(--radius-lg);padding:14px;margin-bottom:12px}
+.order-detail-title{font-size:13px;font-weight:500;color:var(--text2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px}
+.order-detail-row{display:flex;justify-content:space-between;font-size:14px;color:var(--text2);padding:5px 0;border-bottom:.5px solid var(--border)}
+.order-detail-row:last-child{border-bottom:none;font-weight:500;color:var(--text)}
+.order-status-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;font-size:13px;font-weight:500;margin-bottom:14px}
+.order-status-badge.active{background:#E1F5EE;color:#085041}
+.order-status-badge.done{background:var(--bg2);color:var(--text2)}
+.ai-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-end;justify-content:center;z-index:300}
+.ai-overlay.open{display:flex}
+.ai-modal{background:var(--bg);border-radius:18px 18px 0 0;padding:18px 15px 26px;width:100%;max-width:420px;position:relative;min-height:40vh;max-height:75vh;height:auto;display:flex;flex-direction:column;overflow:hidden;transition:height .3s ease}
+.modal-handle{width:38px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 14px;flex-shrink:0}
+.modal-head{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-shrink:0}
+.modal-avatar{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.modal-title{font-size:16px;font-weight:500;color:var(--text)}
+.modal-status{font-size:11px;color:var(--green)}
+.modal-close{position:absolute;top:14px;right:14px;width:27px;height:27px;border-radius:50%;background:var(--bg2);border:.5px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;color:var(--text2)}
+.modal-messages{overflow-y:auto;display:flex;flex-direction:column;gap:9px;margin-bottom:12px;min-height:0;max-height:calc(75vh - 180px)}
+.modal-msg{max-width:82%;padding:9px 12px;border-radius:13px;font-size:14px;line-height:1.45}
+.modal-msg.in{background:var(--bg2);border:.5px solid var(--border);border-radius:13px 13px 13px 3px;color:var(--text);align-self:flex-start}
+.modal-msg.out{background:var(--indigo);color:#fff;border-radius:13px 13px 3px 13px;align-self:flex-end}
+.modal-action-btn{display:inline-block;margin-top:7px;padding:5px 11px;background:var(--green);color:#fff;border-radius:12px;font-size:12px;cursor:pointer;border:none;font-family:var(--font)}
+.modal-suggs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;flex-shrink:0}
+.modal-sugg{padding:6px 12px;background:var(--bg2);border:.5px solid var(--border);border-radius:14px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap}
+.modal-sugg:hover{border-color:var(--border3);color:var(--text)}
+.modal-inp-row{display:flex;gap:7px;flex-shrink:0}
+.modal-inp-row input{flex:1;padding:10px 13px;background:var(--bg2);border:.5px solid var(--border);border-radius:19px;font-size:14px;color:var(--text);font-family:var(--font);outline:none}
+.modal-inp-row input:focus{border-color:var(--border3)}
+.modal-send-btn{width:38px;height:38px;border-radius:50%;background:var(--indigo);color:#fff;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:16px}
+</style>
+</head>
+<body>
+<div class="app">
+
+<div class="sb-overlay" id="sbOverlay" onclick="closeSB()"></div>
+<div class="sidebar" id="sidebar">
+  <div class="sb-head">
+    <div class="sb-logo"><svg width="22" height="20" viewBox="0 0 352 330" fill="none"><path d="M268 103.5C268 79.6 258.3 56.7 241.1 39.9C223.8 23 200.4 13.5 176 13.5C151.6 13.5 128.2 23 110.9 39.9C93.7 56.7 84 79.6 84 103.5" stroke="url(#sb0)" stroke-width="27"/><path d="M321.8 114.5H30.2C6 114.5 0 122.3 0 132C0 141.7 5.5 149.5 30.2 149.5H321.8C346 149.5 352 141.7 352 132C352 122.3 346 114.5 321.8 114.5Z" fill="url(#sb1)"/><path d="M9 160.5L60.3 329.6H290.9L342.1 160.5H9Z" fill="url(#sb2)"/><circle cx="85.5" cy="133" r="11.5" fill="#0A0A0A"/><circle cx="266.5" cy="133" r="11.5" fill="#0A0A0A"/><circle cx="176.5" cy="133" r="11.5" fill="#0A0A0A"/><defs><linearGradient id="sb0" x1="268" y1="-15" x2="268" y2="75" gradientUnits="userSpaceOnUse"><stop stop-color="#7ED95A"/><stop offset="1" stop-color="#4DB830"/></linearGradient><linearGradient id="sb1" x1="0" y1="114.5" x2="0" y2="149.5" gradientUnits="userSpaceOnUse"><stop stop-color="#7ED95A"/><stop offset="1" stop-color="#4DB830"/></linearGradient><linearGradient id="sb2" x1="9" y1="160.5" x2="9" y2="350.5" gradientUnits="userSpaceOnUse"><stop stop-color="#7ED95A"/><stop offset="1" stop-color="#4DB830"/></linearGradient></defs></svg>Сабад<span>.</span></div>
+    <div class="sb-head-right">
+      <div class="dark-btn" id="darkBtn" onclick="toggleDark()">🌙</div>
+      <div class="sb-close" onclick="closeSB()">✕</div>
+    </div>
+  </div>
+  <div class="sb-user"><div class="sb-avatar">АД</div><div><div class="sb-name">Алим Достонов</div><div class="sb-phone">+992 900 000 000</div></div></div>
+  <div class="sb-sec">Разделы</div>
+  <div class="sb-item" onclick="closeSB();goTo('favourites')"><div class="sb-ico ico-red">❤️</div><span class="sb-item-label">Избранное</span><span class="sb-badge" id="fav-count">2</span></div>
+  <div class="sb-item" onclick="closeSB();goTo('notifications')"><div class="sb-ico ico-blue">🔔</div><span class="sb-item-label">Уведомления</span><span class="sb-badge">3</span></div>
+  <div class="sb-item" onclick="closeSB();goTo('chat-support')"><div class="sb-ico ico-green">💬</div><span class="sb-item-label">Чат с поддержкой</span></div>
+  <div class="sb-item" onclick="closeSB();goTo('promos')"><div class="sb-ico ico-orange">🎁</div><span class="sb-item-label">Акции и промокоды</span></div>
+  <div class="sb-sec">Настройки</div>
+  <div class="sb-item" onclick="closeSB();goTo('language')"><div class="sb-ico ico-purple">🌐</div><span class="sb-item-label">Язык</span><span style="margin-left:auto;font-size:12px;color:var(--text2)">RU</span></div>
+  <div class="sb-item" onclick="closeSB();goTo('addresses')"><div class="sb-ico ico-blue">📍</div><span class="sb-item-label">Адреса доставки</span></div>
+  <div class="sb-item" onclick="closeSB();logout()"><div class="sb-ico ico-red">🚪</div><span class="sb-item-label">Выйти</span></div>
+  <div class="sb-footer"><div class="sb-pts"><div style="font-size:18px">⭐</div><div><div class="sb-pts-lbl">Бонусные баллы</div><div class="sb-pts-val">320 баллов</div></div></div></div>
+</div>
+
+<div class="screen active" id="screen-onboard" data-i18n-screen="onboard">
+  <div class="onboard-wrap">
+    <div style="display:flex;align-items:center;gap:9px;margin-bottom:5px"><svg width="32" height="30" viewBox="0 0 352 330" fill="none"><path d="M268 103.5C268 79.6 258.3 56.7 241.1 39.9C223.8 23 200.4 13.5 176 13.5C151.6 13.5 128.2 23 110.9 39.9C93.7 56.7 84 79.6 84 103.5" stroke="url(#ob0)" stroke-width="27"/><path d="M321.8 114.5H30.2C6 114.5 0 122.3 0 132C0 141.7 5.5 149.5 30.2 149.5H321.8C346 149.5 352 141.7 352 132C352 122.3 346 114.5 321.8 114.5Z" fill="url(#ob1)"/><path d="M9 160.5L60.3 329.6H290.9L342.1 160.5H9Z" fill="url(#ob2)"/><circle cx="85.5" cy="133" r="11.5" fill="#0A0A0A"/><circle cx="266.5" cy="133" r="11.5" fill="#0A0A0A"/><circle cx="176.5" cy="133" r="11.5" fill="#0A0A0A"/><defs><linearGradient id="ob0" x1="268" y1="-15" x2="268" y2="75" gradientUnits="userSpaceOnUse"><stop stop-color="#7ED95A"/><stop offset="1" stop-color="#4DB830"/></linearGradient><linearGradient id="ob1" x1="0" y1="114.5" x2="0" y2="149.5" gradientUnits="userSpaceOnUse"><stop stop-color="#7ED95A"/><stop offset="1" stop-color="#4DB830"/></linearGradient><linearGradient id="ob2" x1="9" y1="160.5" x2="9" y2="350.5" gradientUnits="userSpaceOnUse"><stop stop-color="#7ED95A"/><stop offset="1" stop-color="#4DB830"/></linearGradient></defs></svg><div class="onboard-logo">Сабад<span>.</span></div></div>
+    <div class="onboard-tag">Доставка за 30 минут</div>
+    <div class="onboard-art">🛵</div>
+    <div id="step-phone">
+      <div class="onboard-title">Добро пожаловать!</div>
+      <div class="onboard-sub">Войдите через Telegram — быстро и безопасно.</div>
+      <div id="tg-widget-wrap" style="display:flex;justify-content:center;margin:20px 0 10px"></div>
+      <div class="skip-btn" onclick="skipAndGo()">Пропустить →</div>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="screen-home">
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="menu-btn" onclick="openSB()"><span></span><span></span><span></span></div>
+      <div class="logo"><svg viewBox="0 0 352 330" fill="none" style="width:26px;height:24px"><path d="M268 103.5C268 79.6 258.3 56.7 241.1 39.9C223.8 23 200.4 13.5 176 13.5C151.6 13.5 128.2 23 110.9 39.9C93.7 56.7 84 79.6 84 103.5" stroke="url(#hm0)" stroke-width="27"/><path d="M321.8 114.5H30.2C6 114.5 0 122.3 0 132C0 141.7 5.5 149.5 30.2 149.5H321.8C346 149.5 352 141.7 352 132C352 122.3 346 114.5 321.8 114.5Z" fill="url(#hm1)"/><path d="M9 160.5L60.3 329.6H290.9L342.1 160.5H9Z" fill="url(#hm2)"/><circle cx="85.5" cy="133" r="11.5" fill="#0A0A0A"/><circle cx="266.5" cy="133" r="11.5" fill="#0A0A0A"/><circle cx="176.5" cy="133" r="11.5" fill="#0A0A0A"/><defs><linearGradient id="hm0" x1="268" y1="-15" x2="268" y2="75" gradientUnits="userSpaceOnUse"><stop stop-color="#7ED95A"/><stop offset="1" stop-color="#4DB830"/></linearGradient><linearGradient id="hm1" x1="0" y1="114.5" x2="0" y2="149.5" gradientUnits="userSpaceOnUse"><stop stop-color="#7ED95A"/><stop offset="1" stop-color="#4DB830"/></linearGradient><linearGradient id="hm2" x1="9" y1="160.5" x2="9" y2="350.5" gradientUnits="userSpaceOnUse"><stop stop-color="#7ED95A"/><stop offset="1" stop-color="#4DB830"/></linearGradient></defs></svg>Сабад<span>.</span></div>
+    </div>
+  </div>
+  <div class="ai-banner" onclick="openAI()">
+    <div class="ai-inner">
+      <!-- НОВЫЙ ЛОГОТИП ЁВАРА — баннер -->
+      <div class="ai-icon">
+        <svg viewBox="0 0 140 140" width="42" height="42">
+          <rect x="4" y="4" width="132" height="132" rx="34" fill="#BDBDBD" stroke="#000" stroke-width="5"/>
+          <rect x="34" y="52" width="30" height="22" rx="7" fill="none" stroke="#000" stroke-width="3"/>
+          <rect x="76" y="52" width="30" height="22" rx="7" fill="none" stroke="#000" stroke-width="3"/>
+          <g class="yovar-eye"><g class="yovar-pupil"><rect x="40" y="57" width="14" height="14" rx="4" fill="#000"/></g></g>
+          <g class="yovar-eye"><g class="yovar-pupil"><rect x="82" y="57" width="14" height="14" rx="4" fill="#000"/></g></g>
+          <path class="yovar-mouth" d="M46,96 Q70,96 94,96" stroke="#000" stroke-width="3" stroke-linecap="round" fill="none"/>
+        </svg>
+      </div>
+      <div class="ai-col">
+        <div class="ai-lbl-row"><span class="ai-lbl">Ёвар</span><div class="ai-dot"></div></div>
+        <div class="ai-tw" id="tw-text"><span class="ai-cursor"></span></div>
+        <div style="display:flex;align-items:center;gap:8px"><span class="ai-sub" id="tw-sub">Напишите запрос — найду за секунды</span><div class="ai-arr"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><path d="M3 7h8M7 3l4 4-4 4"/></svg></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="search-bar" onclick="goTo('search')"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="4.5"/><path d="M10 10l3 3"/></svg><span>Ресторан, магазин, аптека...</span></div>
+  <div class="tabs"><div class="tab active" onclick="filterCards('all',this)">Всё</div><div class="tab" onclick="filterCards('food',this)">Рестораны</div><div class="tab" onclick="filterCards('shop',this)">Магазины</div><div class="tab" onclick="filterCards('pharma',this)">Аптеки</div></div>
+  <div class="sec-title">Популярные</div>
+  <div class="cards" id="home-cards">
+    <!-- Карточки загружаются из API -->
+  </div>
+</div>
+
+<div class="screen" id="screen-venue">
+  <div class="topbar"><button class="back-btn" onclick="goTo('home')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" width="18" height="18"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>Назад</button></div>
+  <div class="venue-hero"><div class="venue-emoji" id="v-emoji">🍜</div><div><div class="venue-name" id="v-name">Самарканд</div><div class="venue-meta" id="v-meta"></div></div></div>
+  <div class="search-bar"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="4.5"/><path d="M10 10l3 3"/></svg><span id="v-search">Поиск...</span></div>
+  <div class="menu-sec-title" id="v-section">Меню</div>
+  <div id="v-menu"></div>
+</div>
+
+<div class="screen" id="screen-search">
+  <div class="topbar"><button class="back-btn" onclick="goTo('home')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" width="18" height="18"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>Назад</button></div>
+  <div class="search-input-wrap"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="width:15px;height:15px;color:var(--text2);flex-shrink:0"><circle cx="6.5" cy="6.5" r="4.5"/><path d="M10 10l3 3"/></svg><input id="search-inp" type="text" placeholder="Ресторан, блюдо, товар..." oninput="doSearch(this.value)"/></div>
+  <div class="tabs" id="s-tabs"><div class="tab active" onclick="sFilter('all',this)">Всё</div><div class="tab" onclick="sFilter('food',this)">Рестораны</div><div class="tab" onclick="sFilter('shop',this)">Магазины</div><div class="tab" onclick="sFilter('pharma',this)">Аптеки</div></div>
+  <div id="s-results"></div>
+</div>
+
+<div class="screen" id="screen-orders">
+  <div class="topbar"><div class="logo">Сабад<span>.</span></div></div>
+  <div id="orders-content"></div>
+</div>
+
+<div class="screen" id="screen-cart">
+  <div class="topbar"><div class="logo">Сабад<span>.</span></div></div>
+  <div id="cart-content"></div>
+</div>
+
+<div class="screen" id="screen-checkout">
+  <div class="topbar"><button class="back-btn" onclick="goTo('cart')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" width="18" height="18"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>Корзина</button></div>
+  <div style="font-size:18px;font-weight:600;color:var(--text);margin-bottom:18px">Оформление заказа</div>
+  <div class="checkout-step"><div class="checkout-label">📍 АДРЕС ДОСТАВКИ</div><input class="checkout-field" placeholder="Улица и дом" value="пр. Рудаки, 105"/><input class="checkout-field" placeholder="Квартира / офис (необязательно)"/></div>
+  <div class="checkout-step"><div class="checkout-label">💳 СПОСОБ ОПЛАТЫ</div><div class="pay-options"><div class="pay-opt selected" id="pay-cash" onclick="selPay('cash')"><div class="pay-opt-left">💵 Наличные при получении</div><div class="pay-check"><div class="pay-check-inner"></div></div></div><div class="pay-opt" id="pay-card" onclick="selPay('card')"><div class="pay-opt-left">💳 Банковская карта</div><div class="pay-check"><div class="pay-check-inner"></div></div></div><div class="pay-opt" id="pay-mobile" onclick="selPay('mobile')"><div class="pay-opt-left">📱 Мобильный кошелёк</div><div class="pay-check"><div class="pay-check-inner"></div></div></div></div></div>
+  <div class="cart-summary" id="co-summary"></div>
+  <button class="btn-primary" onclick="placeOrder()">Подтвердить заказ</button>
+</div>
+
+<div class="screen" id="screen-success">
+  <div class="topbar"><div class="logo">Сабад<span>.</span></div></div>
+  <div class="success-wrap"><div class="success-icon">🎉</div><div class="success-title">Заказ принят!</div><div class="success-sub">Курьер доставит ваш заказ примерно через 30–40 минут.</div><div class="track-steps"><div class="track-step"><div class="step-dot done">✓</div><span class="step-label active">Заказ принят</span></div><div class="track-step"><div class="step-dot active">→</div><span class="step-label active">Готовится</span></div><div class="track-step"><div class="step-dot">🛵</div><span class="step-label">В пути</span></div><div class="track-step"><div class="step-dot">✓</div><span class="step-label">Доставлено</span></div></div><button class="btn-primary" style="margin-top:14px" onclick="goTo('home')">На главную</button></div>
+</div>
+
+<div class="screen" id="screen-promos">
+  <div class="topbar"><button class="back-btn" onclick="goTo('home')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" width="18" height="18"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>Назад</button></div>
+  <div style="font-size:18px;font-weight:600;color:var(--text);margin-bottom:14px">Акции и промокоды</div>
+  <div class="promo-banner pb-green" onclick="copyCode('SABAD20',this)"><div class="promo-badge">−20%</div><div class="promo-title">Скидка на первый заказ</div><div class="promo-desc">Используйте код при оформлении</div><div class="promo-pill">SABAD20</div><div class="promo-copied">Скопировано ✓</div></div>
+  <div class="promo-banner pb-indigo" onclick="copyCode('OSH15',this)"><div class="promo-badge">−15 сом</div><div class="promo-title">Плов и шашлык</div><div class="promo-desc">Скидка 15 сомони на блюда из Самарканда</div><div class="promo-pill">OSH15</div><div class="promo-copied">Скопировано ✓</div></div>
+  <div class="promo-banner pb-orange" onclick="copyCode('APTEKA0',this)"><div class="promo-badge">0 сом</div><div class="promo-title">Бесплатная доставка из аптеки</div><div class="promo-desc">При заказе от 20 сомони</div><div class="promo-pill">APTEKA0</div><div class="promo-copied">Скопировано ✓</div></div>
+  <div style="margin-top:18px"><div class="checkout-label" style="margin-bottom:9px">🎁 ВВЕСТИ ПРОМОКОД</div><div class="promo-row"><input class="promo-input" id="manual-promo" placeholder="Введите промокод..."/><button class="promo-apply" onclick="applyPromo()">Применить</button></div><div id="promo-fb" style="font-size:13px;color:var(--text2);margin-top:4px"></div></div>
+</div>
+
+<div class="screen" id="screen-profile">
+  <div class="topbar"><div class="logo">Сабад<span>.</span></div></div>
+  <div class="profile-header"><div class="profile-avatar">АД</div><div><div class="profile-name">Алим Достонов</div><div class="profile-phone">+992 900 000 000</div></div></div>
+  <div class="profile-menu">
+    <div class="profile-row" onclick="goTo('addresses')"><div class="profile-row-left"><div class="profile-row-icon">📍</div><span class="profile-row-label">Адреса доставки</span></div><span class="profile-arrow">›</span></div>
+    <div class="profile-row" onclick="goTo('payment')"><div class="profile-row-left"><div class="profile-row-icon">💳</div><span class="profile-row-label">Способ оплаты</span></div><span class="profile-arrow">›</span></div>
+    <div class="profile-row" onclick="goTo('chat-support')"><div class="profile-row-left"><div class="profile-row-icon">💬</div><span class="profile-row-label">Чат с поддержкой</span></div><span class="profile-arrow">›</span></div>
+    <div class="profile-row" onclick="goTo('language')"><div class="profile-row-left"><div class="profile-row-icon">🌐</div><span class="profile-row-label">Язык приложения</span></div><span class="profile-arrow">›</span></div>
+    <div class="profile-row" onclick="goTo('notifications')"><div class="profile-row-left"><div class="profile-row-icon">🔔</div><span class="profile-row-label">Уведомления</span></div><span class="profile-arrow">›</span></div>
+    <div class="profile-row" onclick="logout()"><div class="profile-row-left"><div class="profile-row-icon">🚪</div><span class="profile-row-label">Выйти</span></div><span class="profile-arrow">›</span></div>
+  </div>
+</div>
+
+<div class="screen" id="screen-notifications">
+  <div class="topbar"><button class="back-btn" onclick="goTo('home')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" width="18" height="18"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>Назад</button></div>
+  <div style="font-size:18px;font-weight:600;color:var(--text);margin-bottom:14px">Уведомления</div>
+  <div class="notif-item unread"><div class="notif-ico ico-green">🛵</div><div style="flex:1"><div class="notif-title">Заказ в пути!</div><div class="notif-body">Ваш заказ из Самарканда уже едет. Ожидайте через 10–15 минут.</div><div class="notif-time">5 минут назад</div></div><div class="notif-dot"></div></div>
+  <div class="notif-item unread"><div class="notif-ico ico-orange">🎁</div><div style="flex:1"><div class="notif-title">Новая акция!</div><div class="notif-body">Скидка 20% на первый заказ. Промокод SABAD20.</div><div class="notif-time">1 час назад</div></div><div class="notif-dot"></div></div>
+  <div class="notif-item unread"><div class="notif-ico ico-blue">⭐</div><div style="flex:1"><div class="notif-title">Вы получили баллы</div><div class="notif-body">За последний заказ начислено 32 бонусных балла. Баланс: 320.</div><div class="notif-time">Вчера, 18:30</div></div><div class="notif-dot"></div></div>
+  <div class="notif-item"><div class="notif-ico ico-green">✅</div><div style="flex:1"><div class="notif-title">Заказ доставлен</div><div class="notif-body">Ваш заказ из Магнита успешно доставлен.</div><div class="notif-time">Вчера, 18:25</div></div></div>
+</div>
+
+<div class="screen" id="screen-favourites">
+  <div class="topbar"><button class="back-btn" onclick="goTo('home')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" width="18" height="18"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>Назад</button></div>
+  <div style="font-size:18px;font-weight:600;color:var(--text);margin-bottom:14px">Избранное</div>
+  <div id="fav-list"></div>
+</div>
+
+<div class="screen" id="screen-chat-support">
+  <div class="topbar"><button class="back-btn" onclick="goTo('home')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" width="18" height="18"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>Назад</button></div>
+  <div class="chat-agent"><div class="chat-agent-av">👨‍💼</div><div><div class="chat-agent-name">Служба поддержки</div><div class="chat-agent-status">● Онлайн — отвечает за 2 мин</div></div></div>
+  <div class="chat-wrap">
+    <div class="chat-messages" id="sup-msgs"><div class="msg in">Здравствуйте! Чем могу помочь? 😊<div class="msg-time">13:01</div></div><div class="msg in">Напишите номер заказа — и я сразу помогу.<div class="msg-time">13:01</div></div></div>
+    <div class="chat-quick"><div class="cq-btn" onclick="supSend('Где мой заказ?')">📦 Где мой заказ?</div><div class="cq-btn" onclick="supSend('Хочу отменить заказ')">❌ Отменить</div><div class="cq-btn" onclick="supSend('Проблема с оплатой')">💳 Оплата</div></div>
+    <div class="chat-input-row"><input class="chat-input" id="sup-inp" placeholder="Напишите сообщение..." onkeydown="if(event.key==='Enter')supSend()"/><button class="chat-send" onclick="supSend()"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z"/></svg></button></div>
+  </div>
+</div>
+
+<div class="screen" id="screen-chat-order">
+  <div class="topbar"><button class="back-btn" onclick="goTo('orders')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" width="18" height="18"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>Заказы</button></div>
+  <div class="chat-agent"><div class="chat-agent-av" id="oc-av">🍜</div><div><div class="chat-agent-name" id="oc-name">Самарканд</div><div class="chat-agent-status">● Онлайн</div></div></div>
+  <div class="chat-order-info" id="oc-info"></div>
+  <div class="chat-wrap">
+    <div class="chat-messages" id="oc-msgs"></div>
+    <div class="chat-quick"><div class="cq-btn" onclick="ocSend('Можно без лука?')">🧅 Без лука</div><div class="cq-btn" onclick="ocSend('Не очень острое, пожалуйста')">🌶️ Не острое</div><div class="cq-btn" onclick="ocSend('Когда будет готово?')">⏱ Когда готово?</div></div>
+    <div class="chat-input-row"><input class="chat-input" id="oc-inp" placeholder="Написать ресторану..." onkeydown="if(event.key==='Enter')ocSend()"/><button class="chat-send" onclick="ocSend()"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z"/></svg></button></div>
+  </div>
+</div>
+
+<div class="screen" id="screen-addresses">
+  <div class="topbar"><button class="back-btn" onclick="goTo('profile')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" width="18" height="18"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>Назад</button></div>
+  <div style="font-size:18px;font-weight:600;color:var(--text);margin-bottom:18px">Адреса доставки</div>
+  <div class="settings-menu">
+    <div class="settings-row"><div class="settings-row-left"><div class="settings-row-icon">🏠</div><div><div class="settings-row-label">Дом</div><div class="settings-row-sub">пр. Рудаки, 105, кв. 12</div></div></div><div class="settings-row-right"><span style="font-size:11px;padding:2px 8px;background:#E1F5EE;color:#085041;border-radius:10px">Основной</span><span class="settings-arrow">›</span></div></div>
+    <div class="settings-row"><div class="settings-row-left"><div class="settings-row-icon">💼</div><div><div class="settings-row-label">Работа</div><div class="settings-row-sub">ул. Бохтар, 45, офис 3</div></div></div><div class="settings-row-right"><span class="settings-arrow">›</span></div></div>
+  </div>
+  <button class="add-address-btn" onclick="alert('Добавить новый адрес')">+ Добавить новый адрес</button>
+</div>
+
+<div class="screen" id="screen-payment">
+  <div class="topbar"><button class="back-btn" onclick="goTo('profile')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" width="18" height="18"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>Назад</button></div>
+  <div style="font-size:18px;font-weight:600;color:var(--text);margin-bottom:18px">Способ оплаты</div>
+  <div class="settings-menu" id="payment-list">
+    <div class="settings-row" onclick="selectPayMethod('cash',this)"><div class="settings-row-left"><div class="settings-row-icon">💵</div><div><div class="settings-row-label">Наличные при получении</div></div></div><div class="settings-check active">✓</div></div>
+    <div class="settings-row" onclick="selectPayMethod('card',this)"><div class="settings-row-left"><div class="settings-row-icon">💳</div><div><div class="settings-row-label">Банковская карта</div><div class="settings-row-sub">**** **** **** 4242</div></div></div><div class="settings-check"></div></div>
+    <div class="settings-row" onclick="selectPayMethod('mobile',this)"><div class="settings-row-left"><div class="settings-row-icon">📱</div><div><div class="settings-row-label">Мобильный кошелёк</div><div class="settings-row-sub">Alif, IMON, Корти Милли</div></div></div><div class="settings-check"></div></div>
+  </div>
+  <button class="add-address-btn" style="margin-top:10px" onclick="alert('Добавить карту')">+ Добавить карту</button>
+</div>
+
+<div class="screen" id="screen-language">
+  <div class="topbar"><button class="back-btn" onclick="goTo('profile')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" width="18" height="18"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>Назад</button></div>
+  <div style="font-size:18px;font-weight:600;color:var(--text);margin-bottom:18px">Язык приложения</div>
+  <div class="settings-menu">
+    <div class="settings-row" onclick="selectLang('ru',this)"><div class="settings-row-left"><div class="settings-row-icon">🇷🇺</div><div class="settings-row-label">Русский</div></div><div class="settings-check active">✓</div></div>
+    <div class="settings-row" onclick="selectLang('tj',this)"><div class="settings-row-left"><div class="settings-row-icon">🇹🇯</div><div class="settings-row-label">Тоҷикӣ</div></div><div class="settings-check"></div></div>
+    <div class="settings-row" onclick="selectLang('uz',this)"><div class="settings-row-left"><div class="settings-row-icon">🇺🇿</div><div class="settings-row-label">O'zbek</div></div><div class="settings-check"></div></div>
+  </div>
+</div>
+
+<div class="screen" id="screen-order-detail">
+  <div class="topbar"><button class="back-btn" onclick="goTo('orders')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" width="18" height="18"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>Заказы</button></div>
+  <div id="order-detail-content"></div>
+</div>
+
+<div class="toolbar-wrap" id="toolbar">
+  <div class="toolbar">
+    <button class="tb-btn" id="tb-home" onclick="goTo('home')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg><span>Главная</span></button>
+    <button class="tb-btn" id="tb-orders" onclick="goTo('orders')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg><span>Заказы</span><div class="tb-badge">1</div></button>
+    <!-- ЛОГОТИП ЁВАРА — тулбар (взгляд вверх) -->
+    <button class="tb-btn ai-tab" id="tb-yovar" onclick="openAI()">
+      <svg viewBox="0 0 140 140" width="44" height="44">
+        <rect x="4" y="4" width="132" height="132" rx="34" fill="#BDBDBD" stroke="#000" stroke-width="5"/>
+        <rect x="34" y="52" width="30" height="22" rx="7" fill="none" stroke="#000" stroke-width="3"/>
+        <rect x="76" y="52" width="30" height="22" rx="7" fill="none" stroke="#000" stroke-width="3"/>
+        <g class="tb-eye-l"><g class="tb-pupil-l"><rect x="40" y="57" width="14" height="14" rx="4" fill="#000"/></g></g>
+        <g class="tb-eye-r"><g class="tb-pupil-r"><rect x="82" y="57" width="14" height="14" rx="4" fill="#000"/></g></g>
+        <path class="tb-mouth" d="M46,96 Q70,96 94,96" stroke="#000" stroke-width="3" stroke-linecap="round" fill="none"/>
+      </svg>
+      <span>Ёвар</span>
+    </button>
+    <button class="tb-btn" id="tb-cart" onclick="goTo('cart')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg><span>Корзина</span><div class="tb-badge" id="cart-badge" style="display:none"></div></button>
+    <button class="tb-btn" id="tb-profile" onclick="goTo('profile')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg><span>Профиль</span></button>
+  </div>
+</div>
+
+<div class="ai-overlay" id="aiOverlay">
+  <div class="ai-modal" id="aiModal">
+    <div class="modal-close" id="modalClose">✕</div>
+    <div class="modal-handle"></div>
+    <div class="modal-head">
+      <!-- НОВЫЙ ЛОГОТИП ЁВАРА — модал -->
+      <div class="modal-avatar">
+        <svg viewBox="0 0 140 140" width="32" height="32">
+          <rect x="4" y="4" width="132" height="132" rx="34" fill="#BDBDBD" stroke="#000" stroke-width="5"/>
+          <rect x="34" y="52" width="30" height="22" rx="7" fill="none" stroke="#000" stroke-width="3"/>
+          <rect x="76" y="52" width="30" height="22" rx="7" fill="none" stroke="#000" stroke-width="3"/>
+          <g class="yovar-eye"><g class="yovar-pupil"><rect x="40" y="57" width="14" height="14" rx="4" fill="#000"/></g></g>
+          <g class="yovar-eye"><g class="yovar-pupil"><rect x="82" y="57" width="14" height="14" rx="4" fill="#000"/></g></g>
+          <path class="yovar-mouth" d="M46,96 Q70,96 94,96" stroke="#000" stroke-width="3" stroke-linecap="round" fill="none"/>
+        </svg>
+      </div>
+      <div><div class="modal-title">Ёвар</div><div class="modal-status">● Онлайн</div></div>
+    </div>
+    <div class="modal-messages" id="modal-msgs">
+      <div class="modal-msg in">Салом! Меня зовут Ёвар 👋 Спрашивайте о меню или скажите что добавить в корзину.</div>
+    </div>
+    <div class="modal-suggs">
+      <div class="modal-sugg" id="sq1">🍚 Что есть из плова?</div>
+      <div class="modal-sugg" id="sq2">💰 Ужин до 50 сомони</div>
+      <div class="modal-sugg" id="sq3">🍕 Что добавить к пицце?</div>
+      <div class="modal-sugg" id="sq4">🛒 Добавь Плов в корзину</div>
+    </div>
+    <div class="modal-inp-row">
+      <input type="text" id="yovar-inp" placeholder="Напишите запрос..."/>
+      <button class="modal-send-btn" id="yovar-btn">→</button>
+    </div>
+  </div>
+</div>
+
+</div>
+<script>
+// ============================================================
+// API
+// ============================================================
+var API_URL='https://sabad.duckdns.org/api';
+var authToken=localStorage.getItem('sabad_token')||'';
+var currentUser=JSON.parse(localStorage.getItem('sabad_user')||'null');
+
+async function apiRequest(method,path,body,auth){
+  var headers={'Content-Type':'application/json'};
+  // Токен добавляем только если он есть И auth не отключён явно
+  if(auth!==false&&authToken)headers['Authorization']='Bearer '+authToken;
+  var opts={method:method,headers:headers};
+  if(body)opts.body=JSON.stringify(body);
+  try{
+    var r=await fetch(API_URL+path,opts);
+    if(r.status===401&&auth!==false){
+      // Только для защищённых запросов редиректим на логин
+      authToken='';localStorage.removeItem('sabad_token');
+      return null;
+    }
+    if(!r.ok)return null;
+    return await r.json();
+  }catch(e){console.error('API error:',e);return null;}
+}
+
+async function apiLogin(telegramUserId){
+  var data=await apiRequest('POST','/auth/login',{telegram_user_id:telegramUserId},false);
+  if(data&&data.access_token){
+    authToken=data.access_token;
+    localStorage.setItem('sabad_token',authToken);
+    localStorage.setItem('sabad_refresh',data.refresh_token||'');
+    return true;
+  }
+  return false;
+}
+
+// Telegram Widget callback — вызывается автоматически после входа
+window.onTelegramAuth=async function(user){
+  var data=await apiRequest('POST','/auth/telegram-widget',{
+    id:user.id,
+    first_name:user.first_name||'',
+    last_name:user.last_name||'',
+    username:user.username||'',
+    photo_url:user.photo_url||'',
+    auth_date:user.auth_date,
+    hash:user.hash
+  },false);
+  if(data&&data.access_token){
+    authToken=data.access_token;
+    localStorage.setItem('sabad_token',authToken);
+    localStorage.setItem('sabad_refresh',data.refresh_token||'');
+    currentUser={id:user.id,name:user.first_name,username:user.username||''};
+    localStorage.setItem('sabad_user',JSON.stringify(currentUser));
+    updateSidebarUser();
+    goTo('home');
+  } else {
+    alert('Ошибка входа. Попробуйте ещё раз.');
+  }
+};
+
+function updateSidebarUser(){
+  if(!currentUser)return;
+  var name=currentUser.name||'Пользователь';
+  var initials=name.split(' ').map(function(w){return w[0]||'';}).join('').substring(0,2).toUpperCase()||'?';
+  var nameEl=document.querySelector('.sb-name');
+  var phoneEl=document.querySelector('.sb-phone');
+  var avatarEl=document.querySelector('.sb-avatar');
+  if(nameEl)nameEl.textContent=name;
+  if(phoneEl)phoneEl.textContent=currentUser.phone||'';
+  if(avatarEl)avatarEl.textContent=initials;
+}
+
+async function loadProfile(){
+  if(!authToken)return;
+  var data=await apiRequest('GET','/profile');
+  if(!data)return;
+  var name=data.full_name||(currentUser&&currentUser.name)||'Пользователь';
+  var phone=data.phone||'Телефон не указан';
+  var initials=name.split(' ').map(function(w){return w[0]||'';}).join('').substring(0,2).toUpperCase()||'?';
+  // Экран профиля
+  var nameEl=document.querySelector('.profile-name');
+  var phoneEl=document.querySelector('.profile-phone');
+  var avatarEl=document.querySelector('.profile-avatar');
+  if(nameEl)nameEl.textContent=name;
+  if(phoneEl)phoneEl.textContent=phone;
+  if(avatarEl)avatarEl.textContent=initials;
+  // Сайдбар
+  var sbName=document.querySelector('.sb-name');
+  var sbPhone=document.querySelector('.sb-phone');
+  var sbAvatar=document.querySelector('.sb-avatar');
+  if(sbName)sbName.textContent=name;
+  if(sbPhone)sbPhone.textContent=phone;
+  if(sbAvatar)sbAvatar.textContent=initials;
+  // Сохраняем
+  currentUser=Object.assign(currentUser||{},{name:name,phone:phone});
+  localStorage.setItem('sabad_user',JSON.stringify(currentUser));
+}
+
+function logout(){
+  var refresh=localStorage.getItem('sabad_refresh')||'';
+  if(refresh)apiRequest('POST','/auth/logout',{refresh_token:refresh},false);
+  authToken='';
+  currentUser=null;
+  localStorage.removeItem('sabad_token');
+  localStorage.removeItem('sabad_refresh');
+  localStorage.removeItem('sabad_user');
+  localStorage.removeItem('sabad_visited');
+  // Перезагружаем страницу — самый надёжный способ
+  window.location.reload();
+}
+
+function initTelegramWidget(){
+  var wrap=document.getElementById('tg-widget-wrap');
+  if(!wrap)return;
+  var s=document.createElement('script');
+  s.src='https://telegram.org/js/telegram-widget.js?22';
+  s.setAttribute('data-telegram-login','sabad_delbot');
+  s.setAttribute('data-size','large');
+  s.setAttribute('data-onauth','onTelegramAuth(user)');
+  s.setAttribute('data-request-access','write');
+  s.async=true;
+  wrap.appendChild(s);
+}
+
+async function loadMerchants(){
+  var container=document.getElementById('home-cards');
+  if(!container)return;
+  container.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--text2)">⏳ Загрузка...</div>';
+  var data=await apiRequest('GET','/catalog/merchants?type=shop&limit=50');
+  var data2=await apiRequest('GET','/catalog/merchants?type=restaurant&limit=50');
+  var all=[];
+  if(data&&data.items)all=all.concat(data.items);
+  if(data2&&data2.items)all=all.concat(data2.items);
+  if(!all.length){
+    container.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--text2)">Магазины не найдены</div>';
+    return;
+  }
+  container.innerHTML=all.map(function(m){
+    var cat=m.business_type==='shop'?'shop':'food';
+    var emoji=m.business_type==='shop'?'🛒':'🍽';
+    var tag=m.business_type==='shop'?'<span class="card-tag tag-new">'+tr('home.tag.new')+'</span>':'<span class="card-tag tag-fast">'+tr('home.tag.fast')+'</span>';
+    return '<div class="card" data-cat="'+cat+'" data-id="'+m.id+'" onclick="openVenueById('+m.id+',\''+m.business_type+'\')">'
+      +'<div class="fav-btn" onclick="event.stopPropagation()">♡</div>'
+      +'<div class="card-emoji">'+emoji+'</div>'
+      +'<div class="card-name">'+m.name+'</div>'
+      +'<div class="card-meta">'+(m.address||'Душанбе')+'</div>'
+      +tag+'</div>';
+  }).join('');
+}
+
+async function openVenueById(shopId,businessType){
+  var cats=await apiRequest('GET','/catalog/'+shopId+'/categories?limit=50');
+  if(!cats||!cats.items||!cats.items.length)return;
+  var catId=cats.items[0].id;
+  var prods=await apiRequest('GET','/catalog/categories/'+catId+'/items?merchant_id='+shopId+'&limit=50');
+  var items=prods&&prods.items?prods.items:[];
+  var key='api_'+shopId;
+  curVenue=key;
+  V[key]={
+    emoji:businessType==='shop'?'🛒':'🍽',
+    name:'Магазин',
+    meta:'Открыто',
+    sec:cats.items[0].name||'Меню',
+    cat:businessType==='shop'?'shop':'food',
+    items:items.map(function(p){return{n:p.name,e:'🛍',p:p.price,id:p.id};})
+  };
+  openVenue(key);
+}
+
+var V={
+  pizza:    {emoji:'🍕',name:'Pizza House', meta:'25–35 мин · от 15 сом · Открыто',sec:'Пицца',   cat:'food',  items:[{n:'Маргарита',e:'🍕',p:28},{n:'Пепперони',e:'🍕',p:35},{n:'Кола 0.5л',e:'🥤',p:8},{n:'Тирамису',e:'🍮',p:18}]},
+  magnit:   {emoji:'🛒',name:'Магнит',     meta:'20–30 мин · от 0 сом · Открыто', sec:'Продукты', cat:'shop',  items:[{n:'Молоко 1л',e:'🥛',p:6},{n:'Хлеб',e:'🍞',p:3},{n:'Яйца × 10',e:'🥚',p:12},{n:'Масло',e:'🧈',p:15}]},
+  samarkand:{emoji:'🍜',name:'Самарканд',  meta:'30–45 мин · от 10 сом · Открыто',sec:'Меню',     cat:'food',  items:[{n:'Плов',e:'🍚',p:25},{n:'Шашлык',e:'🍢',p:30},{n:'Мастава',e:'🍲',p:20},{n:'Лепёшка',e:'🫓',p:5}]},
+  apteka:   {emoji:'💊',name:'Аптека 36.6',meta:'15–25 мин · от 0 сом · Открыто', sec:'Препараты',cat:'pharma',items:[{n:'Парацетамол',e:'💊',p:4},{n:'Витамин C',e:'🟡',p:12},{n:'Бинт',e:'🩹',p:3},{n:'Ибупрофен',e:'💊',p:7}]}
+};
+var cart={},favs={samarkand:true,apteka:true},curVenue=null,selPayMethod='cash',sCat='all',DFEE=5,promo=null,darkMode=false;
+var TB=['home','orders','cart','profile'],HIDE=['onboard','success'];
+var supMsgs=[{t:'Здравствуйте! Чем могу помочь? 😊',out:false,time:'13:01'},{t:'Напишите номер заказа — и я сразу помогу.',out:false,time:'13:01'}];
+var ocMsgs={};
+var supReplies={'Где мой заказ?':'Ваш заказ #1042 сейчас в пути 🛵','Хочу отменить заказ':'Для отмены потребуется подтверждение. Вы уверены?','Проблема с оплатой':'Уточните способ оплаты.'};
+var ocReplies={'Можно без лука?':'Конечно! 👍','Не очень острое, пожалуйста':'Хорошо 🌶️','Когда будет готово?':'Примерно через 15 минут ⏱'};
+var GEMINI_KEY='AIzaSyBy5M68EZtj0nNtSBo-uEm1eJjGVdbnHpc';
+var yovarHistory=[];
+var SYSTEM_PROMPT='Ты Ёвар — помощник доставки Сабад (Душанбе). Отвечай кратко 1-3 предложения. Язык пользователя (ru/tg/uz). БЕЗ markdown, БЕЗ звёздочек, только простой текст.\nЕсли пользователь хочет добавить конкретный товар→ACTION:ADD:venueKey:itemName\nЕсли ищет по описанию (дёшево, вкусно, до N сом)→ACTION:SEARCH:запрос\nКаталог:\npizza:Маргарита/28,Пепперони/35,Кола/8,Тирамису/18\nmagnit:Молоко/6,Хлеб/3,Яйца/12,Масло/15\nsamarkand:Плов/25,Шашлык/30,Мастава/20,Лепёшка/5\napteka:Парацетамол/4,ВитаминC/12,Бинт/3,Ибупрофен/7';
+
+function goTo(tab){
+  document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active')});
+  var sc=document.getElementById('screen-'+tab);if(sc)sc.classList.add('active');
+  TB.forEach(function(t){var b=document.getElementById('tb-'+t);if(b)b.classList.toggle('active',t===tab)});
+  var tb=document.getElementById('toolbar');if(tb)tb.style.display=HIDE.indexOf(tab)>-1?'none':'';
+  if(tab==='cart')renderCart();
+  if(tab==='orders')renderOrders();
+  if(tab==='favourites')renderFavs();
+  if(tab==='home')loadMerchants();
+  if(tab==='profile')loadProfile();
+  if(tab==='search'){var si=document.getElementById('search-inp');if(si){si.value='';doSearch('');}}
+}
+window.openSB=function(){document.getElementById('sidebar').classList.add('open');document.getElementById('sbOverlay').classList.add('open')}
+window.closeSB=function(){document.getElementById('sidebar').classList.remove('open');document.getElementById('sbOverlay').classList.remove('open')}
+window.toggleDark=function(){darkMode=!darkMode;document.body.classList.toggle('dark',darkMode);document.getElementById('darkBtn').textContent=darkMode?'☀️':'🌙';}
+function toggleFav(vid){favs[vid]=!favs[vid];var b=document.getElementById('fav-'+vid);if(b){b.classList.toggle('active',favs[vid]);b.textContent=favs[vid]?'♥':'♡';}document.getElementById('fav-count').textContent=Object.values(favs).filter(Boolean).length;}
+function renderFavs(){
+  var el=document.getElementById('fav-list'),keys=Object.keys(favs).filter(function(k){return favs[k]});
+  if(!keys.length){el.innerHTML='<div style="text-align:center;padding:60px 0;color:var(--text2)"><div style="font-size:44px;margin-bottom:10px">🤍</div><p>'+tr('fav.empty')+'</p></div>';return;}
+  el.innerHTML=keys.map(function(k){var v=V[k];return'<div class="fav-card" onclick="openVenue(\''+k+'\')"><div class="fav-card-emoji">'+v.emoji+'</div><div style="flex:1"><div class="fav-card-name">'+v.name+'</div><div class="fav-card-meta">'+v.meta+'</div></div><div class="fav-remove" onclick="event.stopPropagation();toggleFav(\''+k+'\');renderFavs()">✕</div></div>';}).join('');
+}
+function openVenue(id){
+  curVenue=id;var v=V[id];
+  document.getElementById('v-emoji').textContent=v.emoji;
+  document.getElementById('v-name').textContent=v.name;
+  document.getElementById('v-meta').textContent=v.meta;
+  document.getElementById('v-search').textContent=tr('venue.search.prefix')+' '+v.name+'...';
+  document.getElementById('v-section').textContent=v.sec;
+  document.getElementById('v-menu').innerHTML=v.items.map(function(item,i){
+    var key=id+'_'+i,qty=cart[key]?cart[key].qty:0;
+    return'<div class="menu-item"><div class="menu-item-left"><span style="font-size:19px">'+item.e+'</span><span class="menu-item-name">'+item.n+'</span></div><div style="display:flex;align-items:center;gap:9px"><span class="menu-item-price">'+item.p+' '+tr('currency')+'</span>'+(qty>0?'<div style="display:flex;align-items:center;gap:6px"><button class="qty-btn" onclick="chgQty(\''+key+'\',\''+id+'\','+i+',-1)">−</button><span class="qty-val" id="qv-'+key+'">'+qty+'</span><button class="qty-btn" onclick="chgQty(\''+key+'\',\''+id+'\','+i+',1)">+</button></div>':'<button class="add-btn" id="ab-'+key+'" onclick="addCart(\''+key+'\',\''+id+'\','+i+')">+</button>')+'</div></div>';
+  }).join('');
+  document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active')});
+  document.getElementById('screen-venue').classList.add('active');
+  TB.forEach(function(t){var b=document.getElementById('tb-'+t);if(b)b.classList.remove('active')});
+  document.getElementById('toolbar').style.display='';
+}
+function addCart(key,vid,idx){
+  var item=V[vid].items[idx];cart[key]={name:item.n,emoji:item.e,price:item.p,qty:1,vid:vid};updBadge();
+  var btn=document.getElementById('ab-'+key);
+  if(btn){btn.parentNode.innerHTML='<div style="display:flex;align-items:center;gap:6px"><button class="qty-btn" onclick="chgQty(\''+key+'\',\''+vid+'\','+idx+',-1)">−</button><span class="qty-val" id="qv-'+key+'">1</span><button class="qty-btn" onclick="chgQty(\''+key+'\',\''+vid+'\','+idx+',1)">+</button></div>';}
+}
+function chgQty(key,vid,idx,d){
+  if(!cart[key])return;cart[key].qty+=d;
+  if(cart[key].qty<=0){delete cart[key];updBadge();openVenue(vid);return;}
+  var e=document.getElementById('qv-'+key);if(e)e.textContent=cart[key].qty;updBadge();
+}
+function updBadge(){var n=Object.values(cart).reduce(function(s,i){return s+i.qty},0);var b=document.getElementById('cart-badge');b.style.display=n>0?'flex':'none';b.textContent=n;}
+function cartTotal(){return Object.values(cart).reduce(function(s,i){return s+i.price*i.qty},0)}
+function renderCart(){
+  var keys=Object.keys(cart),el=document.getElementById('cart-content');
+  if(!keys.length){el.innerHTML='<div class="cart-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" width="46" height="46"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg><p>'+tr('cart.empty')+'</p></div>';return;}
+  var sub=cartTotal(),disc=promo==='SABAD20'?Math.round(sub*.2):(promo==='OSH15'?15:0),df=promo==='APTEKA0'?0:DFEE,tot=sub-disc+df;
+  var cur=tr('currency');
+  var items=keys.map(function(k){var it=cart[k];return'<div class="cart-item"><div class="cart-item-left"><span class="cart-item-emoji">'+it.emoji+'</span><div><div class="cart-item-name">'+it.name+'</div><div class="cart-item-price">'+it.price+' '+cur+' × '+it.qty+'</div></div></div><div class="qty-ctrl"><button class="qty-btn" onclick="cartChg(\''+k+'\',-1)">−</button><span class="qty-val">'+it.qty+'</span><button class="qty-btn" onclick="cartChg(\''+k+'\',1)">+</button></div></div>';}).join('');
+  var promoHtml=promo?'<div style="display:flex;align-items:center;gap:8px;padding:8px 11px;background:#E1F5EE;border-radius:8px;margin-bottom:12px;font-size:13px;color:#085041">'+tr('cart.promo.applied')+' <strong>'+promo+'</strong> <span style="cursor:pointer;color:#666;margin-left:auto" onclick="removePromo()">✕</span></div>':'<div class="promo-row"><input class="promo-input" id="cart-promo" placeholder="'+tr('cart.promo.ph')+'"/><button class="promo-apply" onclick="cartPromo()">OK</button></div>';
+  var sum='<div class="cart-row"><span>'+tr('cart.goods')+'</span><span>'+sub+' '+cur+'</span></div>'+(disc>0?'<div class="cart-row" style="color:#085041"><span>'+tr('cart.discount')+'</span><span>−'+disc+' '+cur+'</span></div>':'')+'<div class="cart-row"><span>'+tr('cart.delivery')+'</span><span>'+(df===0?tr('cart.free'):df+' '+cur)+'</span></div><div class="cart-row"><span>'+tr('cart.total')+'</span><span>'+tot+' '+cur+'</span></div>';
+  el.innerHTML='<div style="margin-bottom:14px">'+items+'</div>'+promoHtml+'<div class="checkout-label" style="margin-bottom:7px">'+tr('cart.comment.label')+'</div><textarea class="comment-box" id="order-comment" rows="3" placeholder="'+tr('cart.comment.ph')+'"></textarea><div class="cart-summary">'+sum+'</div><button class="btn-primary" onclick="goToCheckout()">'+tr('cart.order.btn')+'</button>';
+}
+function cartChg(key,d){if(!cart[key])return;cart[key].qty+=d;if(cart[key].qty<=0)delete cart[key];updBadge();renderCart();}
+function cartPromo(){var v=(document.getElementById('cart-promo')||{}).value||'';applyCode(v.trim().toUpperCase());}
+function applyCode(c){var ok=['SABAD20','OSH15','APTEKA0'];if(ok.indexOf(c)>-1){promo=c;renderCart();}else alert(tr('cart.promo.notfound'));}
+function removePromo(){promo=null;renderCart();}
+function goToCheckout(){
+  if(!authToken){
+    goTo('onboard');
+    return;
+  }
+  var sub=cartTotal(),disc=promo==='SABAD20'?Math.round(sub*.2):(promo==='OSH15'?15:0),df=promo==='APTEKA0'?0:DFEE,tot=sub-disc+df;
+  var cur=tr('currency');
+  document.getElementById('co-summary').innerHTML='<div class="cart-row"><span>'+tr('cart.goods')+'</span><span>'+sub+' '+cur+'</span></div>'+(disc>0?'<div class="cart-row" style="color:#085041"><span>'+tr('cart.discount')+'</span><span>−'+disc+' '+cur+'</span></div>':'')+'<div class="cart-row"><span>'+tr('cart.delivery')+'</span><span>'+(df===0?tr('cart.free'):df+' '+cur)+'</span></div><div class="cart-row"><span>'+tr('cart.total')+'</span><span>'+tot+' '+cur+'</span></div>';
+  goTo('checkout');
+}
+function selPay(m){selPayMethod=m;['cash','card','mobile'].forEach(function(x){document.getElementById('pay-'+x).classList.toggle('selected',x===m)});}
+function placeOrder(){cart={};promo=null;updBadge();goTo('success');}
+function copyCode(c,el){promo=c;var cp=el.querySelector('.promo-copied');cp.classList.add('show');setTimeout(function(){cp.classList.remove('show')},2000);}
+function applyPromo(){var v=document.getElementById('manual-promo').value.trim().toUpperCase(),fb=document.getElementById('promo-fb'),ok=['SABAD20','OSH15','APTEKA0'];if(ok.indexOf(v)>-1){promo=v;fb.style.color='#085041';fb.textContent=tr('cart.promo.applied')+' '+v+' '+tr('cart.promo.applied2');}else{fb.style.color='#c0392b';fb.textContent=tr('promos.notfound');}}
+var allItems=[];
+Object.keys(V).forEach(function(vid){var v=V[vid];v.items.forEach(function(it,i){allItems.push({name:it.n,emoji:it.e,price:it.p,venue:v.name,vEmoji:v.emoji,cat:v.cat,vid:vid});});allItems.push({name:v.name,emoji:v.emoji,price:null,venue:'Заведение',vEmoji:'',cat:v.cat,vid:vid,isV:true});});
+function sFilter(cat,el){sCat=cat;document.querySelectorAll('#s-tabs .tab').forEach(function(t){t.classList.remove('active')});el.classList.add('active');doSearch(document.getElementById('search-inp').value);}
+function doSearch(q){
+  var res=document.getElementById('s-results');
+  var f=allItems.filter(function(it){return(sCat==='all'||it.cat===sCat)&&(!q||it.name.toLowerCase().indexOf(q.toLowerCase())>-1||it.venue.toLowerCase().indexOf(q.toLowerCase())>-1)});
+  if(!f.length){res.innerHTML='<div style="text-align:center;padding:40px 0;color:var(--text2)">'+tr('search.notfound')+'</div>';return;}
+  res.innerHTML=f.map(function(it){return'<div class="sri" onclick="openVenue(\''+it.vid+'\')"><div class="sri-emoji">'+(it.isV?it.emoji:it.vEmoji||it.emoji)+'</div><div style="flex:1"><div class="sri-name">'+it.name+'</div><div class="sri-meta">'+(it.isV?tr('search.venue'):it.venue)+'</div></div>'+(it.price!==null?'<div class="sri-price">'+it.price+' '+tr('currency')+'</div>':'')+'</div>';}).join('');
+}
+function supSend(txt){
+  var inp=document.getElementById('sup-inp');var text=txt||inp.value.trim();if(!text)return;if(!txt)inp.value='';
+  var now=new Date(),t=(now.getHours()<10?'0':'')+now.getHours()+':'+(now.getMinutes()<10?'0':'')+now.getMinutes();
+  supMsgs.push({t:text,out:true,time:t});renderSupChat();
+  var rep=supReplies[text]||(currentLang==='tj'?'Ташаккур! Оператори мо ба зудӣ ҷавоб медиҳад.':currentLang==='uz'?'Rahmat! Operatorimiz tez orada javob beradi.':'Спасибо! Наш оператор скоро ответит.');
+  setTimeout(function(){supMsgs.push({t:rep,out:false,time:t});renderSupChat();},900);
+}
+function renderSupChat(){var el=document.getElementById('sup-msgs');el.innerHTML=supMsgs.map(function(m){return'<div class="msg '+(m.out?'out':'in')+'">'+m.t+'<div class="msg-time">'+m.time+'</div></div>';}).join('');el.scrollTop=el.scrollHeight;}
+function openOrderChat(vid,orderNum){
+  var v=V[vid];
+  document.getElementById('oc-av').textContent=v.emoji;
+  document.getElementById('oc-name').textContent=v.name;
+  document.getElementById('oc-info').innerHTML='Заказ <strong>'+orderNum+'</strong> · <strong>'+v.name+'</strong>';
+  if(!ocMsgs[orderNum])ocMsgs[orderNum]=[{t:'Здравствуйте! Ваш заказ принят 👨‍🍳',out:false,time:'13:45'}];
+  renderOcChat(orderNum);
+  document.getElementById('oc-inp').dataset.order=orderNum;
+  document.getElementById('oc-inp').dataset.vid=vid;
+  goTo('chat-order');
+}
+function ocSend(txt){
+  var inp=document.getElementById('oc-inp');var text=txt||inp.value.trim();if(!text)return;if(!txt)inp.value='';
+  var orderNum=inp.dataset.order;
+  var now=new Date(),t=(now.getHours()<10?'0':'')+now.getHours()+':'+(now.getMinutes()<10?'0':'')+now.getMinutes();
+  if(!ocMsgs[orderNum])ocMsgs[orderNum]=[];
+  ocMsgs[orderNum].push({t:text,out:true,time:t});renderOcChat(orderNum);
+  var rep=ocReplies[text]||'Хорошо, передадим на кухню! ✅';
+  setTimeout(function(){ocMsgs[orderNum].push({t:rep,out:false,time:t});renderOcChat(orderNum);},800);
+}
+function renderOcChat(orderNum){var el=document.getElementById('oc-msgs');if(!el)return;el.innerHTML=(ocMsgs[orderNum]||[]).map(function(m){return'<div class="msg '+(m.out?'out':'in')+'">'+m.t+'<div class="msg-time">'+m.time+'</div></div>';}).join('');el.scrollTop=el.scrollHeight;}
+function renderOrders(){
+  var el=document.getElementById('orders-content');
+  if(!el)return;
+  var cur=tr('currency');
+  var active=ordersData.filter(function(o){return o.status==='active';});
+  var done=ordersData.filter(function(o){return o.status==='done';});
+  var html='';
+  if(active.length){
+    html+='<div class="sec-title">'+tr('orders.active.title')+'</div>';
+    active.forEach(function(o,i){
+      var idx=ordersData.indexOf(o);
+      var dateStr=o.dateKey==='today'?tr('orders.today')+', '+o.time:o.dateKey==='yesterday'?tr('orders.yesterday')+', '+o.time:o.dateRaw;
+      html+='<div class="order-card" onclick="openOrderDetail('+idx+')" style="cursor:pointer">'
+        +'<div class="order-head"><span class="order-venue">'+o.venue+'</span><span class="order-status status-active">'+tr('order.status.active')+'</span></div>'
+        +'<div class="order-items">'+o.itemsShort+'</div>'
+        +'<div class="order-footer"><span>'+dateStr+'</span><span class="order-price">'+o.total+' '+cur+'</span>'
+        +'<div class="order-chat-btn" onclick="event.stopPropagation();openOrderChat(\''+o.vid+'\',\''+o.id+'\')">'+tr('orders.chat')+'</div>'
+        +'</div></div>';
+    });
+  }
+  if(done.length){
+    html+='<div class="sec-title" style="margin-top:14px">'+tr('orders.done.title')+'</div>';
+    done.forEach(function(o){
+      var idx=ordersData.indexOf(o);
+      var dateStr=o.dateKey==='today'?tr('orders.today')+', '+o.time:o.dateKey==='yesterday'?tr('orders.yesterday')+', '+o.time:o.dateRaw;
+      html+='<div class="order-card" onclick="openOrderDetail('+idx+')" style="cursor:pointer">'
+        +'<div class="order-head"><span class="order-venue">'+o.venue+'</span><span class="order-status status-done">'+tr('order.status.done')+'</span></div>'
+        +'<div class="order-items">'+o.itemsShort+'</div>'
+        +'<div class="order-footer"><span>'+dateStr+'</span><span class="order-price">'+o.total+' '+cur+'</span>'
+        +'<div class="order-chat-btn" onclick="event.stopPropagation();openOrderChat(\''+o.vid+'\',\''+o.id+'\')">'+tr('orders.chat')+'</div>'
+        +'</div></div>';
+    });
+  }
+  el.innerHTML=html;
+}
+function filterCards(cat,el){document.querySelectorAll('.tabs .tab').forEach(function(t){t.classList.remove('active')});el.classList.add('active');document.querySelectorAll('#home-cards .card').forEach(function(c){c.style.display=(cat==='all'||c.dataset.cat===cat)?'':'none'});}
+function sendCode(){
+  var ph=document.getElementById('phone-inp').value.trim();
+  if(!ph){alert(tr('ob.sub'));return;}
+  document.getElementById('otp-num').textContent='+992 '+ph;
+  document.getElementById('step-phone').style.display='none';
+  document.getElementById('step-otp').style.display='';
+  setTimeout(function(){document.querySelectorAll('.otp-box')[0].focus()},100);
+}
+function otpNext(el,idx){if(el.value.length===1&&idx<3)document.querySelectorAll('.otp-box')[idx+1].focus();}
+
+async function skipAndGo(){
+  goTo('home');
+  loadMerchants();
+}
+
+async function loginAndGo(){
+  // Получаем введённый OTP код
+  var otp=Array.from(document.querySelectorAll('.otp-box')).map(function(b){return b.value;}).join('');
+  // Для демо используем фиксированный telegram_user_id = 1361079299 (superadmin)
+  // В реальности здесь будет верификация через Telegram
+  var userId=parseInt(localStorage.getItem('demo_user_id')||'1361079299');
+  var ok=await apiLogin(userId);
+  if(ok){
+    goTo('home');
+    loadMerchants();
+  } else {
+    // Если API недоступен — всё равно заходим с демо-данными
+    goTo('home');
+  }
+}
+function selectPayMethod(method,row){document.querySelectorAll('#payment-list .settings-check').forEach(function(c){c.classList.remove('active');c.textContent='';});var check=row.querySelector('.settings-check');check.classList.add('active');check.textContent='✓';}
+var ordersData=[
+  {id:'#1042',venue:'🍜 Самарканд',status:'active',dateKey:'today',time:'13:45',dateRaw:'',itemsShort:'Плов, Шашлык × 2, Лепёшка',items:[{n:'Плов',p:25},{n:'Шашлык × 2',p:60},{n:'Лепёшка',p:5}],delivery:5,total:87,vid:'samarkand'},
+  {id:'#1039',venue:'🛒 Магнит',status:'done',dateKey:'yesterday',time:'18:20',dateRaw:'',itemsShort:'Молоко, Хлеб, Яйца × 10',items:[{n:'Молоко',p:6},{n:'Хлеб',p:3},{n:'Яйца × 10',p:12}],delivery:5,total:34,vid:'magnit'},
+  {id:'#1021',venue:'🍕 Pizza House',status:'done',dateKey:'fixed',time:'',dateRaw:'12 июня, 20:10',itemsShort:'Пицца Маргарита, Кола',items:[{n:'Пицца Маргарита',p:28},{n:'Кола',p:8}],delivery:5,total:52,vid:'pizza'}
+];
+function openOrderDetail(idx){
+  var o=ordersData[idx];
+  var cur=tr('currency');
+  var sub=o.items.reduce(function(s,i){return s+i.p;},0),total=sub+o.delivery;
+  var itemsHtml=o.items.map(function(i){return'<div class="order-detail-row"><span>'+i.n+'</span><span>'+i.p+' '+cur+'</span></div>';}).join('');
+  var isActive=o.status==='active';
+  var trackHtml=isActive
+    ?'<div class="track-steps"><div class="track-step"><div class="step-dot done">✓</div><span class="step-label active">'+tr('order.track.accepted')+'</span></div><div class="track-step"><div class="step-dot done">✓</div><span class="step-label active">'+tr('order.track.preparing')+'</span></div><div class="track-step"><div class="step-dot active">→</div><span class="step-label active">'+tr('order.track.onway')+'</span></div><div class="track-step"><div class="step-dot">✓</div><span class="step-label">'+tr('order.track.delivered')+'</span></div></div>'
+    :'<div class="track-steps"><div class="track-step"><div class="step-dot done">✓</div><span class="step-label">'+tr('order.track.accepted')+'</span></div><div class="track-step"><div class="step-dot done">✓</div><span class="step-label">'+tr('order.track.preparing')+'</span></div><div class="track-step"><div class="step-dot done">✓</div><span class="step-label">'+tr('order.track.onway')+'</span></div><div class="track-step"><div class="step-dot done">✓</div><span class="step-label">'+tr('order.track.delivered')+'</span></div></div>';
+  var dateStr=o.dateKey==='today'?tr('orders.today')+', '+o.time:o.dateKey==='yesterday'?tr('orders.yesterday')+', '+o.time:o.dateRaw;
+  document.getElementById('order-detail-content').innerHTML=
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px"><div style="font-size:18px;font-weight:600;color:var(--text)">'+tr('order.detail.title')+' '+o.id+'</div><span class="order-status-badge '+(isActive?'active':'done')+'">'+(isActive?'🛵 ':'✓ ')+(isActive?tr('order.status.active'):tr('order.status.done'))+'</span></div>'
+    +trackHtml
+    +'<div class="order-detail-card" style="margin-top:14px"><div class="order-detail-title">'+tr('order.detail.composition')+'</div>'+itemsHtml+'<div class="order-detail-row"><span>'+tr('order.detail.delivery')+'</span><span>'+o.delivery+' '+cur+'</span></div><div class="order-detail-row"><span>'+tr('order.detail.total')+'</span><span>'+total+' '+cur+'</span></div></div>'
+    +'<div class="order-detail-card"><div class="order-detail-title">'+tr('order.detail.info')+'</div><div class="order-detail-row"><span>'+tr('order.detail.venue')+'</span><span>'+o.venue+'</span></div><div class="order-detail-row"><span>'+tr('order.detail.date')+'</span><span>'+dateStr+'</span></div><div class="order-detail-row"><span>'+tr('order.detail.address')+'</span><span>пр. Рудаки, 105</span></div></div>'
+    +(!isActive?'<button class="btn-primary" onclick="reorder('+idx+')">'+tr('order.detail.reorder')+'</button>':'')
+    +'<button class="btn-primary" style="margin-top:8px;background:var(--bg);color:var(--text);border:.5px solid var(--border)" onclick="openOrderChat(\''+o.vid+'\',\''+o.id+'\')">'+tr('order.detail.chat')+'</button>';
+  goTo('order-detail');
+}
+function reorder(idx){
+  var o=ordersData[idx],v=V[o.vid];if(!v)return;
+  o.items.forEach(function(item){for(var i=0;i<v.items.length;i++){if(v.items[i].n===item.n||(item.n.indexOf(v.items[i].n)>-1)){var key=o.vid+'_'+i;if(cart[key])cart[key].qty++;else cart[key]={name:v.items[i].n,emoji:v.items[i].e,price:v.items[i].p,qty:1,vid:o.vid};}}});
+  updBadge();goTo('cart');
+}
+window.openAI=function(){
+  document.getElementById('aiOverlay').classList.add('open');
+  document.getElementById('tb-yovar').classList.add('ai-open');
+  setTimeout(function(){var inp=document.getElementById('yovar-inp');if(inp)inp.focus();},300);
+};
+window.closeAI=function(){
+  document.getElementById('aiOverlay').classList.remove('open');
+  document.getElementById('tb-yovar').classList.remove('ai-open');
+};
+function addMsg(text,isOut){
+  var el=document.getElementById('modal-msgs'),d=document.createElement('div');
+  d.className='modal-msg '+(isOut?'out':'in');d.textContent=text;
+  el.appendChild(d);el.scrollTop=el.scrollHeight;return d;
+}
+function searchItems(q){
+  q=q.toLowerCase();var results=[];
+  Object.keys(V).forEach(function(vid){V[vid].items.forEach(function(item,idx){if(item.n.toLowerCase().indexOf(q)>-1)results.push({vid:vid,idx:idx,item:item});});});
+  return results;
+}
+function localFallback(text){
+  var q=text.toLowerCase().trim(),found=[],budgetMatch=q.match(/(\d+)/),budget=budgetMatch?parseInt(budgetMatch[1]):null,all=[];
+  Object.keys(V).forEach(function(vid){V[vid].items.forEach(function(item,idx){all.push({vid:vid,idx:idx,item:item});});});
+  if(budget){found=all.filter(function(r){return r.item.p<=budget;});found.sort(function(a,b){return b.item.p-a.item.p;});}
+  if(!found.length){all.forEach(function(r){if(r.item.n.toLowerCase().indexOf(q)>-1&&!found.find(function(f){return f.vid===r.vid&&f.idx===r.idx;}))found.push(r);});}
+  if(!found.length){var words=q.replace(/[?,!.]/g,'').split(/\s+/).filter(function(w){return w.length>=2;});words.forEach(function(w){all.forEach(function(r){if(r.item.n.toLowerCase().indexOf(w)>-1&&!found.find(function(f){return f.vid===r.vid&&f.idx===r.idx;}))found.push(r);});});}
+  return found.slice(0,3);
+}
+function showFallback(text){
+  var found=localFallback(text);
+  if(found.length){
+    var msgDiv=addMsg('Вот что нашёл:',false);
+    found.forEach(function(r){
+      var btn=document.createElement('button');btn.className='modal-action-btn';btn.style.marginRight='6px';
+      btn.textContent='+ '+r.item.n+' '+r.item.p+' сом';
+      btn.onclick=(function(vid,idx){return function(){
+        var key=vid+'_'+idx;
+        if(cart[key])cart[key].qty++;else cart[key]={name:V[vid].items[idx].n,emoji:V[vid].items[idx].e,price:V[vid].items[idx].p,qty:1,vid:vid};
+        updBadge();this.textContent='✓ '+V[vid].items[idx].n;this.style.background='#1D9E75';this.onclick=null;
+      };})(r.vid,r.idx);
+      msgDiv.appendChild(document.createElement('br'));msgDiv.appendChild(btn);
+    });
+  } else {
+    addMsg('«'+text+'» не найдено. Попробуйте: плов, пицца, молоко, парацетамол.',false);
+  }
+  document.getElementById('modal-msgs').scrollTop=999999;
+}
+function yovarSend(){
+  var inp=document.getElementById('yovar-inp'),text=inp.value.trim();
+  if(!text)return;inp.value='';
+  addMsg(text,true);
+  yovarHistory.push({role:'user',parts:[{text:text}]});
+  if(yovarHistory.length>8)yovarHistory=yovarHistory.slice(-8);
+  var typing=addMsg(tr('yovar.typing'),false);
+  typing.style.fontStyle='italic';typing.style.color='var(--text2)';
+  fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key='+GEMINI_KEY,{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({system_instruction:{parts:[{text:SYSTEM_PROMPT}]},contents:yovarHistory,generationConfig:{maxOutputTokens:200,temperature:0.7}})
+  })
+  .then(function(r){
+    if(!r.ok){typing.remove();showFallback(text);return null;}
+    return r.json();
+  })
+  .then(function(data){
+    if(!data)return;
+    var reply='';
+    try{reply=data.candidates[0].content.parts[0].text;}catch(e){typing.remove();showFallback(text);return;}
+    typing.remove();
+    yovarHistory.push({role:'model',parts:[{text:reply}]});
+    var addMatch=reply.match(/ACTION:ADD:(\w+):([^\n]+)/);
+    var searchMatch=reply.match(/ACTION:SEARCH:([^\n]+)/);
+    var clean=reply.replace(/ACTION:(ADD|SEARCH):[^\n]*/gi,'').replace(/\*\*/g,'').replace(/\*/g,'').replace(/`/g,'').trim();
+    if(!clean)clean=addMatch?'Нашёл!':searchMatch?'Вот что есть:':'Чем ещё помочь?';
+    var msgDiv=addMsg(clean,false);
+    if(addMatch){
+      var vid=addMatch[1],itemName=addMatch[2].trim(),v=V[vid];
+      if(v){var idx=-1;for(var i=0;i<v.items.length;i++){if(v.items[i].n===itemName){idx=i;break;}}
+        if(idx>=0){var btn=document.createElement('button');btn.className='modal-action-btn';btn.textContent='+ '+itemName+' '+v.items[idx].p+' сом';
+          btn.onclick=(function(vid,idx){return function(){var key=vid+'_'+idx;if(cart[key])cart[key].qty++;else cart[key]={name:V[vid].items[idx].n,emoji:V[vid].items[idx].e,price:V[vid].items[idx].p,qty:1,vid:vid};updBadge();this.textContent='✓ '+V[vid].items[idx].n;this.style.background='#1D9E75';this.onclick=null;};})(vid,idx);
+          msgDiv.appendChild(document.createElement('br'));msgDiv.appendChild(btn);}}
+    } else if(searchMatch){
+      var query=searchMatch[1].trim(),found=localFallback(query);
+      if(found.length){found.forEach(function(r){var btn=document.createElement('button');btn.className='modal-action-btn';btn.style.marginRight='6px';btn.textContent='+ '+r.item.n+' '+r.item.p+' сом';btn.onclick=(function(vid,idx){return function(){var key=vid+'_'+idx;if(cart[key])cart[key].qty++;else cart[key]={name:V[vid].items[idx].n,emoji:V[vid].items[idx].e,price:V[vid].items[idx].p,qty:1,vid:vid};updBadge();this.textContent='✓ '+V[vid].items[idx].n;this.style.background='#1D9E75';this.onclick=null;};})(r.vid,r.idx);msgDiv.appendChild(document.createElement('br'));msgDiv.appendChild(btn);});}
+      else{msgDiv.textContent='К сожалению, «'+query+'» нет в каталоге. Попробуйте: плов, шашлык, пицца, молоко.';}
+    }
+    document.getElementById('modal-msgs').scrollTop=999999;
+  })
+  .catch(function(){typing.remove();showFallback(text);});
+}
+// ============================================================
+// i18n — словари переводов
+// ============================================================
+var I18N={
+ru:{
+  // Онбординг
+  'ob.tag':'Доставка за 30 минут',
+  'ob.title':'Добро пожаловать!',
+  'ob.sub':'Введите номер телефона — мы отправим код подтверждения.',
+  'ob.btn':'Получить код',
+  'ob.skip':'Пропустить →',
+  'ob.otp.title':'Введите код',
+  'ob.otp.sub':'Отправили СМС на',
+  'ob.otp.resend':'Не получили?',
+  'ob.otp.resend2':'Отправить ещё раз',
+  'ob.otp.btn':'Войти',
+  'ob.otp.back':'← Изменить номер',
+  // Сайдбар
+  'sb.sections':'Разделы',
+  'sb.favourites':'Избранное',
+  'sb.notifications':'Уведомления',
+  'sb.support':'Чат с поддержкой',
+  'sb.promos':'Акции и промокоды',
+  'sb.settings':'Настройки',
+  'sb.language':'Язык',
+  'sb.addresses':'Адреса доставки',
+  'sb.logout':'Выйти',
+  'sb.points.lbl':'Бонусные баллы',
+  // Главная
+  'home.search':'Ресторан, магазин, аптека...',
+  'home.tab.all':'Всё',
+  'home.tab.food':'Рестораны',
+  'home.tab.shop':'Магазины',
+  'home.tab.pharma':'Аптеки',
+  'home.popular':'Популярные',
+  'home.tag.fast':'Быстро',
+  'home.tag.new':'Новый',
+  'home.tag.near':'Рядом',
+  'yovar.sub':'Напишите запрос — найду за секунды',
+  // Заведение
+  'venue.search.prefix':'Поиск в',
+  // Корзина
+  'cart.empty':'Корзина пуста',
+  'cart.comment.label':'📝 КОММЕНТАРИЙ К ЗАКАЗУ',
+  'cart.comment.ph':'Например: без лука, не острое...',
+  'cart.goods':'Товары',
+  'cart.discount':'Скидка',
+  'cart.delivery':'Доставка',
+  'cart.free':'Бесплатно',
+  'cart.total':'Итого',
+  'cart.order.btn':'Оформить заказ',
+  'cart.promo.ph':'Промокод',
+  'cart.promo.notfound':'Промокод не найден',
+  'cart.promo.applied':'✓ Промокод',
+  'cart.promo.applied2':'применён!',
+  // Оформление
+  'checkout.back':'Корзина',
+  'checkout.title':'Оформление заказа',
+  'checkout.addr.label':'📍 АДРЕС ДОСТАВКИ',
+  'checkout.addr.ph1':'Улица и дом',
+  'checkout.addr.ph2':'Квартира / офис (необязательно)',
+  'checkout.pay.label':'💳 СПОСОБ ОПЛАТЫ',
+  'checkout.pay.cash':'💵 Наличные при получении',
+  'checkout.pay.card':'💳 Банковская карта',
+  'checkout.pay.mobile':'📱 Мобильный кошелёк',
+  'checkout.confirm':'Подтвердить заказ',
+  // Успех
+  'success.title':'Заказ принят!',
+  'success.sub':'Курьер доставит ваш заказ примерно через 30–40 минут.',
+  'success.step1':'Заказ принят',
+  'success.step2':'Готовится',
+  'success.step3':'В пути',
+  'success.step4':'Доставлено',
+  'success.home':'На главную',
+  // Акции
+  'promos.title':'Акции и промокоды',
+  'promo1.title':'Скидка на первый заказ',
+  'promo1.desc':'Используйте код при оформлении',
+  'promo2.title':'Плов и шашлык',
+  'promo2.desc':'Скидка 15 сомони на блюда из Самарканда',
+  'promo3.title':'Бесплатная доставка из аптеки',
+  'promo3.desc':'При заказе от 20 сомони',
+  'promos.enter.label':'🎁 ВВЕСТИ ПРОМОКОД',
+  'promos.enter.ph':'Введите промокод...',
+  'promos.apply':'Применить',
+  'promos.notfound':'Промокод не найден.',
+  // Профиль
+  'profile.addr':'Адреса доставки',
+  'profile.pay':'Способ оплаты',
+  'profile.support':'Чат с поддержкой',
+  'profile.lang':'Язык приложения',
+  'profile.notif':'Уведомления',
+  'profile.logout':'Выйти',
+  // Уведомления
+  'notif.title':'Уведомления',
+  'notif1.title':'Заказ в пути!',
+  'notif1.body':'Ваш заказ из Самарканда уже едет. Ожидайте через 10–15 минут.',
+  'notif1.time':'5 минут назад',
+  'notif2.title':'Новая акция!',
+  'notif2.body':'Скидка 20% на первый заказ. Промокод SABAD20.',
+  'notif2.time':'1 час назад',
+  'notif3.title':'Вы получили баллы',
+  'notif3.body':'За последний заказ начислено 32 бонусных балла. Баланс: 320.',
+  'notif3.time':'Вчера, 18:30',
+  'notif4.title':'Заказ доставлен',
+  'notif4.body':'Ваш заказ из Магнита успешно доставлен.',
+  // Избранное
+  'fav.title':'Избранное',
+  'fav.empty':'Пока нет избранных',
+  // Чат поддержки
+  'sup.name':'Служба поддержки',
+  'sup.status':'● Онлайн — отвечает за 2 мин',
+  'sup.msg1':'Здравствуйте! Чем могу помочь? 😊',
+  'sup.msg2':'Напишите номер заказа — и я сразу помогу.',
+  'sup.q1':'📦 Где мой заказ?',
+  'sup.q2':'❌ Отменить',
+  'sup.q3':'💳 Оплата',
+  'sup.ph':'Напишите сообщение...',
+  // Чат заказа
+  'oc.back':'Заказы',
+  'oc.status':'● Онлайн',
+  'oc.q1':'🧅 Без лука',
+  'oc.q2':'🌶️ Не острое',
+  'oc.q3':'⏱ Когда готово?',
+  'oc.ph':'Написать ресторану...',
+  // Адреса
+  'addr.title':'Адреса доставки',
+  'addr.home':'Дом',
+  'addr.work':'Работа',
+  'addr.main':'Основной',
+  'addr.add':'+ Добавить новый адрес',
+  // Оплата
+  'pay.title':'Способ оплаты',
+  'pay.cash':'Наличные при получении',
+  'pay.card':'Банковская карта',
+  'pay.mobile':'Мобильный кошелёк',
+  'pay.add':'+ Добавить карту',
+  // Язык
+  'lang.title':'Язык приложения',
+  // Заказы
+  'orders.back':'Назад',
+  'orders.active.title':'Активные заказы',
+  'orders.done.title':'Готово',
+  'order.status.active':'В пути',
+  'order.status.done':'Доставлено',
+  // Поиск
+  'search.back':'Назад',
+  'search.ph':'Поиск блюд, магазинов...',
+  'search.tab.all':'Все',
+  'search.tab.food':'Еда',
+  'search.tab.shop':'Магазины',
+  'search.tab.pharma':'Аптека',
+  'search.notfound':'Ничего не найдено 🤷',
+  'search.venue':'Заведение · открыто',
+  // Тулбар
+  'tb.home':'Главная',
+  'tb.orders':'Заказы',
+  'tb.yovar':'Ёвар',
+  'tb.cart':'Корзина',
+  'tb.profile':'Профиль',
+  // Ёвар модал
+  'yovar.online':'● Онлайн',
+  'yovar.greeting':'Салом! Меня зовут Ёвар 👋 Спрашивайте о меню или скажите что добавить в корзину.',
+  'yovar.sq1':'🍚 Что есть из плова?',
+  'yovar.sq2':'💰 Ужин до 50 сомони',
+  'yovar.sq3':'🍕 Что добавить к пицце?',
+  'yovar.sq4':'🛒 Добавь Плов в корзину',
+  'yovar.ph':'Напишите запрос...',
+  'yovar.typing':'Ёвар печатает...',
+  // Денежная единица
+  'currency':'сом',
+  'orders.chat':'💬 Чат',
+  'orders.today':'Сегодня',
+  'orders.yesterday':'Вчера',
+  // Детали заказа
+  'order.detail.title':'Заказ',
+  'order.detail.composition':'Состав заказа',
+  'order.detail.delivery':'Доставка',
+  'order.detail.total':'Итого',
+  'order.detail.info':'Информация',
+  'order.detail.venue':'Заведение',
+  'order.detail.date':'Дата',
+  'order.detail.address':'Адрес',
+  'order.detail.reorder':'Повторить заказ',
+  'order.detail.chat':'💬 Чат с рестораном',
+  'order.track.accepted':'Заказ принят',
+  'order.track.preparing':'Готовится',
+  'order.track.onway':'В пути',
+  'order.track.delivered':'Доставлено',
+},
+tj:{
+  'ob.tag':'Расонидан дар 30 дақиқа',
+  'ob.title':'Хуш омадед!',
+  'ob.sub':'Рақами телефони худро ворид кунед — мо рамзи тасдиқро мефиристем.',
+  'ob.btn':'Гирифтани рамз',
+  'ob.skip':'Гузаштан →',
+  'ob.otp.title':'Рамзро ворид кунед',
+  'ob.otp.sub':'СМС ба',
+  'ob.otp.resend':'Нагирифтед?',
+  'ob.otp.resend2':'Боз фиристодан',
+  'ob.otp.btn':'Даромадан',
+  'ob.otp.back':'← Тағйир додани рақам',
+  'sb.sections':'Бахшҳо',
+  'sb.favourites':'Дӯстдоштаҳо',
+  'sb.notifications':'Огоҳиҳо',
+  'sb.support':'Чат бо дастгирӣ',
+  'sb.promos':'Акцияҳо ва промокодҳо',
+  'sb.settings':'Танзимот',
+  'sb.language':'Забон',
+  'sb.addresses':'Суроғаҳои расонидан',
+  'sb.logout':'Баромадан',
+  'sb.points.lbl':'Баллҳои бонусӣ',
+  'home.search':'Тарабхона, мағоза, дорухона...',
+  'home.tab.all':'Ҳама',
+  'home.tab.food':'Тарабхонаҳо',
+  'home.tab.shop':'Мағозаҳо',
+  'home.tab.pharma':'Дорухонаҳо',
+  'home.popular':'Машҳур',
+  'home.tag.fast':'Зуд',
+  'home.tag.new':'Нав',
+  'home.tag.near':'Наздик',
+  'yovar.sub':'Дархост нависед — дар сония меёбам',
+  'venue.search.prefix':'Ҷустуҷӯ дар',
+  'cart.empty':'Сабад холӣ аст',
+  'cart.comment.label':'📝 ШАРҲ БА ФАРМОИШ',
+  'cart.comment.ph':'Масалан: бе пиёз, камтар тунд...',
+  'cart.goods':'Молҳо',
+  'cart.discount':'Тахфиф',
+  'cart.delivery':'Расонидан',
+  'cart.free':'Ройгон',
+  'cart.total':'Ҷамъ',
+  'cart.order.btn':'Фармоиш додан',
+  'cart.promo.ph':'Промокод',
+  'cart.promo.notfound':'Промокод ёфт нашуд',
+  'cart.promo.applied':'✓ Промокод',
+  'cart.promo.applied2':'татбиқ шуд!',
+  'checkout.back':'Сабад',
+  'checkout.title':'Расмикунонии фармоиш',
+  'checkout.addr.label':'📍 СУРОҒАИ РАСОНИДАН',
+  'checkout.addr.ph1':'Кӯча ва хона',
+  'checkout.addr.ph2':'Квартира / офис (ихтиёрӣ)',
+  'checkout.pay.label':'💳 УСУЛИ ПАРДОХТ',
+  'checkout.pay.cash':'💵 Пули нақд ҳангоми гирифтан',
+  'checkout.pay.card':'💳 Корти бонкӣ',
+  'checkout.pay.mobile':'📱 Ҳамёни мобилӣ',
+  'checkout.confirm':'Тасдиқи фармоиш',
+  'success.title':'Фармоиш қабул шуд!',
+  'success.sub':'Курер фармоиши шуморо тақрибан дар 30–40 дақиқа мерасонад.',
+  'success.step1':'Қабул шуд',
+  'success.step2':'Омода мешавад',
+  'success.step3':'Дар роҳ',
+  'success.step4':'Расонида шуд',
+  'success.home':'Ба саҳифаи аввал',
+  'promos.title':'Акцияҳо ва промокодҳо',
+  'promo1.title':'Тахфиф барои аввалин фармоиш',
+  'promo1.desc':'Ҳангоми расмикунонӣ рамзро истифода баред',
+  'promo2.title':'Палав ва кабоб',
+  'promo2.desc':'Тахфифи 15 сомонӣ барои хӯроки Самарқанд',
+  'promo3.title':'Расонидани ройгон аз дорухона',
+  'promo3.desc':'Ҳангоми фармоиш аз 20 сомонӣ',
+  'promos.enter.label':'🎁 ВОРИД КАРДАНИ ПРОМОКОД',
+  'promos.enter.ph':'Промокодро ворид кунед...',
+  'promos.apply':'Татбиқ',
+  'promos.notfound':'Промокод ёфт нашуд.',
+  'profile.addr':'Суроғаҳои расонидан',
+  'profile.pay':'Усули пардохт',
+  'profile.support':'Чат бо дастгирӣ',
+  'profile.lang':'Забони барнома',
+  'profile.notif':'Огоҳиҳо',
+  'profile.logout':'Баромадан',
+  'notif.title':'Огоҳиҳо',
+  'notif1.title':'Фармоиш дар роҳ аст!',
+  'notif1.body':'Фармоиши шумо аз Самарқанд дар роҳ аст. Тақрибан 10–15 дақиқа интизор шавед.',
+  'notif1.time':'5 дақиқа пеш',
+  'notif2.title':'Акцияи нав!',
+  'notif2.body':'Тахфифи 20% барои аввалин фармоиш. Промокод SABAD20.',
+  'notif2.time':'1 соат пеш',
+  'notif3.title':'Шумо баллҳо гирифтед',
+  'notif3.body':'Барои охирин фармоиш 32 балли бонусӣ ҳисоб шуд. Баланс: 320.',
+  'notif3.time':'Дирӯз, 18:30',
+  'notif4.title':'Фармоиш расонида шуд',
+  'notif4.body':'Фармоиши шумо аз Магнит бомуваффақият расонида шуд.',
+  'fav.title':'Дӯстдоштаҳо',
+  'fav.empty':'Ҳоло дӯстдоштаҳо нест',
+  'sup.name':'Хидмати дастгирӣ',
+  'sup.status':'● Онлайн — дар 2 дақ. ҷавоб медиҳад',
+  'sup.msg1':'Салом! Бо чӣ кӯмак карда метавонам? 😊',
+  'sup.msg2':'Рақами фармоишро нависед — фавран кӯмак мекунам.',
+  'sup.q1':'📦 Фармоишам куҷост?',
+  'sup.q2':'❌ Бекор кардан',
+  'sup.q3':'💳 Пардохт',
+  'sup.ph':'Паём нависед...',
+  'oc.back':'Фармоишҳо',
+  'oc.status':'● Онлайн',
+  'oc.q1':'🧅 Бе пиёз',
+  'oc.q2':'🌶️ Камтар тунд',
+  'oc.q3':'⏱ Кай омода?',
+  'oc.ph':'Ба тарабхона нависед...',
+  'addr.title':'Суроғаҳои расонидан',
+  'addr.home':'Хона',
+  'addr.work':'Кор',
+  'addr.main':'Асосӣ',
+  'addr.add':'+ Иловаи суроғаи нав',
+  'pay.title':'Усули пардохт',
+  'pay.cash':'Пули нақд ҳангоми гирифтан',
+  'pay.card':'Корти бонкӣ',
+  'pay.mobile':'Ҳамёни мобилӣ',
+  'pay.add':'+ Иловаи корт',
+  'lang.title':'Забони барнома',
+  'orders.back':'Бозгашт',
+  'orders.active.title':'Фармоишҳои фаъол',
+  'orders.done.title':'Иҷро шуд',
+  'order.status.active':'Дар роҳ',
+  'order.status.done':'Расонида шуд',
+  'search.back':'Бозгашт',
+  'search.ph':'Ҷустуҷӯи хӯрок, мағозаҳо...',
+  'search.tab.all':'Ҳама',
+  'search.tab.food':'Хӯрок',
+  'search.tab.shop':'Мағозаҳо',
+  'search.tab.pharma':'Дорухона',
+  'search.notfound':'Ҳеҷ чиз ёфт нашуд 🤷',
+  'search.venue':'Муассиса · кушода',
+  'tb.home':'Асосӣ',
+  'tb.orders':'Фармоишҳо',
+  'tb.yovar':'Ёвар',
+  'tb.cart':'Сабад',
+  'tb.profile':'Профил',
+  'yovar.online':'● Онлайн',
+  'yovar.greeting':'Салом! Ман Ёвар ҳастам 👋 Дар бораи меню бипурсед ё гӯед чӣ ба сабад илова кунам.',
+  'yovar.sq1':'🍚 Аз палав чӣ ҳаст?',
+  'yovar.sq2':'💰 Шом то 50 сомонӣ',
+  'yovar.sq3':'🍕 Ба пицца чӣ илова кунам?',
+  'yovar.sq4':'🛒 Палавро ба сабад илова кун',
+  'yovar.ph':'Дархост нависед...',
+  'yovar.typing':'Ёвар менависад...',
+  'currency':'сом',
+  'orders.chat':'💬 Чат',
+  'orders.today':'Имрӯз',
+  'orders.yesterday':'Дирӯз',
+  // Детали заказа
+  'order.detail.title':'Фармоиш',
+  'order.detail.composition':'Таркиби фармоиш',
+  'order.detail.delivery':'Расонидан',
+  'order.detail.total':'Ҷамъ',
+  'order.detail.info':'Маълумот',
+  'order.detail.venue':'Муассиса',
+  'order.detail.date':'Сана',
+  'order.detail.address':'Суроға',
+  'order.detail.reorder':'Фармоишро такрор кардан',
+  'order.detail.chat':'💬 Чат бо тарабхона',
+  'order.track.accepted':'Қабул шуд',
+  'order.track.preparing':'Омода мешавад',
+  'order.track.onway':'Дар роҳ',
+  'order.track.delivered':'Расонида шуд',
+},
+uz:{
+  'ob.tag':'30 дақиқада етказиб бериш',
+  'ob.title':'Хуш келибсиз!',
+  'ob.sub':'Телефон рақамингизни киритинг — тасдиқлаш кодини юборамиз.',
+  'ob.btn':'Код олиш',
+  'ob.skip':'Ўтказиб юбориш →',
+  'ob.otp.title':'Кодни киритинг',
+  'ob.otp.sub':'СМС юборилди',
+  'ob.otp.resend':'Олмадингизми?',
+  'ob.otp.resend2':'Қайта юбориш',
+  'ob.otp.btn':'Кириш',
+  'ob.otp.back':'← Рақамни ўзгартириш',
+  'sb.sections':'Бўлимлар',
+  'sb.favourites':'Севимлилар',
+  'sb.notifications':'Билдиришномалар',
+  'sb.support':'Қўллаб-қувватлаш чати',
+  'sb.promos':'Акциялар ва промокодлар',
+  'sb.settings':'Созламалар',
+  'sb.language':'Тил',
+  'sb.addresses':'Етказиб бериш манзиллари',
+  'sb.logout':'Чиқиш',
+  'sb.points.lbl':'Бонус баллар',
+  'home.search':'Ресторан, дўкон, дорихона...',
+  'home.tab.all':'Ҳаммаси',
+  'home.tab.food':'Ресторанлар',
+  'home.tab.shop':'Дўконлар',
+  'home.tab.pharma':'Дорихоналар',
+  'home.popular':'Машҳур',
+  'home.tag.fast':'Тез',
+  'home.tag.new':'Янги',
+  'home.tag.near':'Яқин',
+  'yovar.sub':'Сўров ёзинг — сониядa топаман',
+  'venue.search.prefix':'Қидирув:',
+  'cart.empty':'Сават бўш',
+  'cart.comment.label':'📝 БУЮРТМАГА ИЗОҲ',
+  'cart.comment.ph':'Масалан: пиёзсиз, ўткир эмас...',
+  'cart.goods':'Маҳсулотлар',
+  'cart.discount':'Чегирма',
+  'cart.delivery':'Етказиб бериш',
+  'cart.free':'Бепул',
+  'cart.total':'Жами',
+  'cart.order.btn':'Буюртма бериш',
+  'cart.promo.ph':'Промокод',
+  'cart.promo.notfound':'Промокод топилмади',
+  'cart.promo.applied':'✓ Промокод',
+  'cart.promo.applied2':'қўлланилди!',
+  'checkout.back':'Сават',
+  'checkout.title':'Буюртмани расмийлаштириш',
+  'checkout.addr.label':'📍 ЕТКАЗИБ БЕРИШ МАНЗИЛИ',
+  'checkout.addr.ph1':'Кўча ва уй',
+  'checkout.addr.ph2':'Квартира / офис (ихтиёрий)',
+  'checkout.pay.label':'💳 ТЎЛОВ УСУЛИ',
+  'checkout.pay.cash':'💵 Қабул қилганда нақд',
+  'checkout.pay.card':'💳 Банк картаси',
+  'checkout.pay.mobile':'📱 Мобил ҳамён',
+  'checkout.confirm':'Буюртмани тасдиқлаш',
+  'success.title':'Буюртма қабул қилинди!',
+  'success.sub':'Курьер буюртмангизни тахминан 30–40 дақиқада етказади.',
+  'success.step1':'Қабул қилинди',
+  'success.step2':'Тайёрланмоқда',
+  'success.step3':'Йўлда',
+  'success.step4':'Етказилди',
+  'success.home':'Бош саҳифага',
+  'promos.title':'Акциялар ва промокодлар',
+  'promo1.title':'Биринчи буюртмага чегирма',
+  'promo1.desc':'Расмийлашtirishда кодни ишлатинг',
+  'promo2.title':'Палов ва кабоб',
+  'promo2.desc':'Самарқанд таомларига 15 сўмлик чегирма',
+  'promo3.title':'Дорихонадан бепул етказиш',
+  'promo3.desc':'20 сўмдан ортиқ буюртмада',
+  'promos.enter.label':'🎁 ПРОМОКОД КИРИТИНГ',
+  'promos.enter.ph':'Промокодни киритинг...',
+  'promos.apply':'Қўллаш',
+  'promos.notfound':'Промокод топилмади.',
+  'profile.addr':'Етказиб бериш манзиллари',
+  'profile.pay':'Тўлов усули',
+  'profile.support':'Қўллаб-қувватлаш чати',
+  'profile.lang':'Илова тили',
+  'profile.notif':'Билдиришномалар',
+  'profile.logout':'Чиқиш',
+  'notif.title':'Билдиришномалар',
+  'notif1.title':'Буюртма йўлда!',
+  'notif1.body':'Самарқанддан буюртмангиз йўлда. 10–15 дақиқа кутинг.',
+  'notif1.time':'5 дақиқа олдин',
+  'notif2.title':'Янги акция!',
+  'notif2.body':'Биринчи буюртмага 20% чегирма. Промокод SABAD20.',
+  'notif2.time':'1 соат олдин',
+  'notif3.title':'Сиз балл олдингиз',
+  'notif3.body':'Охирги буюртма учун 32 бонус балл ҳисобланди. Баланс: 320.',
+  'notif3.time':'Кеча, 18:30',
+  'notif4.title':'Буюртма етказилди',
+  'notif4.body':'Магнитдан буюртмангиз муваффақиятли етказилди.',
+  'fav.title':'Севимлилар',
+  'fav.empty':'Ҳали севимлилар йўқ',
+  'sup.name':'Қўллаб-қувватлаш хизмати',
+  'sup.status':'● Онлайн — 2 дақ. ичида жавоб беради',
+  'sup.msg1':'Салом! Қандай ёрдам бера оламан? 😊',
+  'sup.msg2':'Буюртма рақамини ёзинг — дарҳол ёрдам бераман.',
+  'sup.q1':'📦 Буюртмам қаерда?',
+  'sup.q2':'❌ Бекор қилиш',
+  'sup.q3':'💳 Тўлов',
+  'sup.ph':'Хабар ёзинг...',
+  'oc.back':'Буюртмалар',
+  'oc.status':'● Онлайн',
+  'oc.q1':'🧅 Пиёзсиз',
+  'oc.q2':'🌶️ Кам ўткир',
+  'oc.q3':'⏱ Қачон тайёр?',
+  'oc.ph':'Ресторанга ёзинг...',
+  'addr.title':'Етказиб бериш манзиллари',
+  'addr.home':'Уй',
+  'addr.work':'Иш',
+  'addr.main':'Асосий',
+  'addr.add':'+ Янги манзил қўшиш',
+  'pay.title':'Тўлов усули',
+  'pay.cash':'Қабул қилганда нақд',
+  'pay.card':'Банк картаси',
+  'pay.mobile':'Мобил ҳамён',
+  'pay.add':'+ Карта қўшиш',
+  'lang.title':'Илова тили',
+  'orders.back':'Орқага',
+  'orders.active.title':'Фаол буюртмалар',
+  'orders.done.title':'Тарих',
+  'order.status.active':'Йўлда',
+  'order.status.done':'Етказилди',
+  'orders.chat':'💬 Чат',
+  'orders.today':'Бугун',
+  'orders.yesterday':'Кеча',
+  'search.back':'Орқага',
+  'search.ph':'Таом, дўконлар қидириш...',
+  'search.tab.all':'Ҳаммаси',
+  'search.tab.food':'Таом',
+  'search.tab.shop':'Дўконлар',
+  'search.tab.pharma':'Дорихона',
+  'search.notfound':'Ҳеч нарса топилмади 🤷',
+  'search.venue':'Муассаса · очиқ',
+  'tb.home':'Асосий',
+  'tb.orders':'Буюртмалар',
+  'tb.yovar':'Ёвар',
+  'tb.cart':'Сават',
+  'tb.profile':'Профил',
+  'yovar.online':'● Онлайн',
+  'yovar.greeting':'Салом! Мен Ёвар 👋 Меню ҳақида сўранг ёки саватга нима қўшишни айтинг.',
+  'yovar.sq1':'🍚 Паловдан нима бор?',
+  'yovar.sq2':'💰 50 сўмгача кечки овқат',
+  'yovar.sq3':'🍕 Пиццага нима қўшай?',
+  'yovar.sq4':'🛒 Саватга Палов қўш',
+  'yovar.ph':'Сўров ёзинг...',
+  'yovar.typing':'Ёвар ёзяпти...',
+  // Детали заказа
+  'order.detail.title':'Буюртма',
+  'order.detail.composition':'Буюртма таркиби',
+  'order.detail.delivery':'Етказиб бериш',
+  'order.detail.total':'Жами',
+  'order.detail.info':'Маълумот',
+  'order.detail.venue':'Муассаса',
+  'order.detail.date':'Сана',
+  'order.detail.address':'Манзил',
+  'order.detail.reorder':'Буюртмани такрорлаш',
+  'order.detail.chat':'💬 Ресторан билан чат',
+  'order.track.accepted':'Қабул қилинди',
+  'order.track.preparing':'Тайёрланмоқда',
+  'order.track.onway':'Йўлда',
+  'order.track.delivered':'Етказилди',
+  'currency':'сўм',
+}
+};
+var currentLang=localStorage.getItem('sabad_lang')||'ru';
+function tr(key){return (I18N[currentLang]&&I18N[currentLang][key])||I18N.ru[key]||key;}
+function applyLang(){
+  var L=currentLang;
+  // Онбординг
+  var _s=function(sel,val){var el=document.querySelector(sel);if(el)el.textContent=val;};
+  _s('.onboard-tag',tr('ob.tag'));
+  _s('#step-phone .onboard-title',tr('ob.title'));
+  _s('#step-phone .onboard-sub',tr('ob.sub'));
+  _s('#step-phone .btn-primary',tr('ob.btn'));
+  _s('.skip-btn',tr('ob.skip'));
+  _s('#step-otp .onboard-title',tr('ob.otp.title'));
+  var otpSub=document.querySelector('#step-otp .onboard-sub');
+  if(otpSub&&otpSub.childNodes[0])otpSub.childNodes[0].textContent=tr('ob.otp.sub')+' ';
+  _s('#step-otp .btn-primary',tr('ob.otp.btn'));
+  // Сайдбар
+  var sbSecs=document.querySelectorAll('.sb-sec');
+  if(sbSecs[0])sbSecs[0].textContent=tr('sb.sections');
+  if(sbSecs[1])sbSecs[1].textContent=tr('sb.settings');
+  var sbLabels=document.querySelectorAll('.sb-item-label');
+  var sbOrder=['sb.favourites','sb.notifications','sb.support','sb.promos','sb.language','sb.addresses','sb.logout'];
+  sbLabels.forEach(function(el,i){if(sbOrder[i])el.textContent=tr(sbOrder[i]);});
+  document.querySelector('.sb-pts-lbl').textContent=tr('sb.points.lbl');
+  // Обновляем метку языка в сайдбаре
+  var langBadge=document.querySelector('.sb-item .sb-item-label+span[style*="font-size:12px"]');
+  if(langBadge)langBadge.textContent=L.toUpperCase();
+  // Главная
+  document.querySelector('#screen-home .search-bar span').textContent=tr('home.search');
+  var tabs=document.querySelectorAll('#screen-home .tabs .tab');
+  var tabKeys=['home.tab.all','home.tab.food','home.tab.shop','home.tab.pharma'];
+  tabs.forEach(function(t,i){if(tabKeys[i])t.textContent=tr(tabKeys[i]);});
+  document.querySelector('#screen-home .sec-title').textContent=tr('home.popular');
+  document.querySelector('#tw-sub').textContent=tr('yovar.sub');
+  // Тулбар
+  var tbSpans=document.querySelectorAll('.toolbar .tb-btn span');
+  var tbKeys=['tb.home','tb.orders','tb.yovar','tb.cart','tb.profile'];
+  tbSpans.forEach(function(s,i){if(tbKeys[i])s.textContent=tr(tbKeys[i]);});
+  // Заказы (статичные карточки)
+  document.querySelectorAll('.order-status.status-done').forEach(function(el){el.textContent=tr('order.status.done');});
+  document.querySelectorAll('.order-status.status-active').forEach(function(el){el.textContent=tr('order.status.active');});
+  // Оформление
+  document.querySelector('#screen-checkout .back-btn').lastChild.textContent=tr('checkout.back');
+  document.querySelector('#screen-checkout div[style*="font-size:18px"]').textContent=tr('checkout.title');
+  var coLabels=document.querySelectorAll('#screen-checkout .checkout-label');
+  if(coLabels[0])coLabels[0].textContent=tr('checkout.addr.label');
+  if(coLabels[1])coLabels[1].textContent=tr('checkout.pay.label');
+  var coFields=document.querySelectorAll('#screen-checkout .checkout-field');
+  if(coFields[0])coFields[0].placeholder=tr('checkout.addr.ph1');
+  if(coFields[1])coFields[1].placeholder=tr('checkout.addr.ph2');
+  var payOpts=document.querySelectorAll('.pay-opt .pay-opt-left');
+  if(payOpts[0])payOpts[0].textContent=tr('checkout.pay.cash');
+  if(payOpts[1])payOpts[1].textContent=tr('checkout.pay.card');
+  if(payOpts[2])payOpts[2].textContent=tr('checkout.pay.mobile');
+  document.querySelector('#screen-checkout .btn-primary').textContent=tr('checkout.confirm');
+  // Успех
+  document.querySelector('.success-title').textContent=tr('success.title');
+  document.querySelector('.success-sub').textContent=tr('success.sub');
+  var stepLabels=document.querySelectorAll('.step-label');
+  var stepKeys=['success.step1','success.step2','success.step3','success.step4'];
+  stepLabels.forEach(function(el,i){if(stepKeys[i])el.textContent=tr(stepKeys[i]);});
+  document.querySelector('#screen-success .btn-primary').textContent=tr('success.home');
+  // Акции
+  document.querySelector('#screen-promos div[style*="font-size:18px"]').textContent=tr('promos.title');
+  var pTitles=document.querySelectorAll('.promo-title');
+  var pDescs=document.querySelectorAll('.promo-desc');
+  if(pTitles[0])pTitles[0].textContent=tr('promo1.title');
+  if(pTitles[1])pTitles[1].textContent=tr('promo2.title');
+  if(pTitles[2])pTitles[2].textContent=tr('promo3.title');
+  if(pDescs[0])pDescs[0].textContent=tr('promo1.desc');
+  if(pDescs[1])pDescs[1].textContent=tr('promo2.desc');
+  if(pDescs[2])pDescs[2].textContent=tr('promo3.desc');
+  var promoLabel=document.querySelector('#screen-promos .checkout-label');
+  if(promoLabel)promoLabel.textContent=tr('promos.enter.label');
+  document.getElementById('manual-promo').placeholder=tr('promos.enter.ph');
+  document.querySelector('.promo-apply').textContent=tr('promos.apply');
+  // Профиль
+  var profLabels=document.querySelectorAll('#screen-profile .profile-row-label');
+  var profKeys=['profile.addr','profile.pay','profile.support','profile.lang','profile.notif','profile.logout'];
+  profLabels.forEach(function(el,i){if(profKeys[i])el.textContent=tr(profKeys[i]);});
+  // Уведомления
+  document.querySelector('#screen-notifications div[style*="font-size:18px"]').textContent=tr('notif.title');
+  var nTitles=document.querySelectorAll('.notif-title');
+  var nBodies=document.querySelectorAll('.notif-body');
+  var nTimes=document.querySelectorAll('.notif-time');
+  var nTK=['notif1.title','notif2.title','notif3.title','notif4.title'];
+  var nBK=['notif1.body','notif2.body','notif3.body','notif4.body'];
+  var nTiK=['notif1.time','notif2.time','notif3.time','notif3.time'];
+  nTitles.forEach(function(el,i){if(nTK[i])el.textContent=tr(nTK[i]);});
+  nBodies.forEach(function(el,i){if(nBK[i])el.textContent=tr(nBK[i]);});
+  nTimes.forEach(function(el,i){if(nTiK[i])el.textContent=tr(nTiK[i]);});
+  // Избранное
+  document.querySelector('#screen-favourites div[style*="font-size:18px"]').textContent=tr('fav.title');
+  // Чат поддержки
+  document.querySelector('.chat-agent-name').textContent=tr('sup.name');
+  document.querySelector('.chat-agent-status').textContent=tr('sup.status');
+  document.getElementById('sup-inp').placeholder=tr('sup.ph');
+  var cqBtns=document.querySelectorAll('#screen-chat-support .cq-btn');
+  if(cqBtns[0]){cqBtns[0].textContent=tr('sup.q1');cqBtns[0].onclick=function(){supSend(tr('sup.q1'));};}
+  if(cqBtns[1]){cqBtns[1].textContent=tr('sup.q2');cqBtns[1].onclick=function(){supSend(tr('sup.q2'));};}
+  if(cqBtns[2]){cqBtns[2].textContent=tr('sup.q3');cqBtns[2].onclick=function(){supSend(tr('sup.q3'));};}
+  // Адреса
+  document.querySelector('#screen-addresses div[style*="font-size:18px"]').textContent=tr('addr.title');
+  var addrLabels=document.querySelectorAll('#screen-addresses .settings-row-label');
+  if(addrLabels[0])addrLabels[0].textContent=tr('addr.home');
+  if(addrLabels[1])addrLabels[1].textContent=tr('addr.work');
+  document.querySelector('.add-address-btn').textContent=tr('addr.add');
+  // Оплата
+  document.querySelector('#screen-payment div[style*="font-size:18px"]').textContent=tr('pay.title');
+  var payLabels=document.querySelectorAll('#screen-payment .settings-row-label');
+  if(payLabels[0])payLabels[0].textContent=tr('pay.cash');
+  if(payLabels[1])payLabels[1].textContent=tr('pay.card');
+  if(payLabels[2])payLabels[2].textContent=tr('pay.mobile');
+  // Язык
+  document.querySelector('#screen-language div[style*="font-size:18px"]').textContent=tr('lang.title');
+  // Поиск
+  document.getElementById('search-inp').placeholder=tr('search.ph');
+  var sTabs=document.querySelectorAll('#s-tabs .tab');
+  var sTabKeys=['search.tab.all','search.tab.food','search.tab.shop','search.tab.pharma'];
+  sTabs.forEach(function(t,i){if(sTabKeys[i])t.textContent=tr(sTabKeys[i]);});
+  // Ёвар модал
+  document.querySelector('.modal-status').textContent=tr('yovar.online');
+  document.getElementById('yovar-inp').placeholder=tr('yovar.ph');
+  document.getElementById('sq1').textContent=tr('yovar.sq1');
+  document.getElementById('sq2').textContent=tr('yovar.sq2');
+  document.getElementById('sq3').textContent=tr('yovar.sq3');
+  document.getElementById('sq4').textContent=tr('yovar.sq4');
+  // Обновляем onclick для Ёвар-подсказок
+  document.getElementById('sq1').onclick=function(){document.getElementById('yovar-inp').value=tr('yovar.sq1');yovarSend();};
+  document.getElementById('sq2').onclick=function(){document.getElementById('yovar-inp').value=tr('yovar.sq2');yovarSend();};
+  document.getElementById('sq3').onclick=function(){document.getElementById('yovar-inp').value=tr('yovar.sq3');yovarSend();};
+  document.getElementById('sq4').onclick=function(){document.getElementById('yovar-inp').value=tr('yovar.sq4');yovarSend();};
+  // Обновляем карточки тегов на главной
+  var tagFast=document.querySelectorAll('.tag-fast');
+  var tagNew=document.querySelectorAll('.tag-new');
+  tagFast.forEach(function(el){el.textContent=tr('home.tag.fast');});
+  tagNew.forEach(function(el){el.textContent=tr('home.tag.new');});
+  // Обновляем карточку sale (Рядом)
+  var tagSale=document.querySelectorAll('.tag-sale');
+  if(tagSale[1])tagSale[1].textContent=tr('home.tag.near');
+  // Чат заказа
+  document.getElementById('oc-inp').placeholder=tr('oc.ph');
+  var ocBtns=document.querySelectorAll('#screen-chat-order .cq-btn');
+  if(ocBtns[0]){ocBtns[0].textContent=tr('oc.q1');ocBtns[0].onclick=function(){ocSend(tr('oc.q1'));};}
+  if(ocBtns[1]){ocBtns[1].textContent=tr('oc.q2');ocBtns[1].onclick=function(){ocSend(tr('oc.q2'));};}
+  if(ocBtns[2]){ocBtns[2].textContent=tr('oc.q3');ocBtns[2].onclick=function(){ocSend(tr('oc.q3'));};}
+  // Обновляем экран заказов если он уже был открыт
+  renderOrders();
+  // Обновляем SYSTEM_PROMPT Ёвара по языку
+  var langNote=L==='tj'?'Язык пользователя: таджикский (tg). Отвечай на таджикском':L==='uz'?'Язык пользователя: узбекский (uz). Отвечай на узбекском':'Язык пользователя: русский (ru). Отвечай на русском';
+  SYSTEM_PROMPT='Ты Ёвар — помощник доставки Сабад (Душанбе). Отвечай кратко 1-3 предложения. '+langNote+'. БЕЗ markdown, БЕЗ звёздочек, только простой текст.\nЕсли пользователь хочет добавить конкретный товар→ACTION:ADD:venueKey:itemName\nЕсли ищет по описанию→ACTION:SEARCH:запрос\nКаталог:\npizza:Маргарита/28,Пепперони/35,Кола/8,Тирамису/18\nmagnit:Молоко/6,Хлеб/3,Яйца/12,Масло/15\nsamarkand:Плов/25,Шашлык/30,Мастава/20,Лепёшка/5\napteka:Парацетамол/4,ВитаминC/12,Бинт/3,Ибупрофен/7';
+}
+window.selectLang=function(lang,el){
+  currentLang=lang;
+  localStorage.setItem('sabad_lang',lang);
+  document.querySelectorAll('#screen-language .settings-check').forEach(function(c){c.classList.remove('active');c.textContent='';});
+  if(el){var chk=el.querySelector('.settings-check');if(chk){chk.classList.add('active');chk.textContent='✓';}}
+  applyLang();
+  // Обновляем метку в сайдбаре
+  var lbl=document.querySelector('.sb-item:has(.sb-ico.ico-purple) span[style]');
+  if(lbl)lbl.textContent=lang.toUpperCase();
+  supMsgs=[{t:tr('sup.msg1'),out:false,time:'13:01'},{t:tr('sup.msg2'),out:false,time:'13:01'}];
+  renderSupChat();
+  // Обновляем первое сообщение Ёвара
+  var firstMsg=document.querySelector('.modal-msg.in');
+  if(firstMsg)firstMsg.textContent=tr('yovar.greeting');
+  // Подсвечиваем текущий язык
+  document.querySelectorAll('#screen-language .settings-row').forEach(function(row){
+    var rowLang=row.getAttribute('onclick');
+    if(rowLang&&rowLang.indexOf("'"+lang+"'")>-1){
+      var c=row.querySelector('.settings-check');if(c){c.classList.add('active');c.textContent='✓';}
+    } else {
+      var c=row.querySelector('.settings-check');if(c){c.classList.remove('active');c.textContent='';}
+    }
+  });
+};
+var phrases=['Что хочешь заказать?','Ош мехоям...','Nima buyurtma?','Плов, шашлык, манты?','Бюджет 50 сомони?'],subs=['Напишите запрос — найду за секунды','Таджикский, узбекский, русский','Напишите запрос — найду за секунды','Подберу лучший вариант','Найду всё в рамках бюджета'];
+var pi=0,ci=0,del=false,twEl=document.getElementById('tw-text'),subEl=document.getElementById('tw-sub');
+function type(){var p=phrases[pi];if(!del){ci++;twEl.innerHTML=p.substring(0,ci)+'<span class="ai-cursor"></span>';if(ci===p.length){del=true;setTimeout(type,2200);return;}setTimeout(type,68);}else{ci--;twEl.innerHTML=p.substring(0,ci)+'<span class="ai-cursor"></span>';if(ci===0){del=false;pi=(pi+1)%phrases.length;subEl.textContent=subs[pi];setTimeout(type,400);return;}setTimeout(type,32);}}
+setTimeout(type,900);
+// Если уже заходили раньше — сразу на главную
+if(authToken||localStorage.getItem('sabad_visited')){
+  localStorage.setItem('sabad_visited','1');
+  updateSidebarUser();
+  goTo('home');
+  if(authToken)loadProfile();
+} else {
+  goTo('onboard');
+  initTelegramWidget();
+}
+document.getElementById('toolbar').style.display='none';
+// Применяем сохранённый язык при старте
+applyLang();
+// Восстанавливаем галочку выбранного языка
+document.querySelectorAll('#screen-language .settings-row').forEach(function(row){
+  var oc=row.getAttribute('onclick')||'';
+  var chk=row.querySelector('.settings-check');
+  if(!chk)return;
+  if(oc.indexOf("'"+currentLang+"'")>-1){chk.classList.add('active');chk.textContent='✓';}
+  else{chk.classList.remove('active');chk.textContent='';}
+});
+document.getElementById('modalClose').onclick=closeAI;
+document.getElementById('yovar-btn').onclick=yovarSend;
+document.getElementById('yovar-inp').onkeydown=function(e){if(e.key==='Enter')yovarSend();};
+document.getElementById('sq1').onclick=function(){document.getElementById('yovar-inp').value='Что есть из плова?';yovarSend();};
+document.getElementById('sq2').onclick=function(){document.getElementById('yovar-inp').value='Ужин до 50 сомони';yovarSend();};
+document.getElementById('sq3').onclick=function(){document.getElementById('yovar-inp').value='Что добавить к пицце?';yovarSend();};
+document.getElementById('sq4').onclick=function(){document.getElementById('yovar-inp').value='Добавь Плов в корзину';yovarSend();};
+document.getElementById('aiOverlay').onclick=function(e){if(e.target===this)closeAI();};
+</script>
+</body>
+</html>
